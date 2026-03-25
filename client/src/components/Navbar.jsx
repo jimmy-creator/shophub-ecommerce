@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { HiShoppingCart, HiUser, HiMenu, HiX, HiSearch } from 'react-icons/hi';
+import { HiShoppingCart, HiUser, HiMenu, HiX, HiSearch, HiHeart } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
+  const { wishlistCount } = useWishlist();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -56,6 +58,11 @@ export default function Navbar() {
         </div>
 
         <div className="nav-actions">
+          <Link to="/wishlist" className="cart-icon" aria-label="Wishlist">
+            <HiHeart />
+            {wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}
+          </Link>
+
           <Link to="/cart" className="cart-icon">
             <HiShoppingCart />
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}

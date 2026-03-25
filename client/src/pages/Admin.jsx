@@ -8,7 +8,224 @@ import ProductImage from '../components/ProductImage';
 const emptyProduct = {
   name: '', description: '', price: '', comparePrice: '',
   category: '', brand: '', stock: '', featured: false, images: [],
+  variantOptions: null, variants: null,
 };
+
+function VariantEditor({ variantOptions, variants, onChange }) {
+  const [enabled, setEnabled] = useState(!!variantOptions && Object.keys(variantOptions || {}).length > 0);
+  const [types, setTypes] = useState(() => {
+    if (!variantOptions) return [];
+    return Object.entries(variantOptions).map(([name, values]) => ({
+      name,
+      values: values.join(', '),
+    }));
+  });
+  const [variantList, setVariantList] = useState(variants || []);
+
+  const generateCombinations = (typesArr) => {
+    const opts = typesArr
+      .filter((t) => t.name.trim() && t.values.trim())
+      .map((t) => ({
+        name: t.name.trim(),
+        values: t.values.split(',').map((v) => v.trim()).filter(Boolean),
+      }));
+
+    if (opts.length === 0) return { options: {}, combos: [] };
+
+    const options = {};
+    opts.forEach((o) => { options[o.name] = o.values; });
+
+    // Generate all combinations
+    const combos = opts.reduce((acc, opt) => {
+      if (acc.length === 0) {
+        return opt.values.map((v) => ({ [opt.name]: v }));
+      }
+      const result = [];
+      acc.forEach((existing) => {
+        opt.values.forEach((v) => {
+          result.push({ ...existing, [opt.name]: v });
+        });
+      });
+      return result;
+    }, []);
+
+    // Merge with existing variant data (preserve sku/price/stock)
+    const merged = combos.map((combo) => {
+      const key = JSON.stringify(combo);
+      const existing = variantList.find((v) => JSON.stringify(v.options) === key);
+      return {
+        options: combo,
+        sku: existing?.sku || '',
+        price: existing?.price ?? '',
+        stock: existing?.stock ?? 0,
+      };
+    });
+
+    return { options, combos: merged };
+  };
+
+  const handleToggle = (val) => {
+    setEnabled(val);
+    if (!val) {
+      onChange(null, null);
+      setTypes([]);
+      setVariantList([]);
+    } else {
+      setTypes([{ name: 'Size', values: 'S, M, L, XL' }]);
+    }
+  };
+
+  const handleTypesChange = (newTypes) => {
+    setTypes(newTypes);
+    const { options, combos } = generateCombinations(newTypes);
+    setVariantList(combos);
+    onChange(Object.keys(options).length > 0 ? options : null, combos.length > 0 ? combos : null);
+  };
+
+  const handleVariantFieldChange = (index, field, value) => {
+    const updated = [...variantList];
+    if (field === 'price') {
+      updated[index][field] = value === '' ? null : parseFloat(value);
+    } else if (field === 'stock') {
+      updated[index][field] = parseInt(value) || 0;
+    } else {
+      updated[index][field] = value;
+    }
+    setVariantList(updated);
+
+    const opts = {};
+    types.filter((t) => t.name.trim() && t.values.trim()).forEach((t) => {
+      opts[t.name.trim()] = t.values.split(',').map((v) => v.trim()).filter(Boolean);
+    });
+    onChange(Object.keys(opts).length > 0 ? opts : null, updated.length > 0 ? updated : null);
+  };
+
+  const totalVariantStock = variantList.reduce((sum, v) => sum + (v.stock || 0), 0);
+
+  return (
+    <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+      <label className="checkbox-label" style={{ paddingTop: 0, marginBottom: '1rem' }}>
+        <input type="checkbox" checked={enabled} onChange={(e) => handleToggle(e.target.checked)} />
+        This product has variants (size, color, etc.)
+      </label>
+
+      {enabled && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+          <h4 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+            Variant Types
+          </h4>
+
+          {types.map((type, i) => (
+            <div key={i} className="form-row" style={{ marginBottom: '0.5rem', alignItems: 'end' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Type Name</label>
+                <input
+                  value={type.name}
+                  onChange={(e) => {
+                    const updated = [...types];
+                    updated[i].name = e.target.value;
+                    handleTypesChange(updated);
+                  }}
+                  placeholder="e.g. Size, Color"
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0, flex: 2 }}>
+                <label>Values (comma separated)</label>
+                <input
+                  value={type.values}
+                  onChange={(e) => {
+                    const updated = [...types];
+                    updated[i].values = e.target.value;
+                    handleTypesChange(updated);
+                  }}
+                  placeholder="e.g. S, M, L, XL"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTypesChange(types.filter((_, j) => j !== i))}
+                style={{
+                  background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                  padding: '0.55rem', cursor: 'pointer', color: 'var(--danger)', display: 'flex',
+                  marginBottom: '0',
+                }}
+              >
+                <HiTrash />
+              </button>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => handleTypesChange([...types, { name: '', values: '' }])}
+            style={{
+              background: 'none', border: '1px dashed var(--border)', borderRadius: 'var(--radius)',
+              padding: '0.5rem 1rem', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--copper)',
+              fontWeight: 500, marginTop: '0.5rem', width: '100%',
+            }}
+          >
+            + Add Variant Type
+          </button>
+
+          {variantList.length > 0 && (
+            <>
+              <h4 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', margin: '1.25rem 0 0.75rem' }}>
+                Variants ({variantList.length}) — Total Stock: {totalVariantStock}
+              </h4>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-warm)' }}>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>Variant</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>SKU</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>Price Override</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-secondary)' }}>Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variantList.map((v, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: 500 }}>
+                          {Object.values(v.options).join(' / ')}
+                        </td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>
+                          <input
+                            value={v.sku}
+                            onChange={(e) => handleVariantFieldChange(i, 'sku', e.target.value)}
+                            placeholder="SKU"
+                            style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.82rem', width: '100px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={v.price ?? ''}
+                            onChange={(e) => handleVariantFieldChange(i, 'price', e.target.value)}
+                            placeholder="Base price"
+                            style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.82rem', width: '90px' }}
+                          />
+                        </td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>
+                          <input
+                            type="number"
+                            value={v.stock}
+                            onChange={(e) => handleVariantFieldChange(i, 'stock', e.target.value)}
+                            style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.82rem', width: '70px' }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ImageUploader({ images = [], onChange }) {
   const fileInputRef = useRef(null);
@@ -165,20 +382,54 @@ function ImageUploader({ images = [], onChange }) {
 
 export default function Admin() {
   const { user } = useAuth();
-  const [tab, setTab] = useState('products');
+  const [tab, setTab] = useState('dashboard');
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+  const [couponForm, setCouponForm] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [reviewForm, setReviewForm] = useState(null);
+  const [dashboard, setDashboard] = useState(null);
+  const [revenueChart, setRevenueChart] = useState([]);
+  const [chartPeriod, setChartPeriod] = useState('30days');
+  const [topProducts, setTopProducts] = useState([]);
+  const [orderStatus, setOrderStatus] = useState({});
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
-    if (tab === 'products') {
+    if (tab === 'dashboard') {
+      Promise.all([
+        api.get('/analytics/overview'),
+        api.get(`/analytics/revenue-chart?period=${chartPeriod}`),
+        api.get('/analytics/top-products'),
+        api.get('/analytics/order-status'),
+        api.get('/analytics/recent-orders'),
+        api.get('/analytics/payment-methods'),
+      ]).then(([ov, rc, tp, os, ro, pm]) => {
+        setDashboard(ov.data);
+        setRevenueChart(rc.data);
+        setTopProducts(tp.data);
+        setOrderStatus(os.data);
+        setRecentOrders(ro.data);
+        setPaymentMethods(pm.data);
+      }).catch(console.error);
+    } else if (tab === 'products') {
       api.get('/products?limit=100').then((res) => setProducts(res.data.products));
-    } else {
+    } else if (tab === 'orders') {
       api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+    } else if (tab === 'coupons') {
+      api.get('/coupons').then((res) => setCoupons(res.data));
+    } else if (tab === 'reviews') {
+      api.get('/reviews/all').then((res) => setReviews(res.data.reviews));
+      if (products.length === 0) {
+        api.get('/products?limit=100').then((res) => setProducts(res.data.products));
+      }
     }
-  }, [tab]);
+  }, [tab, chartPeriod]);
 
   if (user?.role !== 'admin') {
     return <div className="empty-state"><h2>Access Denied</h2></div>;
@@ -223,13 +474,185 @@ export default function Admin() {
       <div className="container">
         <h1>Admin Panel</h1>
         <div className="admin-tabs">
+          <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>
+            Dashboard
+          </button>
           <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>
             Products
           </button>
           <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
             Orders
           </button>
+          <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>
+            Coupons
+          </button>
+          <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>
+            Reviews
+          </button>
         </div>
+
+        {tab === 'dashboard' && dashboard && (
+          <div className="dashboard">
+            {/* Metric Cards */}
+            <div className="dash-cards">
+              <div className="dash-card">
+                <div className="dash-card-label">Total Revenue</div>
+                <div className="dash-card-value">₹{dashboard.revenue.total.toLocaleString('en-IN')}</div>
+                <div className={`dash-card-change ${dashboard.revenue.growth >= 0 ? 'up' : 'down'}`}>
+                  {dashboard.revenue.growth >= 0 ? '↑' : '↓'} {Math.abs(dashboard.revenue.growth)}% vs last month
+                </div>
+              </div>
+              <div className="dash-card">
+                <div className="dash-card-label">This Month</div>
+                <div className="dash-card-value">₹{dashboard.revenue.month.toLocaleString('en-IN')}</div>
+                <div className="dash-card-sub">Today: ₹{dashboard.revenue.today.toLocaleString('en-IN')}</div>
+              </div>
+              <div className="dash-card">
+                <div className="dash-card-label">Orders</div>
+                <div className="dash-card-value">{dashboard.orders.total}</div>
+                <div className="dash-card-sub">{dashboard.orders.pending} pending · {dashboard.orders.today} today</div>
+              </div>
+              <div className="dash-card">
+                <div className="dash-card-label">Customers</div>
+                <div className="dash-card-value">{dashboard.customers.total}</div>
+                <div className="dash-card-sub">{dashboard.customers.new} new this month</div>
+              </div>
+            </div>
+
+            <div className="dash-grid">
+              {/* Revenue Chart */}
+              <div className="dash-panel dash-chart-panel">
+                <div className="dash-panel-header">
+                  <h3>Revenue</h3>
+                  <div className="dash-chart-toggle">
+                    <button className={chartPeriod === '30days' ? 'active' : ''} onClick={() => setChartPeriod('30days')}>30 Days</button>
+                    <button className={chartPeriod === '12months' ? 'active' : ''} onClick={() => setChartPeriod('12months')}>12 Months</button>
+                  </div>
+                </div>
+                <div className="dash-chart">
+                  {revenueChart.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No revenue data yet</p>
+                  ) : (
+                    <div className="chart-bars">
+                      {(() => {
+                        const maxRev = Math.max(...revenueChart.map((d) => d.revenue), 1);
+                        return revenueChart.map((d, i) => (
+                          <div key={i} className="chart-bar-col" title={`${d.period}: ₹${d.revenue.toLocaleString('en-IN')} (${d.orders} orders)`}>
+                            <div className="chart-bar" style={{ height: `${(d.revenue / maxRev) * 100}%` }} />
+                            <span className="chart-bar-label">
+                              {chartPeriod === '12months'
+                                ? new Date(d.period + '-01').toLocaleDateString('en-IN', { month: 'short' })
+                                : new Date(d.period).getDate()
+                              }
+                            </span>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Status */}
+              <div className="dash-panel">
+                <h3>Order Status</h3>
+                <div className="dash-status-list">
+                  {Object.entries(orderStatus).map(([status, count]) => {
+                    const colors = { processing: '#f59e0b', confirmed: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444' };
+                    const total = Object.values(orderStatus).reduce((s, c) => s + c, 0) || 1;
+                    return (
+                      <div key={status} className="dash-status-row">
+                        <div className="dash-status-info">
+                          <span className="dash-status-dot" style={{ background: colors[status] || '#999' }} />
+                          <span style={{ textTransform: 'capitalize' }}>{status}</span>
+                        </div>
+                        <div className="dash-status-bar-wrap">
+                          <div className="dash-status-bar" style={{ width: `${(count / total) * 100}%`, background: colors[status] || '#999' }} />
+                        </div>
+                        <span className="dash-status-count">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="dash-grid">
+              {/* Top Products */}
+              <div className="dash-panel">
+                <h3>Top Selling Products</h3>
+                {topProducts.length === 0 ? (
+                  <p style={{ color: 'var(--text-light)', padding: '1rem 0' }}>No sales data yet</p>
+                ) : (
+                  <div className="dash-top-products">
+                    {topProducts.map((p, i) => (
+                      <div key={p.id} className="dash-top-row">
+                        <span className="dash-top-rank">{i + 1}</span>
+                        <div className="dash-top-info">
+                          <span className="dash-top-name">{p.name}</span>
+                          <span className="dash-top-qty">{p.quantity} sold</span>
+                        </div>
+                        <span className="dash-top-rev">₹{p.revenue.toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Recent Orders + Payment Methods */}
+              <div className="dash-panel">
+                <h3>Recent Orders</h3>
+                <div className="dash-recent">
+                  {recentOrders.slice(0, 7).map((o) => (
+                    <div key={o.id} className="dash-recent-row">
+                      <div>
+                        <span className="dash-recent-id">{o.orderNumber}</span>
+                        <span className="dash-recent-name">{o.User?.name || o.guestEmail || 'Guest'}</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span className="dash-recent-amount">₹{parseFloat(o.totalAmount).toLocaleString('en-IN')}</span>
+                        <span className={`dash-recent-status ${o.paymentStatus}`}>{o.paymentStatus}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {paymentMethods.length > 0 && (
+                  <>
+                    <h4 style={{ marginTop: '1.5rem', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)' }}>Payment Methods</h4>
+                    <div className="dash-payment-methods">
+                      {paymentMethods.map((pm) => (
+                        <div key={pm.method} className="dash-pm-row">
+                          <span style={{ textTransform: 'capitalize' }}>{pm.method}</span>
+                          <span>{pm.count} orders · ₹{pm.revenue.toLocaleString('en-IN')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Inventory Alerts */}
+            {(dashboard.products.lowStock > 0 || dashboard.products.outOfStock > 0) && (
+              <div className="dash-panel dash-alerts">
+                <h3>Inventory Alerts</h3>
+                <div className="dash-alert-items">
+                  {dashboard.products.outOfStock > 0 && (
+                    <div className="dash-alert danger">
+                      <strong>{dashboard.products.outOfStock}</strong> product{dashboard.products.outOfStock > 1 ? 's' : ''} out of stock
+                    </div>
+                  )}
+                  {dashboard.products.lowStock > 0 && (
+                    <div className="dash-alert warning">
+                      <strong>{dashboard.products.lowStock}</strong> product{dashboard.products.lowStock > 1 ? 's' : ''} with low stock (≤5)
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {tab === 'products' && (
           <div>
@@ -303,7 +726,42 @@ export default function Admin() {
                         </label>
                       </div>
                     </div>
+                    <div className="form-row" style={{ alignItems: 'end' }}>
+                      <div className="form-group">
+                        <label className="checkbox-label" style={{ paddingTop: 0 }}>
+                          <input type="checkbox" checked={!!form.taxable} onChange={(e) => setForm({ ...form, taxable: e.target.checked, taxRate: e.target.checked ? (parseFloat(form.taxRate) || 18) : 0 })} />
+                          Charge GST
+                        </label>
+                      </div>
+                      {form.taxable && (
+                        <>
+                          <div className="form-group">
+                            <label>GST Rate (%)</label>
+                            <select value={String(parseFloat(form.taxRate) || 18)} onChange={(e) => setForm({ ...form, taxRate: parseFloat(e.target.value) })}>
+                              <option value="0">0%</option>
+                              <option value="5">5%</option>
+                              <option value="12">12%</option>
+                              <option value="18">18%</option>
+                              <option value="28">28%</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>HSN Code</label>
+                            <input value={form.hsnCode || ''} onChange={(e) => setForm({ ...form, hsnCode: e.target.value })} placeholder="Optional" />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
+
+                  <VariantEditor
+                    variantOptions={form.variantOptions}
+                    variants={form.variants}
+                    onChange={(variantOptions, variants) => {
+                      const totalStock = variants ? variants.reduce((s, v) => s + (v.stock || 0), 0) : form.stock;
+                      setForm({ ...form, variantOptions, variants, stock: totalStock });
+                    }}
+                  />
 
                   <div className="form-actions">
                     <button type="submit" className="btn btn-primary">
@@ -347,7 +805,13 @@ export default function Admin() {
                         <button
                           className="icon-btn"
                           onClick={() => {
-                            setForm({ ...p, images: p.images || [] });
+                            setForm({
+                              ...p,
+                              images: p.images || [],
+                              taxable: !!p.taxable,
+                              taxRate: parseFloat(p.taxRate) || 0,
+                              hsnCode: p.hsnCode || '',
+                            });
                             setEditing(p.id);
                             setShowForm(true);
                           }}
@@ -377,6 +841,7 @@ export default function Admin() {
                   <th>Payment</th>
                   <th>Status</th>
                   <th>Update</th>
+                  <th>Invoice</th>
                 </tr>
               </thead>
               <tbody>
@@ -399,10 +864,300 @@ export default function Admin() {
                         <option value="cancelled">Cancelled</option>
                       </select>
                     </td>
+                    <td>
+                      <button className="invoice-btn" onClick={() => window.open(`/api/orders/${o.id}/invoice`, '_blank')}>
+                        PDF
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {tab === 'coupons' && (
+          <div>
+            <button
+              className="btn btn-primary"
+              onClick={() => setCouponForm({ code: '', description: '', type: 'percentage', value: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', perUserLimit: '1', startDate: '', endDate: '', active: true, _editing: false })}
+              style={{ marginBottom: '1.5rem' }}
+            >
+              <HiPlus /> Create Coupon
+            </button>
+
+            {couponForm && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCouponForm(null); }}>
+                <form className="admin-form" onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    const payload = { ...couponForm };
+                    delete payload._editing;
+                    delete payload._id;
+                    if (couponForm._editing) {
+                      await api.put(`/coupons/${couponForm._id}`, payload);
+                      toast.success('Coupon updated');
+                    } else {
+                      await api.post('/coupons', payload);
+                      toast.success('Coupon created');
+                    }
+                    setCouponForm(null);
+                    api.get('/coupons').then((res) => setCoupons(res.data));
+                  } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed');
+                  }
+                }}>
+                  <h3>{couponForm._editing ? 'Edit Coupon' : 'New Coupon'}</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Code</label>
+                      <input value={couponForm.code} onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })} required placeholder="e.g. SAVE20" style={{ textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }} />
+                    </div>
+                    <div className="form-group">
+                      <label>Type</label>
+                      <select value={couponForm.type} onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value })} required>
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (₹)</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>{couponForm.type === 'percentage' ? 'Discount (%)' : 'Discount (₹)'}</label>
+                      <input type="number" step="0.01" value={couponForm.value} onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })} required />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Description (optional)</label>
+                    <input value={couponForm.description} onChange={(e) => setCouponForm({ ...couponForm, description: e.target.value })} placeholder="e.g. 20% off on your first order" />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Min Order Amount</label>
+                      <input type="number" step="0.01" value={couponForm.minOrderAmount} onChange={(e) => setCouponForm({ ...couponForm, minOrderAmount: e.target.value })} placeholder="0" />
+                    </div>
+                    {couponForm.type === 'percentage' && (
+                      <div className="form-group">
+                        <label>Max Discount Cap (₹)</label>
+                        <input type="number" step="0.01" value={couponForm.maxDiscount} onChange={(e) => setCouponForm({ ...couponForm, maxDiscount: e.target.value })} placeholder="No limit" />
+                      </div>
+                    )}
+                    <div className="form-group">
+                      <label>Usage Limit</label>
+                      <input type="number" value={couponForm.usageLimit} onChange={(e) => setCouponForm({ ...couponForm, usageLimit: e.target.value })} placeholder="Unlimited" />
+                    </div>
+                    <div className="form-group">
+                      <label>Per User Limit</label>
+                      <input type="number" value={couponForm.perUserLimit} onChange={(e) => setCouponForm({ ...couponForm, perUserLimit: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Start Date</label>
+                      <input type="date" value={couponForm.startDate?.split('T')[0] || ''} onChange={(e) => setCouponForm({ ...couponForm, startDate: e.target.value || null })} />
+                    </div>
+                    <div className="form-group">
+                      <label>End Date</label>
+                      <input type="date" value={couponForm.endDate?.split('T')[0] || ''} onChange={(e) => setCouponForm({ ...couponForm, endDate: e.target.value || null })} />
+                    </div>
+                  </div>
+                  <label className="checkbox-label" style={{ paddingTop: '0.5rem' }}>
+                    <input type="checkbox" checked={couponForm.active} onChange={(e) => setCouponForm({ ...couponForm, active: e.target.checked })} />
+                    Active
+                  </label>
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">
+                      {couponForm._editing ? 'Update' : 'Create'}
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setCouponForm(null)}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Value</th>
+                    <th>Min Order</th>
+                    <th>Used</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coupons.map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ fontWeight: 600, letterSpacing: '0.5px' }}>{c.code}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{c.type}</td>
+                      <td>{c.type === 'percentage' ? `${c.value}%` : `₹${parseFloat(c.value).toFixed(2)}`}{c.maxDiscount ? ` (max ₹${parseFloat(c.maxDiscount).toFixed(0)})` : ''}</td>
+                      <td>{parseFloat(c.minOrderAmount) > 0 ? `₹${parseFloat(c.minOrderAmount).toFixed(0)}` : '-'}</td>
+                      <td>{c.usedCount}{c.usageLimit ? `/${c.usageLimit}` : ''}</td>
+                      <td>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: c.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)', color: c.active ? 'var(--success)' : 'var(--danger)' }}>
+                          {c.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="icon-btn" onClick={() => setCouponForm({ ...c, _editing: true, _id: c.id })}>
+                          <HiPencil />
+                        </button>
+                        <button className="icon-btn danger" onClick={async () => {
+                          if (!confirm('Delete this coupon?')) return;
+                          await api.delete(`/coupons/${c.id}`);
+                          setCoupons(coupons.filter((x) => x.id !== c.id));
+                          toast.success('Deleted');
+                        }}>
+                          <HiTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {coupons.length === 0 && (
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No coupons yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {tab === 'reviews' && (
+          <div>
+            <button
+              className="btn btn-primary"
+              onClick={() => setReviewForm({ productId: '', name: '', rating: 5, title: '', comment: '', verified: false })}
+              style={{ marginBottom: '1.5rem' }}
+            >
+              <HiPlus /> Add Review
+            </button>
+
+            {reviewForm && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setReviewForm(null); }}>
+                <form className="admin-form" onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await api.post('/reviews/admin', reviewForm);
+                    toast.success('Review added');
+                    setReviewForm(null);
+                    api.get('/reviews/all').then((res) => setReviews(res.data.reviews));
+                  } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed');
+                  }
+                }}>
+                  <h3>Add Review</h3>
+                  <div className="form-group">
+                    <label>Product</label>
+                    <select value={reviewForm.productId} onChange={(e) => setReviewForm({ ...reviewForm, productId: e.target.value })} required>
+                      <option value="">Select product</option>
+                      {products.length === 0 && <option disabled>Loading products...</option>}
+                      {products.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Reviewer Name</label>
+                      <input value={reviewForm.name} onChange={(e) => setReviewForm({ ...reviewForm, name: e.target.value })} required placeholder="John Doe" />
+                    </div>
+                    <div className="form-group">
+                      <label>Rating</label>
+                      <select value={reviewForm.rating} onChange={(e) => setReviewForm({ ...reviewForm, rating: parseInt(e.target.value) })}>
+                        <option value="5">5 Stars</option>
+                        <option value="4">4 Stars</option>
+                        <option value="3">3 Stars</option>
+                        <option value="2">2 Stars</option>
+                        <option value="1">1 Star</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Title (optional)</label>
+                    <input value={reviewForm.title} onChange={(e) => setReviewForm({ ...reviewForm, title: e.target.value })} placeholder="Great product!" />
+                  </div>
+                  <div className="form-group">
+                    <label>Review</label>
+                    <textarea value={reviewForm.comment} onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })} rows={3} required placeholder="Write the review content..." />
+                  </div>
+                  <label className="checkbox-label" style={{ paddingTop: '0.5rem' }}>
+                    <input type="checkbox" checked={reviewForm.verified} onChange={(e) => setReviewForm({ ...reviewForm, verified: e.target.checked })} />
+                    Show as "Verified Purchase"
+                  </label>
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">Add Review</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setReviewForm(null)}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Reviewer</th>
+                    <th>Rating</th>
+                    <th>Comment</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviews.map((r) => (
+                    <tr key={r.id}>
+                      <td style={{ maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.Product?.name || `Product #${r.productId}`}
+                      </td>
+                      <td>{r.name}</td>
+                      <td>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</td>
+                      <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.title ? <strong>{r.title}: </strong> : ''}{r.comment}
+                      </td>
+                      <td>
+                        {r.adminCreated ? (
+                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', borderRadius: '100px', background: 'rgba(196,120,74,0.1)', color: 'var(--copper)' }}>Admin</span>
+                        ) : r.verified ? (
+                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', borderRadius: '100px', background: 'rgba(90,138,106,0.1)', color: 'var(--success)' }}>Verified</span>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-light)' }}>Customer</span>
+                        )}
+                      </td>
+                      <td>
+                        <button
+                          className="icon-btn"
+                          onClick={async () => {
+                            await api.put(`/reviews/${r.id}/approve`);
+                            api.get('/reviews/all').then((res) => setReviews(res.data.reviews));
+                            toast.success(r.approved ? 'Hidden' : 'Approved');
+                          }}
+                          title={r.approved ? 'Hide review' : 'Approve review'}
+                          style={{ color: r.approved ? 'var(--success)' : 'var(--text-light)' }}
+                        >
+                          {r.approved ? '✓' : '○'}
+                        </button>
+                      </td>
+                      <td>
+                        <button className="icon-btn danger" onClick={async () => {
+                          if (!confirm('Delete this review?')) return;
+                          await api.delete(`/reviews/${r.id}`);
+                          setReviews(reviews.filter((x) => x.id !== r.id));
+                          toast.success('Deleted');
+                        }}>
+                          <HiTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {reviews.length === 0 && (
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No reviews yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

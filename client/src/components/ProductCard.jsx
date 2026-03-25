@@ -1,26 +1,38 @@
 import { Link } from 'react-router-dom';
-import { HiShoppingCart, HiStar } from 'react-icons/hi';
+import { HiShoppingCart, HiStar, HiHeart, HiOutlineHeart } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import ProductImage from './ProductImage';
 import toast from 'react-hot-toast';
 
+const toastOpts = {
+  style: { background: '#1a1614', color: '#f5f0eb', fontSize: '0.88rem', fontFamily: "'Outfit', sans-serif", borderRadius: '4px' },
+  iconTheme: { primary: '#c4784a', secondary: '#f5f0eb' },
+};
+
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
+  const { toggleWishlist, isInWishlist } = useWishlist();
+
+  const hasVariants = product.variants && product.variants.length > 0;
+  const wishlisted = isInWishlist(product.id);
 
   const handleAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (hasVariants) {
+      window.location.href = `/product/${product.slug}`;
+      return;
+    }
     addToCart(product);
-    toast.success(`Added to cart`, {
-      style: {
-        background: '#1a1614',
-        color: '#f5f0eb',
-        fontSize: '0.88rem',
-        fontFamily: "'Outfit', sans-serif",
-        borderRadius: '4px',
-      },
-      iconTheme: { primary: '#c4784a', secondary: '#f5f0eb' },
-    });
+    toast.success('Added to cart', toastOpts);
+  };
+
+  const handleWishlist = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product);
+    toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist', toastOpts);
   };
 
   const discount = product.comparePrice
@@ -32,6 +44,9 @@ export default function ProductCard({ product }) {
       <div className="product-image">
         <ProductImage product={product} />
         {discount > 0 && <span className="discount-badge">-{discount}%</span>}
+        <button className={`wishlist-btn ${wishlisted ? 'active' : ''}`} onClick={handleWishlist}>
+          {wishlisted ? <HiHeart /> : <HiOutlineHeart />}
+        </button>
       </div>
       <div className="product-info">
         <span className="product-category">{product.category}</span>
@@ -50,7 +65,7 @@ export default function ProductCard({ product }) {
           )}
         </div>
         <button className="add-to-cart-btn" onClick={handleAdd}>
-          <HiShoppingCart /> Add to Cart
+          <HiShoppingCart /> {hasVariants ? 'Select Options' : 'Add to Cart'}
         </button>
       </div>
     </Link>

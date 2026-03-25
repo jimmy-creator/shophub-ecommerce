@@ -1,6 +1,7 @@
-import { Order, Product, User } from '../models/index.js';
+import { Order, Product, User, Coupon } from '../models/index.js';
 import { Op } from 'sequelize';
 import { sendOrderConfirmation, sendOrderStatusUpdate } from '../services/emailService.js';
+import { calculateTax, getIsSameState } from '../utils/tax.js';
 
 const generateOrderNumber = () => {
   const prefix = 'ORD';
@@ -9,57 +10,155 @@ const generateOrderNumber = () => {
   return `${prefix}-${timestamp}-${random}`;
 };
 
-export const createOrder = async (req, res) => {
-  try {
-    const { items, shippingAddress, paymentMethod } = req.body;
+// Shared: build order items with variant support
+async function buildOrderItems(items) {
+  const productIds = items.map((item) => item.productId);
+  const products = await Product.findAll({
+    where: { id: { [Op.in]: productIds } },
+  });
 
-    if (!items || items.length === 0) {
-      return res.status(400).json({ message: 'No items in order' });
-    }
+  let totalAmount = 0;
+  const orderItems = items.map((item) => {
+    const product = products.find((p) => p.id === item.productId);
+    if (!product) throw new Error(`Product ${item.productId} not found`);
 
-    const productIds = items.map((item) => item.productId);
-    const products = await Product.findAll({
-      where: { id: { [Op.in]: productIds } },
-    });
+    let price = parseFloat(product.price);
+    let variantInfo = null;
 
-    let totalAmount = 0;
-    const orderItems = items.map((item) => {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product) throw new Error(`Product ${item.productId} not found`);
+    if (item.selectedVariant && product.variants && product.variants.length > 0) {
+      const variant = product.variants.find((v) =>
+        Object.entries(item.selectedVariant).every(([k, val]) => v.options[k] === val)
+      );
+      if (!variant) throw new Error(`Variant not available for ${product.name}`);
+      if (variant.stock < item.quantity) {
+        throw new Error(`${product.name} (${Object.values(item.selectedVariant).join(', ')}) is out of stock`);
+      }
+      if (variant.price != null) price = parseFloat(variant.price);
+      variantInfo = { ...item.selectedVariant, sku: variant.sku };
+    } else if (product.variants && product.variants.length > 0 && !item.selectedVariant) {
+      throw new Error(`Please select options for ${product.name}`);
+    } else {
       if (product.stock < item.quantity) {
         throw new Error(`${product.name} is out of stock`);
       }
+    }
 
-      const itemTotal = parseFloat(product.price) * item.quantity;
-      totalAmount += itemTotal;
+    totalAmount += price * item.quantity;
 
-      return {
-        productId: product.id,
-        name: product.name,
-        price: parseFloat(product.price),
-        quantity: item.quantity,
-        image: product.images?.[0] || null,
-      };
-    });
+    return {
+      productId: product.id,
+      name: product.name,
+      price,
+      quantity: item.quantity,
+      image: product.images?.[0] || null,
+      variant: variantInfo,
+      taxable: product.taxable || false,
+      taxRate: product.taxable ? parseFloat(product.taxRate || 0) : 0,
+      hsnCode: product.hsnCode || null,
+    };
+  });
 
-    const order = await Order.create({
-      orderNumber: generateOrderNumber(),
-      userId: req.user.id,
-      items: orderItems,
-      totalAmount,
-      shippingAddress,
-      paymentMethod,
-    });
+  return { orderItems, totalAmount, products };
+}
 
-    // Reduce stock
-    for (const item of items) {
+
+// Shared: reduce stock after order
+async function reduceStock(items, products) {
+  for (const item of items) {
+    const product = products.find((p) => p.id === item.productId);
+    if (item.selectedVariant && product.variants && product.variants.length > 0) {
+      const updatedVariants = product.variants.map((v) => {
+        const isMatch = Object.entries(item.selectedVariant).every(
+          ([k, val]) => v.options[k] === val
+        );
+        return isMatch ? { ...v, stock: v.stock - item.quantity } : v;
+      });
+      await Product.update(
+        {
+          variants: updatedVariants,
+          stock: updatedVariants.reduce((sum, v) => sum + v.stock, 0),
+        },
+        { where: { id: item.productId } }
+      );
+    } else {
       await Product.increment(
         { stock: -item.quantity },
         { where: { id: item.productId } }
       );
     }
+  }
+}
 
-    // Send confirmation email
+// Apply coupon and return discount amount
+async function applyCoupon(couponCode, subtotal, userId) {
+  if (!couponCode) return { discount: 0, code: null };
+
+  const coupon = await Coupon.findOne({
+    where: { code: couponCode.toUpperCase().trim(), active: true },
+  });
+  if (!coupon) throw new Error('Invalid coupon code');
+
+  const now = new Date();
+  if (coupon.startDate && now < new Date(coupon.startDate)) throw new Error('Coupon not active yet');
+  if (coupon.endDate && now > new Date(coupon.endDate)) throw new Error('Coupon has expired');
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new Error('Coupon usage limit reached');
+  if (subtotal < parseFloat(coupon.minOrderAmount)) {
+    throw new Error(`Minimum order ₹${parseFloat(coupon.minOrderAmount).toFixed(2)} required`);
+  }
+
+  if (userId && coupon.perUserLimit) {
+    const used = await Order.count({ where: { userId, couponCode: coupon.code } });
+    if (used >= coupon.perUserLimit) throw new Error('You have already used this coupon');
+  }
+
+  let discount = 0;
+  if (coupon.type === 'percentage') {
+    discount = (subtotal * parseFloat(coupon.value)) / 100;
+    if (coupon.maxDiscount) discount = Math.min(discount, parseFloat(coupon.maxDiscount));
+  } else {
+    discount = parseFloat(coupon.value);
+  }
+  discount = Math.min(discount, subtotal);
+  discount = Math.round(discount * 100) / 100;
+
+  // Increment usage
+  await coupon.increment('usedCount');
+
+  return { discount, code: coupon.code };
+}
+
+export const createOrder = async (req, res) => {
+  try {
+    const { items, shippingAddress, paymentMethod, couponCode } = req.body;
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: 'No items in order' });
+    }
+
+    const { orderItems, totalAmount, products } = await buildOrderItems(items);
+    const { discount, code } = await applyCoupon(couponCode, totalAmount, req.user.id);
+    const afterDiscount = Math.round((totalAmount - discount) * 100) / 100;
+
+    // Calculate GST (same state check based on store state vs shipping state)
+    const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingAddress?.state));
+
+    // Tax is inclusive — no addition, just record the breakdown
+    const finalAmount = afterDiscount;
+
+    const order = await Order.create({
+      orderNumber: generateOrderNumber(),
+      userId: req.user.id,
+      items: orderItems,
+      totalAmount: finalAmount,
+      shippingAddress,
+      paymentMethod,
+      couponCode: code,
+      discount,
+      taxAmount: totalTax,
+      taxBreakdown: breakdown,
+    });
+
+    await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), req.user.email).catch(() => {});
 
     res.status(201).json(order);
@@ -70,7 +169,7 @@ export const createOrder = async (req, res) => {
 
 export const createGuestOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, paymentMethod, guestEmail } = req.body;
+    const { items, shippingAddress, paymentMethod, guestEmail, couponCode } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No items in order' });
@@ -84,50 +183,30 @@ export const createGuestOrder = async (req, res) => {
       return res.status(400).json({ message: 'Shipping address with name, address, and phone is required' });
     }
 
-    const productIds = items.map((item) => item.productId);
-    const products = await Product.findAll({
-      where: { id: { [Op.in]: productIds } },
-    });
+    const { orderItems, totalAmount, products } = await buildOrderItems(items);
+    const { discount, code } = await applyCoupon(couponCode, totalAmount, null);
+    const afterDiscount = Math.round((totalAmount - discount) * 100) / 100;
 
-    let totalAmount = 0;
-    const orderItems = items.map((item) => {
-      const product = products.find((p) => p.id === item.productId);
-      if (!product) throw new Error(`Product ${item.productId} not found`);
-      if (product.stock < item.quantity) {
-        throw new Error(`${product.name} is out of stock`);
-      }
+    const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingAddress?.state));
 
-      const itemTotal = parseFloat(product.price) * item.quantity;
-      totalAmount += itemTotal;
-
-      return {
-        productId: product.id,
-        name: product.name,
-        price: parseFloat(product.price),
-        quantity: item.quantity,
-        image: product.images?.[0] || null,
-      };
-    });
+    // Tax is inclusive — no addition, just record the breakdown
+    const finalAmount = afterDiscount;
 
     const order = await Order.create({
       orderNumber: generateOrderNumber(),
       userId: null,
       guestEmail: guestEmail.toLowerCase().trim(),
       items: orderItems,
-      totalAmount,
+      totalAmount: finalAmount,
       shippingAddress,
       paymentMethod,
+      couponCode: code,
+      discount,
+      taxAmount: totalTax,
+      taxBreakdown: breakdown,
     });
 
-    // Reduce stock
-    for (const item of items) {
-      await Product.increment(
-        { stock: -item.quantity },
-        { where: { id: item.productId } }
-      );
-    }
-
-    // Send confirmation email to guest
+    await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), guestEmail.toLowerCase().trim()).catch(() => {});
 
     res.status(201).json(order);
@@ -139,22 +218,13 @@ export const createGuestOrder = async (req, res) => {
 export const trackGuestOrder = async (req, res) => {
   try {
     const { orderNumber, email } = req.query;
-
     if (!orderNumber || !email) {
       return res.status(400).json({ message: 'Order number and email are required' });
     }
-
     const order = await Order.findOne({
-      where: {
-        orderNumber,
-        guestEmail: email.toLowerCase().trim(),
-      },
+      where: { orderNumber, guestEmail: email.toLowerCase().trim() },
     });
-
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
+    if (!order) return res.status(404).json({ message: 'Order not found' });
     res.json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -176,35 +246,26 @@ export const getMyOrders = async (req, res) => {
 export const getOrder = async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
-
+    if (!order) return res.status(404).json({ message: 'Order not found' });
     if (order.userId !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
-
     res.json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Admin
 export const getAllOrders = async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
     const where = {};
     if (status) where.orderStatus = status;
-
     const offset = (page - 1) * limit;
     const { count, rows } = await Order.findAndCountAll({
-      where,
-      limit: parseInt(limit),
-      offset,
+      where, limit: parseInt(limit), offset,
       order: [['createdAt', 'DESC']],
     });
-
     res.json({
       orders: rows,
       totalPages: Math.ceil(count / limit),
@@ -219,9 +280,7 @@ export const getAllOrders = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
-    if (!order) {
-      return res.status(404).json({ message: 'Order not found' });
-    }
+    if (!order) return res.status(404).json({ message: 'Order not found' });
 
     const { orderStatus, paymentStatus, trackingNumber } = req.body;
     const previousStatus = order.orderStatus;
@@ -232,16 +291,13 @@ export const updateOrderStatus = async (req, res) => {
       ...(trackingNumber && { trackingNumber }),
     });
 
-    // Send status update email if order status changed
     if (orderStatus && orderStatus !== previousStatus) {
       let email = order.guestEmail;
       if (!email && order.userId) {
         const customer = await User.findByPk(order.userId);
         if (customer) email = customer.email;
       }
-      if (email) {
-        sendOrderStatusUpdate(order.toJSON(), email).catch(() => {});
-      }
+      if (email) sendOrderStatusUpdate(order.toJSON(), email).catch(() => {});
     }
 
     res.json(order);

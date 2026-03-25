@@ -34,6 +34,14 @@ const User = sequelize.define('User', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  resetToken: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  resetTokenExpiry: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   hooks: {
     beforeCreate: async (user) => {
@@ -54,6 +62,8 @@ User.prototype.comparePassword = async function (candidatePassword) {
 User.prototype.toJSON = function () {
   const values = { ...this.get() };
   delete values.password;
+  delete values.resetToken;
+  delete values.resetTokenExpiry;
   return values;
 };
 

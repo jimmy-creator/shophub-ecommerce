@@ -1,9 +1,39 @@
 import { Router } from 'express';
 import { protect, optionalAuth } from '../middleware/auth.js';
-import { Order, Product, User } from '../models/index.js';
+import { Order, Product, User, Coupon } from '../models/index.js';
 import { getPaymentGateway, getAvailableGateways } from '../services/paymentGateway.js';
 import { sendOrderConfirmation, sendPaymentConfirmation } from '../services/emailService.js';
 import { Op } from 'sequelize';
+import { calculateTax, getIsSameState } from '../utils/tax.js';
+
+// Reuse coupon logic
+async function applyCouponForPayment(couponCode, subtotal, userId) {
+  if (!couponCode) return { discount: 0, code: null };
+  const coupon = await Coupon.findOne({
+    where: { code: couponCode.toUpperCase().trim(), active: true },
+  });
+  if (!coupon) throw new Error('Invalid coupon code');
+  const now = new Date();
+  if (coupon.startDate && now < new Date(coupon.startDate)) throw new Error('Coupon not active yet');
+  if (coupon.endDate && now > new Date(coupon.endDate)) throw new Error('Coupon has expired');
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new Error('Coupon usage limit reached');
+  if (subtotal < parseFloat(coupon.minOrderAmount)) throw new Error(`Minimum order ₹${parseFloat(coupon.minOrderAmount).toFixed(2)} required`);
+  if (userId && coupon.perUserLimit) {
+    const used = await Order.count({ where: { userId, couponCode: coupon.code } });
+    if (used >= coupon.perUserLimit) throw new Error('You have already used this coupon');
+  }
+  let discount = 0;
+  if (coupon.type === 'percentage') {
+    discount = (subtotal * parseFloat(coupon.value)) / 100;
+    if (coupon.maxDiscount) discount = Math.min(discount, parseFloat(coupon.maxDiscount));
+  } else {
+    discount = parseFloat(coupon.value);
+  }
+  discount = Math.min(discount, subtotal);
+  discount = Math.round(discount * 100) / 100;
+  await coupon.increment('usedCount');
+  return { discount, code: coupon.code };
+}
 
 const router = Router();
 
@@ -21,10 +51,37 @@ router.get('/gateways', (req, res) => {
   res.json(allMethods);
 });
 
+// Calculate tax for cart (preview before placing order)
+router.post('/calculate-tax', async (req, res) => {
+  try {
+    const { items, shippingState } = req.body;
+    if (!items || items.length === 0) return res.json({ totalTax: 0, breakdown: null });
+
+    const productIds = items.map((i) => i.productId);
+    const products = await Product.findAll({ where: { id: { [Op.in]: productIds } } });
+
+    const orderItems = items.map((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      if (!product) return { taxable: false, taxRate: 0, price: 0, quantity: 0 };
+      return {
+        price: parseFloat(product.price),
+        quantity: item.quantity,
+        taxable: product.taxable || false,
+        taxRate: product.taxable ? parseFloat(product.taxRate || 0) : 0,
+      };
+    });
+
+    const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingState));
+    res.json({ totalTax, breakdown });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Create payment order
 router.post('/create-order', optionalAuth, async (req, res) => {
   try {
-    const { items, shippingAddress, gateway = process.env.PAYMENT_GATEWAY || 'razorpay', guestEmail } = req.body;
+    const { items, shippingAddress, gateway = process.env.PAYMENT_GATEWAY || 'razorpay', guestEmail, couponCode } = req.body;
     const isGuest = !req.user;
 
     if (!items || items.length === 0) {
@@ -56,12 +113,27 @@ router.post('/create-order', optionalAuth, async (req, res) => {
         price: parseFloat(product.price),
         quantity: item.quantity,
         image: product.images?.[0] || null,
+        taxable: product.taxable || false,
+        taxRate: product.taxable ? parseFloat(product.taxRate || 0) : 0,
+        hsnCode: product.hsnCode || null,
       };
     });
 
-    // Add shipping
+    // Apply coupon
+    const { discount, code: appliedCode } = await applyCouponForPayment(
+      couponCode, totalAmount, isGuest ? null : req.user.id
+    );
+    const afterDiscount = Math.round((totalAmount - discount) * 100) / 100;
+
+    // Calculate tax
+    const { totalTax, breakdown: taxBreakdown } = calculateTax(
+      orderItems, getIsSameState(shippingAddress?.state)
+    );
+
+    // Add shipping, tax, subtract discount
     const shipping = totalAmount >= 50 ? 0 : 5.99;
-    totalAmount += shipping;
+    // Tax is inclusive — not added on top
+    const finalAmount = Math.round((afterDiscount + shipping) * 100) / 100;
 
     // Generate order number
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -72,11 +144,15 @@ router.post('/create-order', optionalAuth, async (req, res) => {
       userId: isGuest ? null : req.user.id,
       guestEmail: isGuest ? guestEmail.toLowerCase().trim() : null,
       items: orderItems,
-      totalAmount,
+      totalAmount: finalAmount,
       shippingAddress,
       paymentMethod: gateway,
       paymentStatus: 'pending',
       orderStatus: 'processing',
+      couponCode: appliedCode,
+      discount,
+      taxAmount: totalTax,
+      taxBreakdown,
     });
 
     const customerName = isGuest ? shippingAddress.fullName : req.user.name;
@@ -86,7 +162,7 @@ router.post('/create-order', optionalAuth, async (req, res) => {
     // Create gateway payment order
     const paymentGateway = getPaymentGateway(gateway);
     const gatewayOrder = await paymentGateway.createOrder(
-      totalAmount,
+      finalAmount,
       'INR',
       orderNumber,
       {
@@ -110,7 +186,7 @@ router.post('/create-order', optionalAuth, async (req, res) => {
       payment: {
         ...checkoutConfig,
         orderNumber,
-        amount: totalAmount,
+        amount: finalAmount,
       },
     });
   } catch (error) {

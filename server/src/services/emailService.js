@@ -253,4 +253,41 @@ async function sendEmail(to, subject, html) {
   }
 }
 
-export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation };
+// ============================================
+// PASSWORD RESET
+// ============================================
+export async function sendPasswordResetEmail(email, resetUrl) {
+  const html = baseTemplate(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;background:rgba(196,120,74,0.12);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+        <span style="font-size:28px;">🔒</span>
+      </div>
+      <h2 style="margin:0 0 4px;font-size:22px;color:#2c2420;">Reset Your Password</h2>
+      <p style="margin:0;font-size:14px;color:#8a7e76;">We received a request to reset your password</p>
+    </div>
+
+    <p style="font-size:14px;color:#2c2420;line-height:1.6;margin-bottom:24px;">
+      Click the button below to set a new password. This link is valid for <strong>1 hour</strong>.
+    </p>
+
+    <div style="text-align:center;margin-bottom:24px;">
+      <a href="${resetUrl}" style="display:inline-block;padding:14px 32px;background:#1a1614;color:#ffffff;text-decoration:none;border-radius:4px;font-size:14px;font-weight:600;letter-spacing:0.5px;">
+        Reset Password
+      </a>
+    </div>
+
+    <p style="font-size:12px;color:#b5aaa2;line-height:1.6;">
+      If you didn't request this, you can safely ignore this email. Your password will remain unchanged.
+    </p>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e8e0d8;">
+      <p style="font-size:11px;color:#b5aaa2;word-break:break-all;">
+        If the button doesn't work, copy this link:<br>${resetUrl}
+      </p>
+    </div>
+  `);
+
+  return sendEmail(email, `Reset Your Password - ${storeName}`, html);
+}
+
+export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation, sendPasswordResetEmail };

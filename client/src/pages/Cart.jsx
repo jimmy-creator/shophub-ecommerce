@@ -24,7 +24,7 @@ export default function Cart() {
         <div className="cart-layout">
           <div className="cart-items">
             {cart.map((item) => (
-              <div key={item.id} className="cart-item">
+              <div key={item.cartKey} className="cart-item">
                 <div className="cart-item-image">
                   <ProductImage product={item} size="small" />
                 </div>
@@ -32,21 +32,26 @@ export default function Cart() {
                   <Link to={`/product/${item.slug}`}>
                     <h3>{item.name}</h3>
                   </Link>
+                  {item.selectedVariant && (
+                    <p className="cart-item-variant">
+                      {Object.entries(item.selectedVariant).map(([k, v]) => `${k}: ${v}`).join(' / ')}
+                    </p>
+                  )}
                   <p className="cart-item-price">₹{parseFloat(item.price).toFixed(2)}</p>
                 </div>
                 <div className="cart-item-quantity">
-                  <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>
+                  <button onClick={() => updateQuantity(item.cartKey, item.quantity - 1)}>
                     <HiMinus />
                   </button>
                   <span>{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>
+                  <button onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}>
                     <HiPlus />
                   </button>
                 </div>
                 <div className="cart-item-total">
                   ₹{(parseFloat(item.price) * item.quantity).toFixed(2)}
                 </div>
-                <button className="remove-btn" onClick={() => removeFromCart(item.id)}>
+                <button className="remove-btn" onClick={() => removeFromCart(item.cartKey)}>
                   <HiTrash />
                 </button>
               </div>

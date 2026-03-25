@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import hpp from 'hpp';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -14,6 +15,10 @@ import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import uploadRoutes from './routes/upload.js';
 import paymentRoutes from './routes/payment.js';
+import couponRoutes from './routes/coupons.js';
+import reviewRoutes from './routes/reviews.js';
+import analyticsRoutes from './routes/analytics.js';
+import { sanitizeInput, preventInjection, forceHttps } from './middleware/security.js';
 
 dotenv.config();
 
@@ -22,25 +27,46 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Security
-app.use(helmet({ contentSecurityPolicy: false }));
+// Force HTTPS in production
+app.use(forceHttps);
+
+// Trust proxy (for Hostinger/Nginx)
+app.set('trust proxy', 1);
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? true
+    ? process.env.CLIENT_URL || true
     : process.env.CLIENT_URL,
   credentials: true,
 }));
 
+// Prevent HTTP parameter pollution
+app.use(hpp());
+
+// Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV === 'production' ? 100 : 1000,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use('/api/', limiter);
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Body parsing with size limits
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
+
+// Input sanitization (XSS + injection prevention)
+app.use(sanitizeInput);
+app.use(preventInjection);
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -51,6 +77,9 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/coupons', couponRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
@@ -61,10 +90,18 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Error handler
+// Error handler — never leak stack traces in production
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong' });
+  console.error(`[ERROR] ${req.method} ${req.originalUrl}:`, err.message);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error(err.stack);
+  }
+  const status = err.status || 500;
+  res.status(status).json({
+    message: process.env.NODE_ENV === 'production'
+      ? 'Something went wrong'
+      : err.message,
+  });
 });
 
 const PORT = process.env.PORT || 5000;

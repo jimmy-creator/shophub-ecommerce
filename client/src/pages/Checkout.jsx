@@ -37,6 +37,15 @@ export default function Checkout() {
   const processingPayment = useRef(false);
   const isGuest = !user;
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [couponApplied, setCouponApplied] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+
+  // Tax state
+  const [taxInfo, setTaxInfo] = useState({ totalTax: 0, breakdown: null });
+
   const [form, setForm] = useState({
     fullName: user?.name || '',
     email: user?.email || '',
@@ -83,11 +92,51 @@ export default function Checkout() {
     zipCode: form.zipCode, phone: form.phone,
   });
 
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const { data } = await api.post('/coupons/apply', {
+        code: couponCode.trim(),
+        cartTotal,
+        cartCategories: [...new Set(cart.map((item) => item.category))],
+      });
+      setCouponApplied(data);
+      setCouponError('');
+      toast.success(`Coupon applied: ${data.description}`, toastStyle);
+    } catch (error) {
+      setCouponError(error.response?.data?.message || 'Invalid coupon');
+      setCouponApplied(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponApplied(null);
+    setCouponCode('');
+    setCouponError('');
+  };
+
+  // Fetch tax whenever state changes
+  useEffect(() => {
+    if (!form.state.trim()) { setTaxInfo({ totalTax: 0, breakdown: null }); return; }
+    api.post('/payment/calculate-tax', {
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
+      shippingState: form.state,
+    }).then((res) => setTaxInfo(res.data)).catch(() => {});
+  }, [form.state, cart]);
+
+  const discountAmount = couponApplied?.discount || 0;
+  const taxAmount = taxInfo.totalTax || 0;
+
   const handleCODOrder = async () => {
     const orderData = {
-      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
       shippingAddress: getShippingAddress(),
       paymentMethod: form.paymentMethod,
+      couponCode: couponApplied?.code || null,
     };
 
     if (isGuest) {
@@ -110,9 +159,10 @@ export default function Checkout() {
     }
 
     const createPayload = {
-      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
       shippingAddress: getShippingAddress(),
       gateway: 'razorpay',
+      couponCode: couponApplied?.code || null,
     };
     if (isGuest) createPayload.guestEmail = form.email;
 
@@ -205,9 +255,10 @@ export default function Checkout() {
 
   const handlePaytmPayment = async () => {
     const paytmPayload = {
-      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity })),
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
       shippingAddress: getShippingAddress(),
       gateway: 'paytm',
+      couponCode: couponApplied?.code || null,
     };
     if (isGuest) paytmPayload.guestEmail = form.email;
 
@@ -303,6 +354,8 @@ export default function Checkout() {
   };
 
   const shipping = cartTotal >= 50 ? 0 : 5.99;
+  // Tax is inclusive in price — not added on top
+  const grandTotal = Math.max(0, cartTotal - discountAmount + shipping);
   const isOnlinePayment = !['cod', 'bank_transfer'].includes(form.paymentMethod);
 
   return (
@@ -398,7 +451,7 @@ export default function Checkout() {
               {loading
                 ? 'Processing...'
                 : isOnlinePayment
-                  ? `Pay ₹${(cartTotal + shipping).toFixed(2)}`
+                  ? `Pay ₹${grandTotal.toFixed(2)}`
                   : 'Place Order'
               }
             </button>
@@ -407,22 +460,74 @@ export default function Checkout() {
           <div className="order-summary">
             <h3>Order Summary</h3>
             {cart.map((item) => (
-              <div key={item.id} className="summary-item">
-                <span>{item.name} x {item.quantity}</span>
+              <div key={item.cartKey} className="summary-item">
+                <span>
+                  {item.name}
+                  {item.selectedVariant && ` (${Object.values(item.selectedVariant).join(', ')})`}
+                  {' x '}{item.quantity}
+                </span>
                 <span>₹{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
               </div>
             ))}
+            {/* Coupon Input */}
+            <div className="coupon-section">
+              {couponApplied ? (
+                <div className="coupon-applied">
+                  <div>
+                    <span className="coupon-tag">{couponApplied.code}</span>
+                    <span className="coupon-desc">{couponApplied.description}</span>
+                  </div>
+                  <button className="coupon-remove" onClick={handleRemoveCoupon}>&times;</button>
+                </div>
+              ) : (
+                <div className="coupon-input">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                    placeholder="Coupon code"
+                  />
+                  <button onClick={handleApplyCoupon} disabled={couponLoading}>
+                    {couponLoading ? '...' : 'Apply'}
+                  </button>
+                </div>
+              )}
+              {couponError && <p className="coupon-error">{couponError}</p>}
+            </div>
+
             <div className="summary-row">
               <span>Subtotal</span>
               <span>₹{cartTotal.toFixed(2)}</span>
             </div>
+            {discountAmount > 0 && (
+              <div className="summary-row discount-row">
+                <span>Discount</span>
+                <span>-₹{discountAmount.toFixed(2)}</span>
+              </div>
+            )}
+            {taxAmount > 0 && (
+              <div className="summary-row" style={{ color: 'var(--text-light)', fontSize: '0.82rem' }}>
+                <span>
+                  Incl. GST
+                  {taxInfo.breakdown && (
+                    <span style={{ fontSize: '0.72rem', display: 'block', marginTop: '2px' }}>
+                      {taxInfo.breakdown.isSameState
+                        ? `CGST ₹${taxInfo.breakdown.cgst.toFixed(2)} + SGST ₹${taxInfo.breakdown.sgst.toFixed(2)}`
+                        : `IGST ₹${taxInfo.breakdown.igst.toFixed(2)}`
+                      }
+                    </span>
+                  )}
+                </span>
+                <span>₹{taxAmount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="summary-row">
               <span>Shipping</span>
               <span>{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
             </div>
             <div className="summary-row total">
               <span>Total</span>
-              <span>₹{(cartTotal + shipping).toFixed(2)}</span>
+              <span>₹{grandTotal.toFixed(2)}</span>
             </div>
 
             <div className="checkout-trust">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { HiCheckCircle, HiXCircle } from 'react-icons/hi';
+import { HiCheckCircle, HiXCircle, HiDownload } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -104,8 +104,21 @@ export default function OrderSuccess() {
           )}
 
           <div className="order-success-actions">
+            {order && !isFailed && (
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  const url = isGuest
+                    ? `/api/orders/${order.id}/invoice?email=${encodeURIComponent(guestEmail)}`
+                    : `/api/orders/${order.id}/invoice`;
+                  window.open(url, '_blank');
+                }}
+              >
+                <HiDownload /> Download Invoice
+              </button>
+            )}
             {!isGuest && (
-              <Link to="/orders" className="btn btn-primary">View My Orders</Link>
+              <Link to="/orders" className="btn btn-secondary">View My Orders</Link>
             )}
             <Link to="/products" className="btn btn-secondary">Continue Shopping</Link>
             {isGuest && (

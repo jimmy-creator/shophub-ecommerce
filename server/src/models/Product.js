@@ -60,6 +60,30 @@ const Product = sequelize.define('Product', {
     type: DataTypes.INTEGER,
     defaultValue: 0,
   },
+  taxable: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  taxRate: {
+    // GST rate: 0, 5, 12, 18, 28
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 0,
+  },
+  hsnCode: {
+    // Harmonized System of Nomenclature code (required for GST invoicing)
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  variantOptions: {
+    // e.g. { "Size": ["S","M","L"], "Color": ["Red","Blue"] }
+    type: DataTypes.JSON,
+    defaultValue: null,
+  },
+  variants: {
+    // e.g. [{ options: {Size:"M",Color:"Red"}, sku:"SKU-M-RED", price:null, stock:10 }]
+    type: DataTypes.JSON,
+    defaultValue: null,
+  },
 });
 
 export default Product;

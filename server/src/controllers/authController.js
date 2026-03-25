@@ -1,5 +1,7 @@
+import crypto from 'crypto';
 import { User } from '../models/index.js';
 import { generateToken } from '../middleware/auth.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 
 const cookieOptions = {
   httpOnly: true,
@@ -90,5 +92,76 @@ export const updateProfile = async (req, res) => {
     res.json(req.user);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    const user = await User.findOne({ where: { email: email.toLowerCase().trim() } });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      return res.json({ message: 'If an account exists, a reset link has been sent' });
+    }
+
+    // Generate token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await user.update({ resetToken, resetTokenExpiry });
+
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const resetUrl = `${clientUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(user.email)}`;
+
+    await sendPasswordResetEmail(user.email, resetUrl);
+
+    res.json({ message: 'If an account exists, a reset link has been sent' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, token, password } = req.body;
+
+    if (!email || !token || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      return res.status(400).json({ message: 'Password must contain uppercase, lowercase, and a number' });
+    }
+
+    const user = await User.findOne({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user || user.resetToken !== token) {
+      return res.status(400).json({ message: 'Invalid or expired reset link' });
+    }
+
+    if (new Date() > new Date(user.resetTokenExpiry)) {
+      return res.status(400).json({ message: 'Reset link has expired. Please request a new one' });
+    }
+
+    await user.update({
+      password,
+      resetToken: null,
+      resetTokenExpiry: null,
+    });
+
+    res.json({ message: 'Password reset successful. You can now login.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Something went wrong' });
   }
 };

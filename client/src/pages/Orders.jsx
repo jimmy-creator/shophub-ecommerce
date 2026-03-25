@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { HiDownload } from 'react-icons/hi';
 import api from '../api/axios';
 
 const statusColors = {
@@ -61,9 +62,19 @@ export default function Orders() {
                 </div>
                 <div className="order-footer">
                   <span>Payment: {order.paymentMethod}</span>
-                  <span className="order-total">
-                    Total: ₹{parseFloat(order.totalAmount).toFixed(2)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button
+                      className="invoice-btn"
+                      onClick={() => {
+                        window.open(`/api/orders/${order.id}/invoice`, '_blank');
+                      }}
+                    >
+                      <HiDownload /> Invoice
+                    </button>
+                    <span className="order-total">
+                      Total: ₹{parseFloat(order.totalAmount).toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

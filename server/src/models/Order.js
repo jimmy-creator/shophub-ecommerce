@@ -48,6 +48,23 @@ const Order = sequelize.define('Order', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  couponCode: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  discount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+  },
+  taxAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+  },
+  taxBreakdown: {
+    // e.g. { subtotal: 1000, cgst: 90, sgst: 90, igst: 0, totalTax: 180 }
+    type: DataTypes.JSON,
+    defaultValue: null,
+  },
 });
 
 export default Order;

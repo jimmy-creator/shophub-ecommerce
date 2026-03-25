@@ -4,42 +4,73 @@ const CartContext = createContext();
 
 export const useCart = () => useContext(CartContext);
 
+const makeCartKey = (productId, selectedVariant) => {
+  if (!selectedVariant) return String(productId);
+  const parts = Object.entries(selectedVariant)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}:${v}`);
+  return `${productId}__${parts.join('_')}`;
+};
+
 export function CartProvider({ children }) {
   const [cart, setCart] = useState(() => {
     const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    // Migrate old cart items that don't have cartKey
+    const parsed = JSON.parse(saved);
+    return parsed.map((item) => ({
+      ...item,
+      cartKey: item.cartKey || makeCartKey(item.id, item.selectedVariant),
+    }));
   });
 
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = (product, quantity = 1) => {
+  const addToCart = (product, quantity = 1, selectedVariant = null) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
+      const key = makeCartKey(product.id, selectedVariant);
+      const existing = prev.find((item) => item.cartKey === key);
       if (existing) {
         return prev.map((item) =>
-          item.id === product.id
+          item.cartKey === key
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { ...product, quantity }];
+
+      // Use variant price if available
+      let effectivePrice = product.price;
+      if (selectedVariant && product.variants) {
+        const variant = product.variants.find((v) =>
+          Object.entries(selectedVariant).every(([k, val]) => v.options[k] === val)
+        );
+        if (variant?.price != null) effectivePrice = variant.price;
+      }
+
+      return [...prev, {
+        ...product,
+        price: effectivePrice,
+        quantity,
+        selectedVariant,
+        cartKey: key,
+      }];
     });
   };
 
-  const removeFromCart = (productId) => {
-    setCart((prev) => prev.filter((item) => item.id !== productId));
+  const removeFromCart = (cartKey) => {
+    setCart((prev) => prev.filter((item) => item.cartKey !== cartKey));
   };
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = (cartKey, quantity) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(cartKey);
       return;
     }
     setCart((prev) =>
       prev.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
+        item.cartKey === cartKey ? { ...item, quantity } : item
       )
     );
   };
