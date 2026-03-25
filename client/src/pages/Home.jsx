@@ -18,7 +18,7 @@ export default function Home() {
   return (
     <div className="home">
       <section className="hero">
-        <img src="/images/hero-banner.jpg" alt="ShopHub Collection" className="hero-banner" />
+        <img src="/images/hero-banner.jpeg" alt="ShopHub Collection" className="hero-banner" />
         <div className="hero-overlay" />
         <div className="container hero-content">
           <h1>Curated for the<br />Modern Lifestyle</h1>
