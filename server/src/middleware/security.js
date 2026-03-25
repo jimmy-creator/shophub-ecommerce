@@ -57,11 +57,12 @@ export const adminLogger = (req, res, next) => {
   next();
 };
 
-// Middleware: force HTTPS in production
+// Middleware: force HTTPS in production (skip internal proxy requests)
 export const forceHttps = (req, res, next) => {
   if (process.env.NODE_ENV === 'production' &&
       req.headers['x-forwarded-proto'] !== 'https' &&
-      !req.secure) {
+      !req.secure &&
+      req.headers['x-forwarded-proto']) {
     return res.redirect(301, `https://${req.headers.host}${req.url}`);
   }
   next();
