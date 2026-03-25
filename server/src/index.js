@@ -81,14 +81,8 @@ app.use('/api/coupons', couponRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Serve frontend in production
-if (process.env.NODE_ENV === 'production') {
-  const clientPath = path.join(__dirname, '../../client/dist');
-  app.use(express.static(clientPath));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientPath, 'index.html'));
-  });
-}
+// Frontend is served by Nginx in production
+// In development, Vite dev server handles it
 
 // Error handler — never leak stack traces in production
 app.use((err, req, res, next) => {
