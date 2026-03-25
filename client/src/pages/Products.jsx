@@ -44,7 +44,10 @@ export default function Products() {
     } else {
       params.delete(key);
     }
-    params.set('page', '1');
+    // Reset to page 1 when changing filters, but not when changing page itself
+    if (key !== 'page') {
+      params.set('page', '1');
+    }
     setSearchParams(params);
   };
 

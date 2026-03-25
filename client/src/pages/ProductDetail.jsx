@@ -105,6 +105,15 @@ export default function ProductDetail() {
                 <ProductImage product={product} size="large" />
               )}
               {discount > 0 && <span className="discount-badge large">-{discount}%</span>}
+              <button
+                className={`wishlist-btn detail ${product && isInWishlist(product.id) ? 'active' : ''}`}
+                onClick={() => {
+                  toggleWishlist(product);
+                  toast.success(isInWishlist(product.id) ? 'Removed from wishlist' : 'Added to wishlist', toastOpts);
+                }}
+              >
+                {product && isInWishlist(product.id) ? <HiHeart /> : <HiOutlineHeart />}
+              </button>
             </div>
             {product.images?.length > 1 && (
               <div className="gallery-thumbnails">
@@ -210,15 +219,6 @@ export default function ProductDetail() {
                 </button>
                 <button className="btn btn-buy-now btn-lg" onClick={handleBuyNow}>
                   <HiLightningBolt /> Buy Now
-                </button>
-                <button
-                  className={`wishlist-detail-btn ${product && isInWishlist(product.id) ? 'active' : ''}`}
-                  onClick={() => {
-                    toggleWishlist(product);
-                    toast.success(isInWishlist(product.id) ? 'Removed from wishlist' : 'Added to wishlist', toastOpts);
-                  }}
-                >
-                  {product && isInWishlist(product.id) ? <HiHeart /> : <HiOutlineHeart />}
                 </button>
               </div>
             )}

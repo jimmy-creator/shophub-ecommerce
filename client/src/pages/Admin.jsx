@@ -4,6 +4,7 @@ import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX } from 'react-icons/hi';
 import ProductImage from '../components/ProductImage';
+import { useTheme } from '../context/ThemeContext';
 
 const emptyProduct = {
   name: '', description: '', price: '', comparePrice: '',
@@ -382,6 +383,7 @@ function ImageUploader({ images = [], onChange }) {
 
 export default function Admin() {
   const { user } = useAuth();
+  const { currentTheme, changeTheme, themes: themeOptions } = useTheme();
   const [tab, setTab] = useState('dashboard');
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -488,6 +490,9 @@ export default function Admin() {
           </button>
           <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>
             Reviews
+          </button>
+          <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>
+            Theme
           </button>
         </div>
 
@@ -1157,6 +1162,38 @@ export default function Admin() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {tab === 'theme' && (
+          <div>
+            <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1.5rem' }}>
+              Store Theme
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+              Choose a theme for your storefront. The selected theme will be visible to all customers.
+            </p>
+            <div className="theme-grid">
+              {themeOptions.map((theme) => (
+                <button
+                  key={theme.id}
+                  className={`theme-card ${currentTheme === theme.id ? 'active' : ''}`}
+                  onClick={() => {
+                    changeTheme(theme.id);
+                    toast.success(`Theme changed to "${theme.name}"`);
+                  }}
+                >
+                  <div className={`theme-preview theme-preview-${theme.id}`} />
+                  <div className="theme-card-info">
+                    <strong>{theme.name}</strong>
+                    <span>{theme.description}</span>
+                  </div>
+                  {currentTheme === theme.id && (
+                    <span className="theme-active-badge">Active</span>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         )}

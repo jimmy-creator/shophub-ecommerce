@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Wishlist from './pages/Wishlist';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -26,6 +27,7 @@ export default function App() {
       <AuthProvider>
         <CartProvider>
         <WishlistProvider>
+        <ThemeProvider>
           <Toaster position="top-right" />
           <div className="app">
             <Navbar />
@@ -49,6 +51,7 @@ export default function App() {
             </main>
             <Footer />
           </div>
+        </ThemeProvider>
         </WishlistProvider>
         </CartProvider>
       </AuthProvider>

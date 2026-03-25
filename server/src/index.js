@@ -18,6 +18,7 @@ import paymentRoutes from './routes/payment.js';
 import couponRoutes from './routes/coupons.js';
 import reviewRoutes from './routes/reviews.js';
 import analyticsRoutes from './routes/analytics.js';
+import settingsRoutes from './routes/settings.js';
 import { sanitizeInput, preventInjection, forceHttps } from './middleware/security.js';
 
 dotenv.config();
@@ -81,6 +82,7 @@ app.use('/api/payment', paymentRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Frontend is served by Nginx in production
 // In development, Vite dev server handles it

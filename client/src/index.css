@@ -948,6 +948,7 @@ input, textarea, select { font-family: var(--font-body); }
 .product-card:hover .wishlist-btn { opacity: 1; }
 .wishlist-btn:hover { color: var(--danger); transform: scale(1.1); }
 .wishlist-btn.active { opacity: 1; color: var(--danger); }
+.wishlist-btn.detail { opacity: 1; width: 42px; height: 42px; font-size: 1.3rem; }
 
 .wishlist-detail-btn {
   width: 48px; height: 48px; flex-shrink: 0;
@@ -998,6 +999,76 @@ input, textarea, select { font-family: var(--font-body); }
   color: var(--text-light); transition: all 0.25s var(--ease);
 }
 .wishlist-remove-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+/* Theme Selector */
+.theme-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.theme-card {
+  position: relative; background: var(--bg-card);
+  border: 2px solid var(--border-light); border-radius: var(--radius-lg);
+  overflow: hidden; cursor: pointer; text-align: left;
+  transition: all 0.3s var(--ease); padding: 0;
+}
+.theme-card:hover { border-color: var(--copper-light); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.theme-card.active { border-color: var(--copper); box-shadow: 0 0 0 2px rgba(196,120,74,0.15); }
+.theme-preview {
+  height: 120px; position: relative; overflow: hidden;
+}
+/* Theme preview colors */
+.theme-preview-default {
+  background: linear-gradient(135deg, #1a1614 50%, #c4784a 50%);
+}
+.theme-preview-default::after {
+  content: ''; position: absolute; bottom: 12px; left: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #faf8f5; border: 2px solid #e8e0d8;
+}
+.theme-preview-midnight {
+  background: linear-gradient(135deg, #0f0f14 50%, #a78bfa 50%);
+}
+.theme-preview-midnight::after {
+  content: ''; position: absolute; bottom: 12px; left: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #1c1c26; border: 2px solid #2a2a3a;
+}
+.theme-preview-minimal {
+  background: linear-gradient(135deg, #000000 50%, #ffffff 50%);
+}
+.theme-preview-minimal::after {
+  content: ''; position: absolute; bottom: 12px; left: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #f5f5f5; border: 2px solid #e0e0e0;
+}
+.theme-preview-forest {
+  background: linear-gradient(135deg, #1b4332 50%, #40916c 50%);
+}
+.theme-preview-forest::after {
+  content: ''; position: absolute; bottom: 12px; left: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #fefdf8; border: 2px solid #d4cdb8;
+}
+.theme-preview-royal {
+  background: linear-gradient(135deg, #0f172a 50%, #3b82f6 50%);
+}
+.theme-preview-royal::after {
+  content: ''; position: absolute; bottom: 12px; left: 12px;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: #f8faff; border: 2px solid #cbd5e1;
+}
+.theme-card-info {
+  padding: 1rem; display: flex; flex-direction: column; gap: 0.2rem;
+}
+.theme-card-info strong { font-size: 0.92rem; }
+.theme-card-info span { font-size: 0.78rem; color: var(--text-secondary); }
+.theme-active-badge {
+  position: absolute; top: 0.75rem; right: 0.75rem;
+  background: var(--copper); color: white;
+  padding: 0.2rem 0.6rem; border-radius: 100px;
+  font-size: 0.68rem; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
 
 /* Dashboard */
 .dashboard { }
