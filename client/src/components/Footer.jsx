@@ -23,9 +23,9 @@ export default function Footer() {
         </div>
         <div className="footer-section">
           <h4>Support</h4>
-          <a href="mailto:support@shophub.com">Contact Us</a>
-          <a href="#">Shipping Info</a>
-          <a href="#">Return Policy</a>
+          <Link to="/contact">Contact Us</Link>
+          <Link to="/shipping-info">Shipping Info</Link>
+          <Link to="/return-policy">Return Policy</Link>
         </div>
       </div>
       <div className="footer-bottom">

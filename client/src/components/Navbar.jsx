@@ -16,12 +16,16 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const searchExpandRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     const handleClick = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setMenuOpen(false);
+      }
+      if (searchExpandRef.current && !searchExpandRef.current.contains(e.target)) {
+        setSearchOpen(false);
       }
     };
     window.addEventListener('scroll', handleScroll);
@@ -41,7 +45,7 @@ export default function Navbar() {
         <SearchAutocomplete className="desktop-search" />
 
         {/* Mobile expandable search */}
-        <div className={`mobile-search-expand ${searchOpen ? 'open' : ''}`}>
+        <div ref={searchExpandRef} className={`mobile-search-expand ${searchOpen ? 'open' : ''}`}>
           <button
             className="mobile-search-btn"
             onClick={() => setSearchOpen(!searchOpen)}

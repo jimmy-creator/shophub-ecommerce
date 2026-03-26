@@ -21,6 +21,9 @@ import Admin from './pages/Admin';
 import OrderSuccess from './pages/OrderSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ContactUs from './pages/ContactUs';
+import ShippingInfo from './pages/ShippingInfo';
+import ReturnPolicy from './pages/ReturnPolicy';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -61,6 +64,9 @@ export default function App() {
                 <Route path="/wishlist" element={<Wishlist />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/contact" element={<ContactUs />} />
+                <Route path="/shipping-info" element={<ShippingInfo />} />
+                <Route path="/return-policy" element={<ReturnPolicy />} />
               </Routes>
               </PageWrapper>
             </main>
