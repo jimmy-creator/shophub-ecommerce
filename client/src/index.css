@@ -470,10 +470,12 @@ input, textarea, select { font-family: var(--font-body); }
 .product-card:nth-child(7) { animation-delay: 0.48s; }
 .product-card:nth-child(8) { animation-delay: 0.56s; }
 
-.product-card:hover {
-  border-color: var(--copper-light);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-6px);
+@media (hover: hover) {
+  .product-card:hover {
+    border-color: var(--copper-light);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-6px);
+  }
 }
 .product-image {
   position: relative; aspect-ratio: 4/5; overflow: hidden;
@@ -486,7 +488,9 @@ input, textarea, select { font-family: var(--font-body); }
   font-size: 4rem; font-weight: 500; color: var(--text-light);
   transition: transform 0.7s var(--ease);
 }
-.product-card:hover .product-image-placeholder { transform: scale(1.05); }
+@media (hover: hover) {
+  .product-card:hover .product-image-placeholder { transform: scale(1.05); }
+}
 .product-image-placeholder.large {
   font-size: 8rem;
   aspect-ratio: 4/5;
@@ -1070,7 +1074,12 @@ input, textarea, select { font-family: var(--font-body); }
   transition: all 0.25s var(--ease);
   z-index: 2; opacity: 0;
 }
-.product-card:hover .wishlist-btn { opacity: 1; }
+@media (hover: hover) {
+  .product-card:hover .wishlist-btn { opacity: 1; }
+}
+@media (hover: none) {
+  .wishlist-btn { opacity: 1; }
+}
 .wishlist-btn:hover { color: var(--danger); transform: scale(1.1); }
 .wishlist-btn.active { opacity: 1; color: var(--danger); }
 .wishlist-btn.detail { opacity: 1; width: 42px; height: 42px; font-size: 1.3rem; }
