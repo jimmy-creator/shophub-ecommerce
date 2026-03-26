@@ -1,18 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { HiShoppingCart, HiUser, HiMenu, HiX, HiSearch, HiHeart } from 'react-icons/hi';
+import { Link } from 'react-router-dom';
+import { Home, LayoutGrid, ShoppingBag, User, Heart, Search, X, ShoppingCart, ChevronDown } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import SearchAutocomplete from './SearchAutocomplete';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
-  const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [scrolled, setScrolled] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -30,28 +32,29 @@ export default function Navbar() {
     };
   }, []);
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (search.trim()) {
-      navigate(`/products?search=${encodeURIComponent(search.trim())}`);
-      setSearch('');
-    }
-  };
-
   return (
+    <>
     <nav className="navbar" style={scrolled ? { boxShadow: '0 4px 20px rgba(26,22,20,0.06)' } : {}}>
       <div className="container navbar-content">
         <Link to="/" className="logo">ShopHub</Link>
 
-        <form className="search-bar" onSubmit={handleSearch}>
-          <input
-            type="text"
-            placeholder="Search for products..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <button type="submit" aria-label="Search"><HiSearch /></button>
-        </form>
+        <SearchAutocomplete className="desktop-search" />
+
+        {/* Mobile expandable search */}
+        <div className={`mobile-search-expand ${searchOpen ? 'open' : ''}`}>
+          <button
+            className="mobile-search-btn"
+            onClick={() => setSearchOpen(!searchOpen)}
+            aria-label={searchOpen ? 'Close search' : 'Open search'}
+          >
+            {searchOpen ? <X size={18} /> : <Search size={18} />}
+          </button>
+          {searchOpen && (
+            <div className="mobile-search-form">
+              <SearchAutocomplete onSubmit={() => setSearchOpen(false)} className="mobile-search-ac" />
+            </div>
+          )}
+        </div>
 
         <div className="nav-links">
           <Link to="/products" className="nav-link">Shop</Link>
@@ -59,19 +62,20 @@ export default function Navbar() {
 
         <div className="nav-actions">
           <Link to="/wishlist" className="cart-icon" aria-label="Wishlist">
-            <HiHeart />
+            <Heart size={20} strokeWidth={1.5} />
             {wishlistCount > 0 && <span className="cart-badge">{wishlistCount}</span>}
           </Link>
 
           <Link to="/cart" className="cart-icon">
-            <HiShoppingCart />
+            <ShoppingCart size={20} strokeWidth={1.5} />
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </Link>
 
           {user ? (
             <div className="user-menu" ref={dropdownRef}>
               <button className="user-btn" onClick={() => setMenuOpen(!menuOpen)}>
-                <HiUser /> {user.name.split(' ')[0]}
+                <User size={16} strokeWidth={1.5} /> {user.name.split(' ')[0]}
+                <ChevronDown size={14} strokeWidth={1.5} style={{ opacity: 0.5 }} />
               </button>
               {menuOpen && (
                 <div className="dropdown">
@@ -84,16 +88,39 @@ export default function Navbar() {
             </div>
           ) : (
             <Link to="/login" className="login-btn" aria-label="Sign In">
-              <HiUser className="login-btn-icon" />
+              <User size={18} strokeWidth={1.5} className="login-btn-icon" />
               <span className="login-btn-text">Sign In</span>
             </Link>
           )}
-
-          <button className="mobile-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
-            {menuOpen ? <HiX /> : <HiMenu />}
-          </button>
         </div>
       </div>
     </nav>
+
+    {/* Mobile Bottom Nav */}
+    <nav className="bottom-nav">
+      <Link to="/" className={`bottom-nav-item ${location.pathname === '/' ? 'active' : ''}`}>
+        <Home size={22} strokeWidth={location.pathname === '/' ? 2.5 : 1.5} />
+        <span>Home</span>
+      </Link>
+      <Link to="/products" className={`bottom-nav-item ${location.pathname === '/products' ? 'active' : ''}`}>
+        <LayoutGrid size={22} strokeWidth={location.pathname === '/products' ? 2.5 : 1.5} />
+        <span>Shop</span>
+      </Link>
+      <Link to="/cart" className={`bottom-nav-item ${location.pathname === '/cart' ? 'active' : ''}`}>
+        <div className="bottom-nav-icon-wrap">
+          <ShoppingBag size={22} strokeWidth={location.pathname === '/cart' ? 2.5 : 1.5} />
+          {cartCount > 0 && <span className="bottom-nav-badge">{cartCount}</span>}
+        </div>
+        <span>Cart</span>
+      </Link>
+      <Link
+        to={user ? '/profile' : '/login'}
+        className={`bottom-nav-item ${['/profile', '/login', '/orders', '/admin'].includes(location.pathname) ? 'active' : ''}`}
+      >
+        <User size={22} strokeWidth={['/profile', '/login', '/orders', '/admin'].includes(location.pathname) ? 2.5 : 1.5} />
+        <span>{user ? 'Account' : 'Login'}</span>
+      </Link>
+    </nav>
+    </>
   );
 }

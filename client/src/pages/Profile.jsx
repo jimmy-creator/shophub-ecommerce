@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { HiHeart, HiShoppingCart, HiLogout, HiCog } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { wishlistCount } = useWishlist();
   const [form, setForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -29,6 +33,28 @@ export default function Profile() {
   return (
     <div className="profile-page">
       <div className="container">
+        {/* Quick Links */}
+        <div className="profile-links">
+          <Link to="/orders" className="profile-link-card">
+            <HiShoppingCart />
+            <span>My Orders</span>
+          </Link>
+          <Link to="/wishlist" className="profile-link-card">
+            <HiHeart />
+            <span>Wishlist{wishlistCount > 0 ? ` (${wishlistCount})` : ''}</span>
+          </Link>
+          {user?.role === 'admin' && (
+            <Link to="/admin" className="profile-link-card">
+              <HiCog />
+              <span>Admin Panel</span>
+            </Link>
+          )}
+          <button className="profile-link-card" onClick={logout}>
+            <HiLogout />
+            <span>Logout</span>
+          </button>
+        </div>
+
         <div className="auth-card">
           <h2>My Profile</h2>
           <form onSubmit={handleSubmit}>

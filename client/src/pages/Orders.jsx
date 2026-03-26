@@ -22,7 +22,12 @@ export default function Orders() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="loading page-loading">Loading...</div>;
+  if (loading) return (
+    <div className="orders-page"><div className="container">
+      <div className="skeleton-line skeleton-pulse" style={{ height: '2rem', width: '40%', marginBottom: '2rem' }} />
+      {[1,2,3].map((i) => <div key={i} className="skeleton-order skeleton-pulse" />)}
+    </div></div>
+  );
 
   return (
     <div className="orders-page">

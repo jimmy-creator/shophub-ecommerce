@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { HiArrowRight, HiShieldCheck, HiTruck, HiRefresh } from 'react-icons/hi';
 import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
+import { SkeletonGrid } from '../components/Skeleton';
 
 export default function Home() {
   const [featured, setFeatured] = useState([]);
@@ -66,7 +67,7 @@ export default function Home() {
             </Link>
           </div>
           {loading ? (
-            <div className="loading">Loading...</div>
+            <SkeletonGrid count={8} />
           ) : (
             <div className="products-grid">
               {featured.map((product) => (

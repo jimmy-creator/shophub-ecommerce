@@ -42,7 +42,24 @@ export default function ProductDetail() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  if (loading) return <div className="loading page-loading">Loading...</div>;
+  if (loading) return (
+    <div className="product-detail">
+      <div className="container">
+        <div className="product-detail-grid">
+          <div className="skeleton-detail-img skeleton-pulse" />
+          <div>
+            <div className="skeleton-line short skeleton-pulse" style={{ marginBottom: '1rem' }} />
+            <div className="skeleton-line skeleton-pulse" style={{ height: '2rem', marginBottom: '0.5rem' }} />
+            <div className="skeleton-line medium skeleton-pulse" style={{ marginBottom: '2rem' }} />
+            <div className="skeleton-line skeleton-pulse" style={{ height: '1.5rem', width: '30%', marginBottom: '1.5rem' }} />
+            <div className="skeleton-line skeleton-pulse" style={{ marginBottom: '0.5rem' }} />
+            <div className="skeleton-line skeleton-pulse" style={{ marginBottom: '0.5rem' }} />
+            <div className="skeleton-line medium skeleton-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   if (!product) return <div className="not-found">Product not found</div>;
 
   const hasVariants = product.variants && product.variants.length > 0;

@@ -13,6 +13,33 @@ const router = Router();
 
 router.get('/', getProducts);
 router.get('/categories', getCategories);
+router.get('/search-suggestions', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 2) return res.json([]);
+
+    const { Product } = await import('../models/index.js');
+    const { Op } = await import('sequelize');
+
+    const products = await Product.findAll({
+      where: {
+        active: true,
+        [Op.or]: [
+          { name: { [Op.like]: `%${q}%` } },
+          { category: { [Op.like]: `%${q}%` } },
+          { brand: { [Op.like]: `%${q}%` } },
+        ],
+      },
+      attributes: ['id', 'name', 'slug', 'price', 'category', 'images'],
+      limit: 6,
+      order: [['featured', 'DESC'], ['ratings', 'DESC']],
+    });
+
+    res.json(products);
+  } catch (error) {
+    res.status(500).json([]);
+  }
+});
 router.get('/:slug', getProduct);
 router.post('/', protect, admin, createProduct);
 router.put('/:id', protect, admin, updateProduct);

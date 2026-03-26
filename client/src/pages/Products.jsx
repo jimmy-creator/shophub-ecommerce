@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { HiFilter, HiX } from 'react-icons/hi';
 import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
+import { SkeletonGrid } from '../components/Skeleton';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -110,7 +111,7 @@ export default function Products() {
 
           <div className="products-main">
             {loading ? (
-              <div className="loading">Loading...</div>
+              <SkeletonGrid count={12} />
             ) : products.length === 0 ? (
               <div className="no-products">No products found.</div>
             ) : (
