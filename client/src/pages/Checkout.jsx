@@ -390,8 +390,9 @@ export default function Checkout() {
           </div>
         )}
 
-        <div className="checkout-layout">
-          <form className="checkout-form" onSubmit={handleSubmit}>
+        <form className="checkout-layout" onSubmit={handleSubmit}>
+          {/* Section 1: Address */}
+          <div className="checkout-section checkout-address">
 
             {isGuest && (
               <>
@@ -437,7 +438,10 @@ export default function Checkout() {
               <label>Phone</label>
               <input name="phone" value={form.phone} onChange={handleChange} required />
             </div>
+          </div>
 
+          {/* Section 2: Payment */}
+          <div className="checkout-section checkout-payment">
             <h3>Payment Method</h3>
             <div className="payment-options">
               {paymentMethods.map((method) => (
@@ -472,9 +476,10 @@ export default function Checkout() {
                   : 'Place Order'
               }
             </button>
-          </form>
+          </div>
 
-          <div className="order-summary">
+          {/* Section 3: Order Summary */}
+          <div className="order-summary checkout-summary">
             <h3>Order Summary</h3>
             {cart.map((item) => (
               <div key={item.cartKey} className="summary-item">
@@ -581,7 +586,7 @@ export default function Checkout() {
               <span>Secure checkout guaranteed</span>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

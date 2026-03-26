@@ -1,23 +1,47 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { HiArrowRight, HiShieldCheck, HiTruck, HiRefresh } from 'react-icons/hi';
+import { Monitor, Shirt, Footprints, Watch, Briefcase, Dumbbell, Home as HomeIcon, Sparkles, LayoutGrid } from 'lucide-react';
 import api from '../api/axios';
+import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductCard from '../components/ProductCard';
 import { SkeletonGrid } from '../components/Skeleton';
+
+const fallbackIcons = {
+  Electronics: <Monitor size={24} />,
+  Clothing: <Shirt size={24} />,
+  Footwear: <Footprints size={24} />,
+  Accessories: <Briefcase size={24} />,
+  Sports: <Dumbbell size={24} />,
+  Home: <HomeIcon size={24} />,
+  Beauty: <Sparkles size={24} />,
+};
 
 export default function Home() {
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     api.get('/products?featured=true&limit=8')
       .then((res) => setFeatured(res.data.products))
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    api.get('/categories')
+      .then((res) => setCategories(res.data))
+      .catch(() => {});
   }, []);
 
   return (
     <div className="home">
+      {/* Marketplace mobile search bar above hero */}
+      <div className="home-search-bar">
+        <div className="container">
+          <SearchAutocomplete className="home-search" />
+        </div>
+      </div>
+
       <section className="hero">
         <img src="/images/hero-banner.jpeg" alt="ShopHub Collection" className="hero-banner" />
         <div className="hero-overlay" />
@@ -27,6 +51,37 @@ export default function Home() {
           <div className="hero-actions">
             <Link to="/products" className="btn btn-primary">
               Explore Collection <HiArrowRight />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Category Icons Bar */}
+      <section className="category-bar">
+        <div className="container">
+          <div className="category-icons">
+            {(categories.length > 0 ? categories : [
+              { name: 'Electronics' }, { name: 'Clothing' }, { name: 'Footwear' },
+              { name: 'Accessories' }, { name: 'Sports' }, { name: 'Home' }, { name: 'Beauty' },
+            ]).map((c) => (
+              <Link
+                key={c.name}
+                to={`/products?category=${c.name}`}
+                className="category-icon-item"
+              >
+                <div className="category-icon-circle">
+                  {c.image ? (
+                    <img src={c.image} alt={c.name} className="category-icon-img" />
+                  ) : (
+                    fallbackIcons[c.name] || <LayoutGrid size={24} />
+                  )}
+                </div>
+                <span>{c.name}</span>
+              </Link>
+            ))}
+            <Link to="/products" className="category-icon-item">
+              <div className="category-icon-circle"><LayoutGrid size={24} /></div>
+              <span>All</span>
             </Link>
           </div>
         </div>

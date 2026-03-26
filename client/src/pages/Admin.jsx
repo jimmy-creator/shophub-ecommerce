@@ -396,6 +396,9 @@ export default function Admin() {
   const [customerView, setCustomerView] = useState('registered');
   const [customerOrders, setCustomerOrders] = useState(null); // { name, orders }
   const [customerSearch, setCustomerSearch] = useState('');
+  const [adminCategories, setAdminCategories] = useState([]);
+  const [catForm, setCatForm] = useState(null);
+  const [catUploading, setCatUploading] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [revenueChart, setRevenueChart] = useState([]);
   const [chartPeriod, setChartPeriod] = useState('30days');
@@ -430,6 +433,8 @@ export default function Admin() {
       api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
     } else if (tab === 'coupons') {
       api.get('/coupons').then((res) => setCoupons(res.data));
+    } else if (tab === 'categories') {
+      api.get('/categories/all').then((res) => setAdminCategories(res.data));
     } else if (tab === 'customers') {
       api.get(`/customers?search=${customerSearch}`).then((res) => setCustomers(res.data.customers));
       api.get('/customers/guests').then((res) => setGuestCustomers(res.data));
@@ -492,6 +497,9 @@ export default function Admin() {
           </button>
           <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
             Orders
+          </button>
+          <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>
+            Categories
           </button>
           <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>
             Customers
@@ -889,6 +897,147 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {tab === 'categories' && (
+          <div>
+            <button
+              className="btn btn-primary"
+              onClick={() => setCatForm({ name: '', image: '', sortOrder: 0, active: true, _editing: false })}
+              style={{ marginBottom: '1.5rem' }}
+            >
+              <HiPlus /> Add Category
+            </button>
+
+            {catForm && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCatForm(null); }}>
+                <form className="admin-form" onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    const payload = { name: catForm.name, image: catForm.image, sortOrder: catForm.sortOrder, active: catForm.active };
+                    if (catForm._editing) {
+                      await api.put(`/categories/${catForm._id}`, payload);
+                      toast.success('Category updated');
+                    } else {
+                      await api.post('/categories', payload);
+                      toast.success('Category created');
+                    }
+                    setCatForm(null);
+                    api.get('/categories/all').then((res) => setAdminCategories(res.data));
+                  } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed');
+                  }
+                }}>
+                  <h3>{catForm._editing ? 'Edit Category' : 'New Category'}</h3>
+                  <div className="form-group">
+                    <label>Category Name</label>
+                    <input value={catForm.name} onChange={(e) => setCatForm({ ...catForm, name: e.target.value })} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Category Image</label>
+                    {catForm.image && (
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <img src={catForm.image} alt="Preview" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '12px', border: '1px solid var(--border)' }} />
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          setCatUploading(true);
+                          try {
+                            const formData = new FormData();
+                            formData.append('image', file);
+                            const { data } = await api.post('/upload', formData, {
+                              headers: { 'Content-Type': 'multipart/form-data' },
+                            });
+                            setCatForm({ ...catForm, image: data.url });
+                          } catch (err) {
+                            toast.error('Upload failed');
+                          } finally {
+                            setCatUploading(false);
+                          }
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      {catUploading && <span style={{ fontSize: '0.82rem', color: 'var(--copper)' }}>Uploading...</span>}
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Sort Order</label>
+                      <input type="number" value={catForm.sortOrder} onChange={(e) => setCatForm({ ...catForm, sortOrder: parseInt(e.target.value) || 0 })} />
+                    </div>
+                    <div className="form-group">
+                      <label className="checkbox-label" style={{ paddingTop: 0 }}>
+                        <input type="checkbox" checked={catForm.active} onChange={(e) => setCatForm({ ...catForm, active: e.target.checked })} />
+                        Active
+                      </label>
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">{catForm._editing ? 'Update' : 'Create'}</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setCatForm(null)}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Image</th>
+                    <th>Name</th>
+                    <th>Order</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminCategories.map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ width: 56, padding: '0.5rem' }}>
+                        {c.image ? (
+                          <img src={c.image} alt={c.name} style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: '10px' }} />
+                        ) : (
+                          <div style={{ width: 44, height: 44, borderRadius: '10px', background: 'var(--bg-warm)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)', fontSize: '0.75rem' }}>
+                            No img
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ fontWeight: 500 }}>{c.name}</td>
+                      <td>{c.sortOrder}</td>
+                      <td>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: c.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)', color: c.active ? 'var(--success)' : 'var(--danger)' }}>
+                          {c.active ? 'Active' : 'Hidden'}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="icon-btn" onClick={() => setCatForm({ ...c, _editing: true, _id: c.id })}>
+                          <HiPencil />
+                        </button>
+                        <button className="icon-btn danger" onClick={async () => {
+                          if (!confirm('Delete this category?')) return;
+                          await api.delete(`/categories/${c.id}`);
+                          setAdminCategories(adminCategories.filter((x) => x.id !== c.id));
+                          toast.success('Deleted');
+                        }}>
+                          <HiTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {adminCategories.length === 0 && (
+                    <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No categories yet. Add categories to show on the home page.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

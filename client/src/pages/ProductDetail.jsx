@@ -7,11 +7,7 @@ import { useWishlist } from '../context/WishlistContext';
 import ProductImage from '../components/ProductImage';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-
-const toastOpts = {
-  style: { background: '#1a1614', color: '#f5f0eb', fontSize: '0.88rem', fontFamily: "'Outfit', sans-serif", borderRadius: '4px' },
-  iconTheme: { primary: '#c4784a', secondary: '#f5f0eb' },
-};
+import { showToast } from '../utils/toast';
 
 export default function ProductDetail() {
   const { slug } = useParams();
@@ -81,7 +77,7 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     const variant = hasVariants ? selectedOptions : null;
     addToCart(product, quantity, variant);
-    toast.success('Added to cart', toastOpts);
+    showToast('Added to cart');
   };
 
   const handleBuyNow = () => {
@@ -126,7 +122,7 @@ export default function ProductDetail() {
                 className={`wishlist-btn detail ${product && isInWishlist(product.id) ? 'active' : ''}`}
                 onClick={() => {
                   toggleWishlist(product);
-                  toast.success(isInWishlist(product.id) ? 'Removed from wishlist' : 'Added to wishlist', toastOpts);
+                  showToast(isInWishlist(product.id) ? 'Removed from wishlist' : 'Added to wishlist');
                 }}
               >
                 {product && isInWishlist(product.id) ? <HiHeart /> : <HiOutlineHeart />}
@@ -281,12 +277,12 @@ function ReviewsSection({ productId, user }) {
     setSubmitting(true);
     try {
       await api.post('/reviews', { productId, ...formData });
-      toast.success('Review submitted!', toastOpts);
+      showToast('Review submitted!');
       setShowForm(false);
       setFormData({ rating: 5, title: '', comment: '' });
       fetchReviews();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit review', toastOpts);
+      showToast(error.response?.data?.message || 'Failed to submit review', 'error');
     } finally {
       setSubmitting(false);
     }

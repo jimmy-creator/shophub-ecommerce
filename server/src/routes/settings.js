@@ -18,7 +18,7 @@ router.get('/theme', async (req, res) => {
 router.put('/theme', protect, admin, async (req, res) => {
   try {
     const { theme } = req.body;
-    const allowed = ['default', 'midnight', 'minimal', 'forest', 'royal'];
+    const allowed = ['default', 'midnight', 'minimal', 'forest', 'royal', 'marketplace'];
     if (!allowed.includes(theme)) {
       return res.status(400).json({ message: 'Invalid theme' });
     }

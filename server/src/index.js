@@ -20,6 +20,7 @@ import reviewRoutes from './routes/reviews.js';
 import analyticsRoutes from './routes/analytics.js';
 import settingsRoutes from './routes/settings.js';
 import customerRoutes from './routes/customers.js';
+import categoryRoutes from './routes/categories.js';
 import { sanitizeInput, preventInjection, forceHttps } from './middleware/security.js';
 
 dotenv.config();
@@ -85,6 +86,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Frontend is served by Nginx in production
 // In development, Vite dev server handles it

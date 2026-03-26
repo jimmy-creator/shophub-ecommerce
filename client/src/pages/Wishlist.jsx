@@ -3,12 +3,7 @@ import { HiHeart, HiShoppingCart, HiTrash } from 'react-icons/hi';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import ProductImage from '../components/ProductImage';
-import toast from 'react-hot-toast';
-
-const toastOpts = {
-  style: { background: '#1a1614', color: '#f5f0eb', fontSize: '0.88rem', fontFamily: "'Outfit', sans-serif", borderRadius: '4px' },
-  iconTheme: { primary: '#c4784a', secondary: '#f5f0eb' },
-};
+import { showToast } from '../utils/toast';
 
 export default function Wishlist() {
   const { wishlist, removeFromWishlist } = useWishlist();
@@ -32,7 +27,7 @@ export default function Wishlist() {
       return;
     }
     addToCart(item);
-    toast.success('Added to cart', toastOpts);
+    showToast('Added to cart');
   };
 
   return (
@@ -62,7 +57,7 @@ export default function Wishlist() {
                   </button>
                   <button className="wishlist-remove-btn" onClick={() => {
                     removeFromWishlist(item.id);
-                    toast.success('Removed from wishlist', toastOpts);
+                    showToast('Removed from wishlist');
                   }}>
                     <HiTrash />
                   </button>

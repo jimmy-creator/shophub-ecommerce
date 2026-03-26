@@ -4,6 +4,7 @@ import Order from './Order.js';
 import Coupon from './Coupon.js';
 import Review from './Review.js';
 import Setting from './Setting.js';
+import Category from './Category.js';
 
 // Associations
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -13,4 +14,4 @@ Product.hasMany(Review, { foreignKey: 'productId' });
 Review.belongsTo(Product, { foreignKey: 'productId' });
 Review.belongsTo(User, { foreignKey: 'userId' });
 
-export { User, Product, Order, Coupon, Review, Setting };
+export { User, Product, Order, Coupon, Review, Setting, Category };

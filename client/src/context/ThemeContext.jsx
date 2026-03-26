@@ -112,6 +112,35 @@ const themes = {
     },
     font: 'Fraunces:wght@400;500;600;700',
   },
+  marketplace: {
+    name: 'Modern Marketplace',
+    description: 'Clean white, rounded, bold sale tags',
+    vars: {
+      '--font-display': "'Plus Jakarta Sans', sans-serif",
+      '--font-body': "'Plus Jakarta Sans', sans-serif",
+      '--copper': '#2563eb',
+      '--copper-light': '#3b82f6',
+      '--copper-dark': '#1d4ed8',
+      '--gold': '#f59e0b',
+      '--bg': '#ffffff',
+      '--bg-warm': '#f8f8f8',
+      '--bg-card': '#ffffff',
+      '--bg-dark': '#1a1a2e',
+      '--bg-dark-warm': '#16213e',
+      '--text': '#1a1a2e',
+      '--text-secondary': '#64748b',
+      '--text-light': '#94a3b8',
+      '--text-inverse': '#ffffff',
+      '--border': '#e5e7eb',
+      '--border-light': '#f3f4f6',
+      '--success': '#10b981',
+      '--danger': '#ef4444',
+      '--radius': '12px',
+      '--radius-lg': '16px',
+    },
+    font: 'Plus+Jakarta+Sans:wght@300;400;500;600;700;800',
+    extraClass: 'theme-marketplace',
+  },
 };
 
 export const themeList = Object.entries(themes).map(([id, t]) => ({
@@ -140,15 +169,25 @@ export function ThemeProvider({ children }) {
 
     const root = document.documentElement;
 
-    // Reset to defaults first (remove previous theme vars)
-    Object.keys(themes.midnight.vars).forEach((key) => {
-      root.style.removeProperty(key);
+    // Reset all possible vars
+    const allVars = new Set();
+    Object.values(themes).forEach((t) => Object.keys(t.vars).forEach((k) => allVars.add(k)));
+    allVars.forEach((key) => root.style.removeProperty(key));
+
+    // Remove all theme extra classes
+    Object.values(themes).forEach((t) => {
+      if (t.extraClass) document.body.classList.remove(t.extraClass);
     });
 
     // Apply new theme vars
     Object.entries(theme.vars).forEach(([key, value]) => {
       root.style.setProperty(key, value);
     });
+
+    // Apply extra class if exists
+    if (theme.extraClass) {
+      document.body.classList.add(theme.extraClass);
+    }
 
     // Load theme font if needed
     if (theme.font) {
