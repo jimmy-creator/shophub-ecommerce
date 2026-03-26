@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { HiFilter, HiX } from 'react-icons/hi';
+import { Grid2x2, Grid3x3, LayoutList } from 'lucide-react';
 import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
 import { SkeletonGrid } from '../components/Skeleton';
@@ -12,6 +13,7 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('product-view') || 'grid');
 
   const page = parseInt(searchParams.get('page') || '1');
   const category = searchParams.get('category') || '';
@@ -75,6 +77,29 @@ export default function Products() {
               <option value="price-DESC">Price: High to Low</option>
               <option value="name-ASC">Name: A-Z</option>
             </select>
+            <div className="view-toggle">
+              <button
+                className={viewMode === 'two-col' ? 'active' : ''}
+                onClick={() => { setViewMode('two-col'); localStorage.setItem('product-view', 'two-col'); }}
+                aria-label="2 columns"
+              >
+                <Grid2x2 size={16} strokeWidth={1.5} />
+              </button>
+              <button
+                className={viewMode === 'grid' ? 'active' : ''}
+                onClick={() => { setViewMode('grid'); localStorage.setItem('product-view', 'grid'); }}
+                aria-label="Grid view"
+              >
+                <Grid3x3 size={16} strokeWidth={1.5} />
+              </button>
+              <button
+                className={viewMode === 'list' ? 'active' : ''}
+                onClick={() => { setViewMode('list'); localStorage.setItem('product-view', 'list'); }}
+                aria-label="List view"
+              >
+                <LayoutList size={16} strokeWidth={1.5} />
+              </button>
+            </div>
             <button className="filter-toggle" onClick={() => setShowFilters(!showFilters)}>
               <HiFilter /> Filters
             </button>
@@ -93,7 +118,7 @@ export default function Products() {
               <h4>Category</h4>
               <button
                 className={!category ? 'active' : ''}
-                onClick={() => updateFilter('category', '')}
+                onClick={() => { updateFilter('category', ''); setShowFilters(false); }}
               >
                 All
               </button>
@@ -101,7 +126,7 @@ export default function Products() {
                 <button
                   key={cat}
                   className={category === cat ? 'active' : ''}
-                  onClick={() => updateFilter('category', cat)}
+                  onClick={() => { updateFilter('category', cat); setShowFilters(false); }}
                 >
                   {cat}
                 </button>
@@ -116,7 +141,7 @@ export default function Products() {
               <div className="no-products">No products found.</div>
             ) : (
               <>
-                <div className="products-grid">
+                <div className={`products-grid view-${viewMode}`}>
                   {products.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
