@@ -5,6 +5,7 @@ import { getPaymentGateway, getAvailableGateways } from '../services/paymentGate
 import { sendOrderConfirmation, sendPaymentConfirmation } from '../services/emailService.js';
 import { Op } from 'sequelize';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
+import { calculateShipping } from '../utils/shipping.js';
 
 // Reuse coupon logic
 async function applyCouponForPayment(couponCode, subtotal, userId) {
@@ -49,6 +50,17 @@ router.get('/gateways', (req, res) => {
   ];
 
   res.json(allMethods);
+});
+
+// Calculate shipping rates
+router.post('/calculate-shipping', async (req, res) => {
+  try {
+    const { subtotal, itemCount, shippingState } = req.body;
+    const result = calculateShipping(subtotal || 0, itemCount || 1, shippingState);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 // Calculate tax for cart (preview before placing order)
@@ -130,8 +142,10 @@ router.post('/create-order', optionalAuth, async (req, res) => {
       orderItems, getIsSameState(shippingAddress?.state)
     );
 
-    // Add shipping, tax, subtract discount
-    const shipping = totalAmount >= 50 ? 0 : 5.99;
+    // Calculate shipping
+    const shippingMethod = req.body.shippingMethod || 'standard';
+    const shippingResult = calculateShipping(afterDiscount, orderItems.length, shippingAddress?.state);
+    const shipping = shippingResult[shippingMethod]?.rate || shippingResult.standard.rate;
     // Tax is inclusive — not added on top
     const finalAmount = Math.round((afterDiscount + shipping) * 100) / 100;
 

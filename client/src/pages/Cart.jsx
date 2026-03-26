@@ -66,11 +66,11 @@ export default function Cart() {
             </div>
             <div className="summary-row">
               <span>Shipping</span>
-              <span>{cartTotal >= 50 ? 'Free' : '₹5.99'}</span>
+              <span>Calculated at checkout</span>
             </div>
             <div className="summary-row total">
-              <span>Total</span>
-              <span>₹{(cartTotal + (cartTotal >= 50 ? 0 : 5.99)).toFixed(2)}</span>
+              <span>Subtotal</span>
+              <span>₹{cartTotal.toFixed(2)}</span>
             </div>
             <Link to="/checkout" className="btn btn-primary btn-block">
               Proceed to Checkout

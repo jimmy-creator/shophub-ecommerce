@@ -1027,6 +1027,26 @@ input, textarea, select { font-family: var(--font-body); }
 .coupon-error { font-size: 0.78rem; color: var(--danger); margin-top: 0.4rem; }
 .discount-row span { color: var(--success); font-weight: 500; }
 
+/* Shipping Options */
+.shipping-options { margin-bottom: 0.75rem; }
+.shipping-option {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.7rem 0.75rem; cursor: pointer;
+  border: 1px solid var(--border-light); border-radius: var(--radius);
+  margin-bottom: 0.4rem; transition: all 0.2s var(--ease);
+}
+.shipping-option:hover { border-color: var(--copper-light); }
+.shipping-option.active { border-color: var(--copper); background: rgba(196,120,74,0.03); }
+.shipping-option input { accent-color: var(--copper); flex-shrink: 0; }
+.shipping-option-info { flex: 1; }
+.shipping-option-name { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text); }
+.shipping-option-days { font-size: 0.72rem; color: var(--text-light); }
+.shipping-option-price { font-size: 0.88rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+.shipping-free-hint {
+  font-size: 0.75rem; color: var(--copper); font-weight: 500;
+  margin-top: 0.35rem; padding: 0;
+}
+
 .checkout-trust {
   display: flex; align-items: center; gap: 0.5rem;
   margin-top: 1.5rem; padding-top: 1rem;

@@ -2,6 +2,7 @@ import { Order, Product, User, Coupon } from '../models/index.js';
 import { Op } from 'sequelize';
 import { sendOrderConfirmation, sendOrderStatusUpdate } from '../services/emailService.js';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
+import { calculateShipping } from '../utils/shipping.js';
 
 const generateOrderNumber = () => {
   const prefix = 'ORD';

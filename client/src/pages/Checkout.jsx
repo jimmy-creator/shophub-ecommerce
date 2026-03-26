@@ -46,6 +46,10 @@ export default function Checkout() {
   // Tax state
   const [taxInfo, setTaxInfo] = useState({ totalTax: 0, breakdown: null });
 
+  // Shipping state
+  const [shippingOptions, setShippingOptions] = useState(null);
+  const [shippingMethod, setShippingMethod] = useState('standard');
+
   const [form, setForm] = useState({
     fullName: user?.name || '',
     email: user?.email || '',
@@ -128,6 +132,16 @@ export default function Checkout() {
     }).then((res) => setTaxInfo(res.data)).catch(() => {});
   }, [form.state, cart]);
 
+  // Fetch shipping rates
+  useEffect(() => {
+    const afterCoupon = Math.max(0, cartTotal - (couponApplied?.discount || 0));
+    api.post('/payment/calculate-shipping', {
+      subtotal: afterCoupon,
+      itemCount: cart.reduce((s, i) => s + i.quantity, 0),
+      shippingState: form.state,
+    }).then((res) => setShippingOptions(res.data)).catch(() => {});
+  }, [cartTotal, couponApplied, cart, form.state]);
+
   const discountAmount = couponApplied?.discount || 0;
   const taxAmount = taxInfo.totalTax || 0;
 
@@ -135,6 +149,7 @@ export default function Checkout() {
     const orderData = {
       items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
       shippingAddress: getShippingAddress(),
+      shippingMethod,
       paymentMethod: form.paymentMethod,
       couponCode: couponApplied?.code || null,
     };
@@ -161,6 +176,7 @@ export default function Checkout() {
     const createPayload = {
       items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
       shippingAddress: getShippingAddress(),
+      shippingMethod,
       gateway: 'razorpay',
       couponCode: couponApplied?.code || null,
     };
@@ -257,6 +273,7 @@ export default function Checkout() {
     const paytmPayload = {
       items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
       shippingAddress: getShippingAddress(),
+      shippingMethod,
       gateway: 'paytm',
       couponCode: couponApplied?.code || null,
     };
@@ -353,7 +370,7 @@ export default function Checkout() {
     }
   };
 
-  const shipping = cartTotal >= 50 ? 0 : 5.99;
+  const shipping = shippingOptions?.[shippingMethod]?.rate ?? 0;
   // Tax is inclusive in price — not added on top
   const grandTotal = Math.max(0, cartTotal - discountAmount + shipping);
   const isOnlinePayment = !['cod', 'bank_transfer'].includes(form.paymentMethod);
@@ -521,10 +538,39 @@ export default function Checkout() {
                 <span>₹{taxAmount.toFixed(2)}</span>
               </div>
             )}
-            <div className="summary-row">
-              <span>Shipping</span>
-              <span>{shipping === 0 ? 'Free' : `₹${shipping.toFixed(2)}`}</span>
-            </div>
+            {shippingOptions && (
+              <div className="shipping-options">
+                <label
+                  className={`shipping-option ${shippingMethod === 'standard' ? 'active' : ''}`}
+                  onClick={() => setShippingMethod('standard')}
+                >
+                  <input type="radio" name="shipping" checked={shippingMethod === 'standard'} readOnly />
+                  <div className="shipping-option-info">
+                    <span className="shipping-option-name">{shippingOptions.standard.label}</span>
+                    <span className="shipping-option-days">{shippingOptions.standard.days}</span>
+                  </div>
+                  <span className="shipping-option-price">
+                    {shippingOptions.standard.rate === 0 ? 'Free' : `₹${shippingOptions.standard.rate.toFixed(2)}`}
+                  </span>
+                </label>
+                <label
+                  className={`shipping-option ${shippingMethod === 'express' ? 'active' : ''}`}
+                  onClick={() => setShippingMethod('express')}
+                >
+                  <input type="radio" name="shipping" checked={shippingMethod === 'express'} readOnly />
+                  <div className="shipping-option-info">
+                    <span className="shipping-option-name">{shippingOptions.express.label}</span>
+                    <span className="shipping-option-days">{shippingOptions.express.days}</span>
+                  </div>
+                  <span className="shipping-option-price">₹{shippingOptions.express.rate.toFixed(2)}</span>
+                </label>
+                {shippingOptions.amountForFree && (
+                  <p className="shipping-free-hint">
+                    Add ₹{shippingOptions.amountForFree.toFixed(2)} more for free shipping
+                  </p>
+                )}
+              </div>
+            )}
             <div className="summary-row total">
               <span>Total</span>
               <span>₹{grandTotal.toFixed(2)}</span>
