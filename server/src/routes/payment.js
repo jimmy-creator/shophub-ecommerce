@@ -163,6 +163,8 @@ router.post('/create-order', optionalAuth, async (req, res) => {
       paymentMethod: gateway,
       paymentStatus: 'pending',
       orderStatus: 'processing',
+      shippingCharge: shipping,
+      shippingMethod,
       couponCode: appliedCode,
       discount,
       taxAmount: totalTax,

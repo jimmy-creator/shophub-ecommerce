@@ -48,6 +48,14 @@ const Order = sequelize.define('Order', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  shippingCharge: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+  },
+  shippingMethod: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   couponCode: {
     type: DataTypes.STRING,
     allowNull: true,

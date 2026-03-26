@@ -130,7 +130,7 @@ async function applyCoupon(couponCode, subtotal, userId) {
 
 export const createOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, paymentMethod, couponCode } = req.body;
+    const { items, shippingAddress, paymentMethod, couponCode, shippingMethod = 'standard' } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No items in order' });
@@ -140,11 +140,12 @@ export const createOrder = async (req, res) => {
     const { discount, code } = await applyCoupon(couponCode, totalAmount, req.user.id);
     const afterDiscount = Math.round((totalAmount - discount) * 100) / 100;
 
-    // Calculate GST (same state check based on store state vs shipping state)
     const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingAddress?.state));
 
-    // Tax is inclusive — no addition, just record the breakdown
-    const finalAmount = afterDiscount;
+    const shippingResult = calculateShipping(afterDiscount, orderItems.length, shippingAddress?.state);
+    const shippingCharge = shippingResult[shippingMethod]?.rate || shippingResult.standard.rate;
+
+    const finalAmount = Math.round((afterDiscount + shippingCharge) * 100) / 100;
 
     const order = await Order.create({
       orderNumber: generateOrderNumber(),
@@ -153,6 +154,8 @@ export const createOrder = async (req, res) => {
       totalAmount: finalAmount,
       shippingAddress,
       paymentMethod,
+      shippingCharge,
+      shippingMethod,
       couponCode: code,
       discount,
       taxAmount: totalTax,
@@ -170,7 +173,7 @@ export const createOrder = async (req, res) => {
 
 export const createGuestOrder = async (req, res) => {
   try {
-    const { items, shippingAddress, paymentMethod, guestEmail, couponCode } = req.body;
+    const { items, shippingAddress, paymentMethod, guestEmail, couponCode, shippingMethod = 'standard' } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No items in order' });
@@ -190,8 +193,10 @@ export const createGuestOrder = async (req, res) => {
 
     const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingAddress?.state));
 
-    // Tax is inclusive — no addition, just record the breakdown
-    const finalAmount = afterDiscount;
+    const shippingResult = calculateShipping(afterDiscount, orderItems.length, shippingAddress?.state);
+    const shippingCharge = shippingResult[shippingMethod]?.rate || shippingResult.standard.rate;
+
+    const finalAmount = Math.round((afterDiscount + shippingCharge) * 100) / 100;
 
     const order = await Order.create({
       orderNumber: generateOrderNumber(),
@@ -201,6 +206,8 @@ export const createGuestOrder = async (req, res) => {
       totalAmount: finalAmount,
       shippingAddress,
       paymentMethod,
+      shippingCharge,
+      shippingMethod,
       couponCode: code,
       discount,
       taxAmount: totalTax,

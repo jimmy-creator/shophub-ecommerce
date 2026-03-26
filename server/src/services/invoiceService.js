@@ -180,6 +180,17 @@ export function generateInvoice(order) {
         y += rowHeight;
       }
 
+      const shippingCharge = parseFloat(order.shippingCharge) || 0;
+      if (shippingCharge > 0) {
+        doc.fill(grey).text(`Shipping${order.shippingMethod === 'express' ? ' (Express)' : ''}`, labelX, y, { width: 100 });
+        doc.fill(dark).text(formatPrice(shippingCharge), valueX, y, { width: 80, align: 'right' });
+        y += rowHeight;
+      } else if (shippingCharge === 0 && order.shippingMethod) {
+        doc.fill(grey).text('Shipping', labelX, y, { width: 100 });
+        doc.fill('#5a8a6a').text('Free', valueX, y, { width: 80, align: 'right' });
+        y += rowHeight;
+      }
+
       if (taxAmount > 0 && taxBreakdown) {
         if (taxBreakdown.isSameState) {
           doc.fill(grey).text('CGST', labelX, y, { width: 100 });
