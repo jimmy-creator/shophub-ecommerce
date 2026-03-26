@@ -391,6 +391,11 @@ export default function Admin() {
   const [couponForm, setCouponForm] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [reviewForm, setReviewForm] = useState(null);
+  const [customers, setCustomers] = useState([]);
+  const [guestCustomers, setGuestCustomers] = useState([]);
+  const [customerView, setCustomerView] = useState('registered');
+  const [customerOrders, setCustomerOrders] = useState(null); // { name, orders }
+  const [customerSearch, setCustomerSearch] = useState('');
   const [dashboard, setDashboard] = useState(null);
   const [revenueChart, setRevenueChart] = useState([]);
   const [chartPeriod, setChartPeriod] = useState('30days');
@@ -425,13 +430,16 @@ export default function Admin() {
       api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
     } else if (tab === 'coupons') {
       api.get('/coupons').then((res) => setCoupons(res.data));
+    } else if (tab === 'customers') {
+      api.get(`/customers?search=${customerSearch}`).then((res) => setCustomers(res.data.customers));
+      api.get('/customers/guests').then((res) => setGuestCustomers(res.data));
     } else if (tab === 'reviews') {
       api.get('/reviews/all').then((res) => setReviews(res.data.reviews));
       if (products.length === 0) {
         api.get('/products?limit=100').then((res) => setProducts(res.data.products));
       }
     }
-  }, [tab, chartPeriod]);
+  }, [tab, chartPeriod, customerSearch]);
 
   if (user?.role !== 'admin') {
     return <div className="empty-state"><h2>Access Denied</h2></div>;
@@ -484,6 +492,9 @@ export default function Admin() {
           </button>
           <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
             Orders
+          </button>
+          <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>
+            Customers
           </button>
           <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>
             Coupons
@@ -878,6 +889,184 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {tab === 'customers' && (
+          <div>
+            {/* Search + Toggle */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Search by name, email, or phone..."
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                style={{
+                  flex: 1, minWidth: '200px', padding: '0.55rem 1rem',
+                  border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+                  fontSize: '0.85rem', background: 'var(--bg-card)',
+                }}
+              />
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+                <button
+                  onClick={() => setCustomerView('registered')}
+                  style={{
+                    padding: '0.55rem 1rem', border: 'none', cursor: 'pointer',
+                    fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase',
+                    background: customerView === 'registered' ? 'var(--bg-dark)' : 'var(--bg-card)',
+                    color: customerView === 'registered' ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                  }}
+                >
+                  Registered ({customers.length})
+                </button>
+                <button
+                  onClick={() => setCustomerView('guests')}
+                  style={{
+                    padding: '0.55rem 1rem', border: 'none', borderLeft: '1px solid var(--border)',
+                    cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase',
+                    background: customerView === 'guests' ? 'var(--bg-dark)' : 'var(--bg-card)',
+                    color: customerView === 'guests' ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                  }}
+                >
+                  Guests ({guestCustomers.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Order History Modal */}
+            {customerOrders && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCustomerOrders(null); }}>
+                <div className="admin-form" style={{ maxWidth: '700px' }}>
+                  <h3>{customerOrders.name}'s Orders</h3>
+                  {customerOrders.orders.length === 0 ? (
+                    <p style={{ color: 'var(--text-secondary)', padding: '1rem 0' }}>No orders found</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {customerOrders.orders.map((o) => (
+                        <div key={o.id} style={{
+                          border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)',
+                          padding: '1rem', fontSize: '0.85rem',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                            <strong>{o.orderNumber}</strong>
+                            <span style={{ color: o.paymentStatus === 'paid' ? 'var(--success)' : 'var(--copper)', fontWeight: 600, fontSize: '0.78rem', textTransform: 'uppercase' }}>
+                              {o.paymentStatus}
+                            </span>
+                          </div>
+                          <div style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                            {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {' · '}{o.paymentMethod} · <strong>₹{parseFloat(o.totalAmount).toFixed(2)}</strong>
+                          </div>
+                          <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                            {o.items.map((item, i) => (
+                              <span key={i}>
+                                {item.name}{item.variant ? ` (${Object.entries(item.variant).filter(([k]) => k !== 'sku').map(([k,v]) => v).join(', ')})` : ''} x{item.quantity}
+                                {i < o.items.length - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="form-actions">
+                    <button className="btn btn-secondary" onClick={() => setCustomerOrders(null)}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Registered Customers Table */}
+            {customerView === 'registered' && (
+              <div className="admin-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Orders</th>
+                      <th>Total Spent</th>
+                      <th>Joined</th>
+                      <th>History</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((c) => (
+                      <tr key={c.id}>
+                        <td style={{ fontWeight: 500 }}>{c.name}</td>
+                        <td>{c.email}</td>
+                        <td>{c.phone || '-'}</td>
+                        <td>{c.orderCount}</td>
+                        <td>₹{c.totalSpent.toFixed(2)}</td>
+                        <td>{new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                        <td>
+                          <button
+                            className="icon-btn"
+                            onClick={async () => {
+                              const { data } = await api.get(`/customers/${c.id}/orders`);
+                              setCustomerOrders({ name: c.name, orders: data });
+                            }}
+                            title="View orders"
+                          >
+                            📋
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {customers.length === 0 && (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No customers found</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Guest Customers Table */}
+            {customerView === 'guests' && (
+              <div className="admin-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Orders</th>
+                      <th>Total Spent</th>
+                      <th>Last Order</th>
+                      <th>History</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guestCustomers.map((g, i) => (
+                      <tr key={i}>
+                        <td style={{ fontWeight: 500 }}>{g.name}</td>
+                        <td>{g.email}</td>
+                        <td>{g.phone}</td>
+                        <td>{g.orderCount}</td>
+                        <td>₹{g.totalSpent.toFixed(2)}</td>
+                        <td>{new Date(g.lastOrder).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                        <td>
+                          <button
+                            className="icon-btn"
+                            onClick={async () => {
+                              const { data } = await api.get(`/customers/guest-orders?email=${encodeURIComponent(g.email)}`);
+                              setCustomerOrders({ name: g.name, orders: data });
+                            }}
+                            title="View orders"
+                          >
+                            📋
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {guestCustomers.length === 0 && (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No guest orders yet</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
