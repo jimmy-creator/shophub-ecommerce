@@ -48,6 +48,27 @@ const Order = sequelize.define('Order', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  cancellationReason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  cancelledAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  refundAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0,
+  },
+  refundStatus: {
+    // null = no refund, pending, processed, failed
+    type: DataTypes.ENUM('pending', 'processed', 'failed'),
+    allowNull: true,
+  },
+  refundedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   shippingCharge: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,

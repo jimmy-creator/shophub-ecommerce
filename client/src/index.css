@@ -1257,6 +1257,33 @@ input, textarea, select { font-family: var(--font-body); }
 }
 .invoice-btn:hover { background: var(--copper); color: white; border-color: var(--copper); }
 
+/* Cancel & Refund */
+.cancel-order-btn {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.4rem 0.8rem; border: 1px solid var(--danger);
+  border-radius: var(--radius); background: none;
+  font-size: 0.78rem; font-weight: 600; color: var(--danger);
+  cursor: pointer; transition: all 0.25s var(--ease);
+}
+.cancel-order-btn:hover { background: var(--danger); color: white; }
+.order-refund-info {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 1.75rem; font-size: 0.82rem;
+  background: var(--bg-warm); border-bottom: 1px solid var(--border-light);
+}
+.refund-badge {
+  font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.6rem;
+  border-radius: 100px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.refund-badge.pending { background: rgba(245,158,11,0.1); color: #f59e0b; }
+.refund-badge.processed { background: rgba(16,185,129,0.1); color: var(--success); }
+.refund-badge.failed { background: rgba(239,68,68,0.1); color: var(--danger); }
+.order-cancel-reason {
+  padding: 0.5rem 1.75rem; font-size: 0.78rem;
+  color: var(--text-light); font-style: italic;
+  border-bottom: 1px solid var(--border-light);
+}
+
 /* Wishlist */
 .wishlist-btn {
   position: absolute; top: 0.75rem; right: 0.75rem;

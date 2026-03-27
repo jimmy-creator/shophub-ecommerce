@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { HiDownload } from 'react-icons/hi';
+import { XCircle } from 'lucide-react';
 import api from '../api/axios';
+import { showToast } from '../utils/toast';
 
 const statusColors = {
   processing: '#f59e0b',
@@ -14,13 +16,40 @@ const statusColors = {
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancelModal, setCancelModal] = useState(null); // order id
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
 
-  useEffect(() => {
+  const fetchOrders = () => {
     api.get('/orders/my-orders')
       .then((res) => setOrders(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { fetchOrders(); }, []);
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    try {
+      const { data } = await api.post(`/orders/${cancelModal}/cancel`, {
+        reason: cancelReason,
+      });
+      showToast(data.message);
+      if (data.refundInitiated) {
+        showToast('Refund has been initiated');
+      }
+      setCancelModal(null);
+      setCancelReason('');
+      fetchOrders();
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to cancel', 'error');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const canCancel = (status) => ['processing', 'confirmed'].includes(status);
 
   if (loading) return (
     <div className="orders-page"><div className="container">
@@ -60,19 +89,48 @@ export default function Orders() {
                 <div className="order-items">
                   {order.items.map((item, i) => (
                     <div key={i} className="order-item">
-                      <span>{item.name} x {item.quantity}</span>
+                      <span>
+                        {item.name}
+                        {item.variant && ` (${Object.entries(item.variant).filter(([k]) => k !== 'sku').map(([,v]) => v).join(', ')})`}
+                        {' x '}{item.quantity}
+                      </span>
                       <span>₹{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
+
+                {/* Refund info */}
+                {order.refundStatus && (
+                  <div className="order-refund-info">
+                    <span className={`refund-badge ${order.refundStatus}`}>
+                      Refund {order.refundStatus}
+                    </span>
+                    {order.refundAmount > 0 && (
+                      <span>₹{parseFloat(order.refundAmount).toFixed(2)}</span>
+                    )}
+                  </div>
+                )}
+
+                {order.cancellationReason && (
+                  <div className="order-cancel-reason">
+                    Reason: {order.cancellationReason}
+                  </div>
+                )}
+
                 <div className="order-footer">
                   <span>Payment: {order.paymentMethod}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    {canCancel(order.orderStatus) && (
+                      <button
+                        className="cancel-order-btn"
+                        onClick={() => setCancelModal(order.id)}
+                      >
+                        <XCircle size={14} /> Cancel
+                      </button>
+                    )}
                     <button
                       className="invoice-btn"
-                      onClick={() => {
-                        window.open(`/api/orders/${order.id}/invoice`, '_blank');
-                      }}
+                      onClick={() => window.open(`/api/orders/${order.id}/invoice`, '_blank')}
                     >
                       <HiDownload /> Invoice
                     </button>
@@ -83,6 +141,51 @@ export default function Orders() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Cancel Modal */}
+        {cancelModal && (
+          <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCancelModal(null); }}>
+            <div className="admin-form" style={{ maxWidth: '450px' }}>
+              <h3>Cancel Order</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+                Are you sure you want to cancel this order? This action cannot be undone.
+                {orders.find((o) => o.id === cancelModal)?.paymentStatus === 'paid' && (
+                  <strong style={{ display: 'block', marginTop: '0.5rem', color: 'var(--success)' }}>
+                    A refund will be initiated automatically.
+                  </strong>
+                )}
+              </p>
+              <div className="form-group">
+                <label>Reason for cancellation</label>
+                <select
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  style={{ width: '100%', padding: '0.7rem 1rem', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.9rem' }}
+                >
+                  <option value="">Select a reason</option>
+                  <option value="Changed my mind">Changed my mind</option>
+                  <option value="Found a better price">Found a better price</option>
+                  <option value="Ordered by mistake">Ordered by mistake</option>
+                  <option value="Delivery too slow">Delivery too slow</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-actions">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCancel}
+                  disabled={cancelling || !cancelReason}
+                  style={{ background: 'var(--danger)' }}
+                >
+                  {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+                </button>
+                <button className="btn btn-secondary" onClick={() => { setCancelModal(null); setCancelReason(''); }}>
+                  Keep Order
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

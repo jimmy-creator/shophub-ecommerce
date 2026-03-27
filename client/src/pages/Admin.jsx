@@ -906,6 +906,7 @@ export default function Admin() {
                   <th>Payment</th>
                   <th>Status</th>
                   <th>Update</th>
+                  <th>Refund</th>
                   <th>Invoice</th>
                 </tr>
               </thead>
@@ -928,6 +929,38 @@ export default function Admin() {
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
+                    </td>
+                    <td>
+                      {o.refundStatus === 'pending' ? (
+                        <div style={{ display: 'flex', gap: '0.3rem' }}>
+                          <button className="icon-btn" style={{ color: 'var(--success)', fontSize: '0.7rem', fontWeight: 700 }}
+                            onClick={async () => {
+                              await api.post(`/orders/${o.id}/refund`, { refundAmount: o.totalAmount });
+                              toast.success('Refund processed');
+                              api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+                            }}>✓</button>
+                          <button className="icon-btn danger" style={{ fontSize: '0.7rem', fontWeight: 700 }}
+                            onClick={async () => {
+                              await api.post(`/orders/${o.id}/refund-reject`);
+                              toast.success('Refund rejected');
+                              api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+                            }}>✕</button>
+                        </div>
+                      ) : o.refundStatus === 'processed' ? (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 600 }}>Done</span>
+                      ) : o.refundStatus === 'failed' ? (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--danger)', fontWeight: 600 }}>Rejected</span>
+                      ) : o.paymentStatus === 'paid' ? (
+                        <button className="icon-btn" style={{ fontSize: '0.65rem', fontWeight: 600 }}
+                          onClick={async () => {
+                            if (!confirm(`Refund Rs.${parseFloat(o.totalAmount).toFixed(2)}?`)) return;
+                            await api.post(`/orders/${o.id}/refund`, { refundAmount: o.totalAmount });
+                            toast.success('Refund processed');
+                            api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+                          }}>Refund</button>
+                      ) : (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-light)' }}>—</span>
+                      )}
                     </td>
                     <td>
                       <button className="invoice-btn" onClick={() => window.open(`/api/orders/${o.id}/invoice`, '_blank')}>
