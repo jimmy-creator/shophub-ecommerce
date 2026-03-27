@@ -4,7 +4,9 @@ import { HiShoppingCart, HiStar, HiMinus, HiPlus, HiArrowLeft, HiLightningBolt, 
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import ProductImage from '../components/ProductImage';
+import ProductCard from '../components/ProductCard';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { showToast } from '../utils/toast';
@@ -15,17 +17,19 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
   const { user } = useAuth();
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const { viewed, addViewed } = useRecentlyViewed();
   const [product, setProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState({});
+  const [relatedProducts, setRelatedProducts] = useState([]);
 
   useEffect(() => {
     api.get(`/products/${slug}`)
       .then((res) => {
         setProduct(res.data);
-        // Initialize default variant selections
+        addViewed(res.data);
         if (res.data.variantOptions) {
           const defaults = {};
           Object.entries(res.data.variantOptions).forEach(([type, values]) => {
@@ -36,6 +40,10 @@ export default function ProductDetail() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    api.get(`/products/${slug}/related`)
+      .then((res) => setRelatedProducts(res.data))
+      .catch(() => {});
   }, [slug]);
 
   if (loading) return (
@@ -240,6 +248,34 @@ export default function ProductDetail() {
 
         {/* Reviews Section */}
         <ReviewsSection productId={product.id} user={user} />
+
+        {/* Related Products */}
+        {relatedProducts.length > 0 && (
+          <div className="related-section">
+            <div className="section-header">
+              <h2>You May Also Like</h2>
+            </div>
+            <div className="products-grid related-grid">
+              {relatedProducts.slice(0, 4).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recently Viewed */}
+        {viewed.filter((p) => p.id !== product.id).length > 0 && (
+          <div className="related-section">
+            <div className="section-header">
+              <h2>Recently Viewed</h2>
+            </div>
+            <div className="products-grid related-grid">
+              {viewed.filter((p) => p.id !== product.id).slice(0, 4).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

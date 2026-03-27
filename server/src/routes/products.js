@@ -40,6 +40,36 @@ router.get('/search-suggestions', async (req, res) => {
     res.status(500).json([]);
   }
 });
+// Related products by category
+router.get('/:slug/related', async (req, res) => {
+  try {
+    const { Product } = await import('../models/index.js');
+    const { Op } = await import('sequelize');
+
+    const product = await Product.findOne({
+      where: { slug: req.params.slug, active: true },
+    });
+    if (!product) return res.json([]);
+
+    const related = await Product.findAll({
+      where: {
+        active: true,
+        id: { [Op.ne]: product.id },
+        [Op.or]: [
+          { category: product.category },
+          { brand: product.brand },
+        ],
+      },
+      limit: 8,
+      order: [['ratings', 'DESC'], ['featured', 'DESC']],
+    });
+
+    res.json(related);
+  } catch (error) {
+    res.status(500).json([]);
+  }
+});
+
 router.get('/:slug', getProduct);
 router.post('/', protect, admin, createProduct);
 router.put('/:id', protect, admin, updateProduct);

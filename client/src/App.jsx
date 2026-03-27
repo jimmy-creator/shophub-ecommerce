@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
 import Wishlist from './pages/Wishlist';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -43,6 +44,7 @@ export default function App() {
       <AuthProvider>
         <CartProvider>
         <WishlistProvider>
+        <RecentlyViewedProvider>
         <ThemeProvider>
           <Toaster position="top-right" />
           <div className="app">
@@ -73,6 +75,7 @@ export default function App() {
             <Footer />
           </div>
         </ThemeProvider>
+        </RecentlyViewedProvider>
         </WishlistProvider>
         </CartProvider>
       </AuthProvider>
