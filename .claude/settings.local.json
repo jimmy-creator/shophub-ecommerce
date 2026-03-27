@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "WebFetch(domain:www.paytmpayments.com)",
+      "Bash(curl -s -L \"https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/\")",
+      "Bash(curl -s -L \"https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/build-integration/\")",
+      "Bash(curl -s -L \"https://razorpay.com/docs/api/orders\")",
+      "Bash(curl -s -L \"https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/test-integration/\")",
+      "WebFetch(domain:razorpay.com)",
+      "Bash(curl -s -L -v \"https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/build-integration/\")",
+      "Bash(python3 -c \":*)",
+      "Bash(mysql:*)"
+    ]
+  }
+}
