@@ -680,13 +680,54 @@ export default function Admin() {
 
         {tab === 'products' && (
           <div>
-            <button
-              className="btn btn-primary"
-              onClick={() => { setShowForm(true); setEditing(null); setForm(emptyProduct); }}
-              style={{ marginBottom: '1.5rem' }}
-            >
-              <HiPlus /> Add Product
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => { setShowForm(true); setEditing(null); setForm(emptyProduct); }}
+              >
+                <HiPlus /> Add Product
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => window.open('/api/bulk-products/export', '_blank')}
+              >
+                Export CSV
+              </button>
+              <label className="btn btn-secondary" style={{ cursor: 'pointer', margin: 0 }}>
+                Import CSV
+                <input
+                  type="file"
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                      const { data } = await api.post('/bulk-products/import', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                      });
+                      toast.success(data.message);
+                      if (data.errors?.length > 0) {
+                        data.errors.forEach((err) => toast.error(err));
+                      }
+                      api.get('/products?limit=100').then((res) => setProducts(res.data.products));
+                    } catch (error) {
+                      toast.error(error.response?.data?.message || 'Import failed');
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+              <button
+                className="btn btn-secondary"
+                onClick={() => window.open('/api/bulk-products/template', '_blank')}
+                style={{ fontSize: '0.75rem' }}
+              >
+                Download Template
+              </button>
+            </div>
 
             {showForm && (
               <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
