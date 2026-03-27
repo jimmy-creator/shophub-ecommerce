@@ -43,7 +43,7 @@ export default function Profile() {
             <HiHeart />
             <span>Wishlist{wishlistCount > 0 ? ` (${wishlistCount})` : ''}</span>
           </Link>
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'staff') && (
             <Link to="/admin" className="profile-link-card">
               <HiCog />
               <span>Admin Panel</span>

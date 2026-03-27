@@ -384,7 +384,13 @@ function ImageUploader({ images = [], onChange }) {
 export default function Admin() {
   const { user } = useAuth();
   const { currentTheme, changeTheme, themes: themeOptions } = useTheme();
-  const [tab, setTab] = useState('dashboard');
+  const [tab, setTab] = useState(() => {
+    if (user?.role === 'staff' && user?.permissions?.length > 0) {
+      const permToTab = { analytics: 'dashboard', products: 'products', orders: 'orders', categories: 'categories', customers: 'customers', coupons: 'coupons', reviews: 'reviews', settings: 'theme' };
+      return permToTab[user.permissions[0]] || 'dashboard';
+    }
+    return 'dashboard';
+  });
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
@@ -399,6 +405,9 @@ export default function Admin() {
   const [adminCategories, setAdminCategories] = useState([]);
   const [catForm, setCatForm] = useState(null);
   const [catUploading, setCatUploading] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [staffForm, setStaffForm] = useState(null);
+  const [availablePerms, setAvailablePerms] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [revenueChart, setRevenueChart] = useState([]);
   const [chartPeriod, setChartPeriod] = useState('30days');
@@ -438,6 +447,9 @@ export default function Admin() {
     } else if (tab === 'customers') {
       api.get(`/customers?search=${customerSearch}`).then((res) => setCustomers(res.data.customers));
       api.get('/customers/guests').then((res) => setGuestCustomers(res.data));
+    } else if (tab === 'staff') {
+      api.get('/staff').then((res) => setStaffList(res.data)).catch(() => {});
+      api.get('/staff/permissions').then((res) => setAvailablePerms(res.data)).catch(() => {});
     } else if (tab === 'reviews') {
       api.get('/reviews/all').then((res) => setReviews(res.data.reviews));
       if (products.length === 0) {
@@ -446,7 +458,13 @@ export default function Admin() {
     }
   }, [tab, chartPeriod, customerSearch]);
 
-  if (user?.role !== 'admin') {
+  const isAdmin = user?.role === 'admin';
+  const isStaff = user?.role === 'staff';
+  const userPerms = user?.permissions || [];
+
+  const hasAccess = (perm) => isAdmin || userPerms.includes(perm);
+
+  if (!isAdmin && !isStaff) {
     return <div className="empty-state"><h2>Access Denied</h2></div>;
   }
 
@@ -489,30 +507,15 @@ export default function Admin() {
       <div className="container">
         <h1>Admin Panel</h1>
         <div className="admin-tabs">
-          <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>
-            Dashboard
-          </button>
-          <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>
-            Products
-          </button>
-          <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>
-            Orders
-          </button>
-          <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>
-            Categories
-          </button>
-          <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>
-            Customers
-          </button>
-          <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>
-            Coupons
-          </button>
-          <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>
-            Reviews
-          </button>
-          <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>
-            Theme
-          </button>
+          {hasAccess('analytics') && <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>}
+          {hasAccess('products') && <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>Products</button>}
+          {hasAccess('orders') && <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>Orders</button>}
+          {hasAccess('categories') && <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Categories</button>}
+          {hasAccess('customers') && <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>}
+          {hasAccess('coupons') && <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>Coupons</button>}
+          {hasAccess('reviews') && <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>Reviews</button>}
+          {hasAccess('settings') && <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Theme</button>}
+          {isAdmin && <button className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>Staff</button>}
         </div>
 
         {tab === 'dashboard' && dashboard && (
@@ -1606,6 +1609,144 @@ export default function Admin() {
                   )}
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 'staff' && isAdmin && (
+          <div>
+            <button
+              className="btn btn-primary"
+              onClick={() => setStaffForm({ name: '', email: '', password: '', permissions: [], _editing: false })}
+              style={{ marginBottom: '1.5rem' }}
+            >
+              <HiPlus /> Add Staff Member
+            </button>
+
+            {staffForm && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setStaffForm(null); }}>
+                <form className="admin-form" onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    if (staffForm._editing) {
+                      await api.put(`/staff/${staffForm._id}`, {
+                        name: staffForm.name,
+                        permissions: staffForm.permissions,
+                        password: staffForm.password || undefined,
+                      });
+                      toast.success('Staff updated');
+                    } else {
+                      await api.post('/staff', staffForm);
+                      toast.success('Staff account created');
+                    }
+                    setStaffForm(null);
+                    api.get('/staff').then((res) => setStaffList(res.data));
+                  } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed');
+                  }
+                }}>
+                  <h3>{staffForm._editing ? 'Edit Staff' : 'New Staff Member'}</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Name</label>
+                      <input value={staffForm.name} onChange={(e) => setStaffForm({ ...staffForm, name: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Email</label>
+                      <input type="email" value={staffForm.email} onChange={(e) => setStaffForm({ ...staffForm, email: e.target.value })} required={!staffForm._editing} disabled={staffForm._editing} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>{staffForm._editing ? 'New Password (leave empty to keep)' : 'Password'}</label>
+                    <input type="password" value={staffForm.password} onChange={(e) => setStaffForm({ ...staffForm, password: e.target.value })} required={!staffForm._editing} minLength={8} placeholder={staffForm._editing ? 'Leave empty to keep current' : 'Min 8 characters'} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ marginBottom: '0.75rem' }}>Permissions</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                      {availablePerms.map((perm) => (
+                        <label key={perm.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', padding: '0.6rem 0.75rem', border: '1px solid var(--border-light)', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: '0.85rem', background: staffForm.permissions.includes(perm.id) ? 'rgba(37,99,235,0.04)' : 'transparent', borderColor: staffForm.permissions.includes(perm.id) ? 'var(--copper)' : 'var(--border-light)' }}>
+                          <input
+                            type="checkbox"
+                            checked={staffForm.permissions.includes(perm.id)}
+                            onChange={(e) => {
+                              const perms = e.target.checked
+                                ? [...staffForm.permissions, perm.id]
+                                : staffForm.permissions.filter((p) => p !== perm.id);
+                              setStaffForm({ ...staffForm, permissions: perms });
+                            }}
+                            style={{ marginTop: '2px', accentColor: 'var(--copper)' }}
+                          />
+                          <div>
+                            <strong style={{ fontSize: '0.85rem' }}>{perm.label}</strong>
+                            <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-light)' }}>{perm.desc}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">{staffForm._editing ? 'Update' : 'Create'}</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setStaffForm(null)}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Permissions</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffList.map((s) => (
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 500 }}>{s.name}</td>
+                      <td>{s.email}</td>
+                      <td>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: s.role === 'admin' ? 'rgba(37,99,235,0.1)' : 'rgba(90,138,106,0.1)', color: s.role === 'admin' ? '#2563eb' : 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {s.role}
+                        </span>
+                      </td>
+                      <td style={{ maxWidth: 200 }}>
+                        {s.role === 'admin' ? (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>All access</span>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                            {(s.permissions || []).map((p) => (
+                              <span key={p} style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', borderRadius: '4px', background: 'var(--bg-warm)', color: 'var(--text-secondary)' }}>{p}</span>
+                            ))}
+                            {(!s.permissions || s.permissions.length === 0) && <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>None</span>}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        {s.role === 'staff' && (
+                          <>
+                            <button className="icon-btn" onClick={() => setStaffForm({ ...s, password: '', permissions: s.permissions || [], _editing: true, _id: s.id })}>
+                              <HiPencil />
+                            </button>
+                            <button className="icon-btn danger" onClick={async () => {
+                              if (!confirm(`Delete staff account "${s.name}"?`)) return;
+                              await api.delete(`/staff/${s.id}`);
+                              setStaffList(staffList.filter((x) => x.id !== s.id));
+                              toast.success('Deleted');
+                            }}>
+                              <HiTrash />
+                            </button>
+                          </>
+                        )}
+                        {s.role === 'admin' && <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

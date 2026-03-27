@@ -23,8 +23,13 @@ const User = sequelize.define('User', {
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM('customer', 'admin'),
+    type: DataTypes.ENUM('customer', 'admin', 'staff'),
     defaultValue: 'customer',
+  },
+  permissions: {
+    // Staff permissions: ["products","orders","coupons","reviews","customers","analytics","categories","settings"]
+    type: DataTypes.JSON,
+    defaultValue: null,
   },
   phone: {
     type: DataTypes.STRING,

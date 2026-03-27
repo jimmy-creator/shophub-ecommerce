@@ -23,11 +23,25 @@ export const protect = async (req, res, next) => {
 };
 
 export const admin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'staff')) {
     next();
   } else {
     res.status(403).json({ message: 'Admin access required' });
   }
+};
+
+// Check specific permission for staff users
+export const requirePermission = (...perms) => {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ message: 'Not authorized' });
+    if (req.user.role === 'admin') return next(); // Admin has all permissions
+    if (req.user.role === 'staff') {
+      const userPerms = req.user.permissions || [];
+      const hasPermission = perms.some((p) => userPerms.includes(p));
+      if (hasPermission) return next();
+    }
+    res.status(403).json({ message: 'You do not have permission for this action' });
+  };
 };
 
 // Sets req.user if token exists, but doesn't block if missing

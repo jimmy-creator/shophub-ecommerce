@@ -85,7 +85,7 @@ export default function Navbar() {
                 <div className="dropdown">
                   <Link to="/orders" onClick={() => setMenuOpen(false)}>My Orders</Link>
                   <Link to="/profile" onClick={() => setMenuOpen(false)}>Profile</Link>
-                  {user.role === 'admin' && <Link to="/admin" onClick={() => setMenuOpen(false)}>Admin Panel</Link>}
+                  {(user.role === 'admin' || user.role === 'staff') && <Link to="/admin" onClick={() => setMenuOpen(false)}>Admin Panel</Link>}
                   <button onClick={() => { logout(); setMenuOpen(false); }}>Logout</button>
                 </div>
               )}
