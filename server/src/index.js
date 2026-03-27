@@ -24,6 +24,7 @@ import categoryRoutes from './routes/categories.js';
 import bulkProductRoutes from './routes/bulkProducts.js';
 import cancellationRoutes from './routes/cancellation.js';
 import staffRoutes from './routes/staff.js';
+import googleAuthRoutes from './routes/googleAuth.js';
 import { sanitizeInput, preventInjection, forceHttps } from './middleware/security.js';
 
 dotenv.config();
@@ -93,6 +94,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/bulk-products', bulkProductRoutes);
 app.use('/api/orders', cancellationRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/auth', googleAuthRoutes);
 
 // Frontend is served by Nginx in production
 // In development, Vite dev server handles it

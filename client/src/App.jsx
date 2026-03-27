@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -37,8 +38,10 @@ function PageWrapper({ children }) {
   return <div key={pathname} className="page-transition">{children}</div>;
 }
 
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
 export default function App() {
-  return (
+  const app = (
     <BrowserRouter>
       <ScrollToTop />
       <AuthProvider>
@@ -81,4 +84,9 @@ export default function App() {
       </AuthProvider>
     </BrowserRouter>
   );
+
+  if (googleClientId) {
+    return <GoogleOAuthProvider clientId={googleClientId}>{app}</GoogleOAuthProvider>;
+  }
+  return app;
 }

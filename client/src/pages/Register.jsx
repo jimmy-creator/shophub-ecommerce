@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GoogleLoginButton from '../components/GoogleLoginButton';
 import toast from 'react-hot-toast';
 
 export default function Register() {
@@ -73,6 +74,7 @@ export default function Register() {
           </button>
         </form>
         <p className="auth-link">
+          <GoogleLoginButton />
           Already have an account? <Link to="/login">Login</Link>
         </p>
       </div>

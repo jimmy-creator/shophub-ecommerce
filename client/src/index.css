@@ -1054,6 +1054,24 @@ input, textarea, select { font-family: var(--font-body); }
 }
 .auth-link a:hover { color: var(--copper-dark); }
 
+/* Google Login */
+.google-login-wrapper { margin-top: 1.25rem; }
+.google-login-wrapper > div:last-child {
+  display: flex; justify-content: center;
+}
+.auth-divider {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border);
+}
+.auth-divider span {
+  font-size: 0.78rem; color: var(--text-light);
+  text-transform: uppercase; letter-spacing: 1px; font-weight: 500;
+}
+
 /* ===== FORMS ===== */
 .form-group { margin-bottom: 1.25rem; }
 .form-group label {
