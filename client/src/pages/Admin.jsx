@@ -405,6 +405,10 @@ export default function Admin() {
   const [adminCategories, setAdminCategories] = useState([]);
   const [catForm, setCatForm] = useState(null);
   const [catUploading, setCatUploading] = useState(false);
+  const [pincodes, setPincodes] = useState([]);
+  const [pincodeForm, setPincodeForm] = useState(null);
+  const [pincodeSearch, setPincodeSearch] = useState('');
+  const [bulkPincodes, setBulkPincodes] = useState('');
   const [staffList, setStaffList] = useState([]);
   const [staffForm, setStaffForm] = useState(null);
   const [availablePerms, setAvailablePerms] = useState([]);
@@ -447,6 +451,8 @@ export default function Admin() {
     } else if (tab === 'customers') {
       api.get(`/customers?search=${customerSearch}`).then((res) => setCustomers(res.data.customers));
       api.get('/customers/guests').then((res) => setGuestCustomers(res.data));
+    } else if (tab === 'pincodes') {
+      api.get(`/pincodes?search=${pincodeSearch}&limit=100`).then((res) => setPincodes(res.data.pincodes));
     } else if (tab === 'staff') {
       api.get('/staff').then((res) => setStaffList(res.data)).catch(() => {});
       api.get('/staff/permissions').then((res) => setAvailablePerms(res.data)).catch(() => {});
@@ -456,7 +462,7 @@ export default function Admin() {
         api.get('/products?limit=100').then((res) => setProducts(res.data.products));
       }
     }
-  }, [tab, chartPeriod, customerSearch]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -514,6 +520,7 @@ export default function Admin() {
           {hasAccess('customers') && <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>}
           {hasAccess('coupons') && <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>Coupons</button>}
           {hasAccess('reviews') && <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>Reviews</button>}
+          {hasAccess('settings') && <button className={tab === 'pincodes' ? 'active' : ''} onClick={() => setTab('pincodes')}>Pincodes</button>}
           {hasAccess('settings') && <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Theme</button>}
           {isAdmin && <button className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>Staff</button>}
         </div>
@@ -1578,6 +1585,163 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {tab === 'pincodes' && (
+          <div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <button className="btn btn-primary" onClick={() => setPincodeForm({ pincode: '', city: '', state: '', deliveryDays: 7, codAvailable: true, _editing: false })}>
+                <HiPlus /> Add Pincode
+              </button>
+              <button className="btn btn-secondary" onClick={() => setBulkPincodes(bulkPincodes ? '' : ' ')}>
+                {bulkPincodes !== '' ? 'Cancel Bulk' : 'Bulk Add'}
+              </button>
+            </div>
+
+            {/* Bulk Add */}
+            {bulkPincodes !== '' && (
+              <div style={{ marginBottom: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)', padding: '1.5rem' }}>
+                <h4 style={{ fontSize: '0.85rem', marginBottom: '0.75rem' }}>Bulk Add Pincodes</h4>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                  Enter pincodes separated by commas, spaces, or new lines.
+                </p>
+                <textarea
+                  value={bulkPincodes.trim()}
+                  onChange={(e) => setBulkPincodes(e.target.value)}
+                  rows={4}
+                  placeholder="673001, 673002, 673003..."
+                  style={{ width: '100%', padding: '0.7rem', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.88rem', fontFamily: 'monospace' }}
+                />
+                <button
+                  className="btn btn-primary"
+                  style={{ marginTop: '0.75rem' }}
+                  onClick={async () => {
+                    const pins = bulkPincodes.split(/[,\s\n]+/).map((p) => p.trim()).filter(Boolean);
+                    if (pins.length === 0) return;
+                    try {
+                      const { data } = await api.post('/pincodes/bulk', { pincodes: pins });
+                      toast.success(data.message);
+                      setBulkPincodes('');
+                      api.get(`/pincodes?search=${pincodeSearch}&limit=100`).then((res) => setPincodes(res.data.pincodes));
+                    } catch (error) {
+                      toast.error(error.response?.data?.message || 'Bulk add failed');
+                    }
+                  }}
+                >
+                  Add Pincodes
+                </button>
+              </div>
+            )}
+
+            {/* Single Add/Edit Form */}
+            {pincodeForm && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPincodeForm(null); }}>
+                <form className="admin-form" style={{ maxWidth: '500px' }} onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    if (pincodeForm._editing) {
+                      await api.put(`/pincodes/${pincodeForm._id}`, pincodeForm);
+                      toast.success('Pincode updated');
+                    } else {
+                      await api.post('/pincodes', pincodeForm);
+                      toast.success('Pincode added');
+                    }
+                    setPincodeForm(null);
+                    api.get(`/pincodes?search=${pincodeSearch}&limit=100`).then((res) => setPincodes(res.data.pincodes));
+                  } catch (error) {
+                    toast.error(error.response?.data?.message || 'Failed');
+                  }
+                }}>
+                  <h3>{pincodeForm._editing ? 'Edit Pincode' : 'Add Pincode'}</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Pincode</label>
+                      <input value={pincodeForm.pincode} onChange={(e) => setPincodeForm({ ...pincodeForm, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) })} required disabled={pincodeForm._editing} />
+                    </div>
+                    <div className="form-group">
+                      <label>Delivery Days</label>
+                      <input type="number" value={pincodeForm.deliveryDays} onChange={(e) => setPincodeForm({ ...pincodeForm, deliveryDays: parseInt(e.target.value) || 7 })} />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>City</label>
+                      <input value={pincodeForm.city} onChange={(e) => setPincodeForm({ ...pincodeForm, city: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label>State</label>
+                      <input value={pincodeForm.state} onChange={(e) => setPincodeForm({ ...pincodeForm, state: e.target.value })} />
+                    </div>
+                  </div>
+                  <label className="checkbox-label" style={{ paddingTop: '0.5rem' }}>
+                    <input type="checkbox" checked={pincodeForm.codAvailable} onChange={(e) => setPincodeForm({ ...pincodeForm, codAvailable: e.target.checked })} />
+                    Cash on Delivery Available
+                  </label>
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">{pincodeForm._editing ? 'Update' : 'Add'}</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setPincodeForm(null)}>Cancel</button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search pincode, city, or state..."
+              value={pincodeSearch}
+              onChange={(e) => setPincodeSearch(e.target.value)}
+              style={{ width: '100%', maxWidth: '350px', padding: '0.55rem 1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.85rem', marginBottom: '1rem', background: 'var(--bg-card)' }}
+            />
+
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Pincode</th>
+                    <th>City</th>
+                    <th>State</th>
+                    <th>Delivery Days</th>
+                    <th>COD</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pincodes.map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ fontWeight: 600, fontFamily: 'monospace' }}>{p.pincode}</td>
+                      <td>{p.city || '-'}</td>
+                      <td>{p.state || '-'}</td>
+                      <td>{p.deliveryDays} days</td>
+                      <td>{p.codAvailable ? '✓' : '✕'}</td>
+                      <td>
+                        <button className="icon-btn" onClick={() => setPincodeForm({ ...p, _editing: true, _id: p.id })}>
+                          <HiPencil />
+                        </button>
+                        <button className="icon-btn danger" onClick={async () => {
+                          if (!confirm('Delete this pincode?')) return;
+                          await api.delete(`/pincodes/${p.id}`);
+                          setPincodes(pincodes.filter((x) => x.id !== p.id));
+                          toast.success('Deleted');
+                        }}>
+                          <HiTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {pincodes.length === 0 && (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                      No pincodes added. All deliveries are currently allowed.
+                    </td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-light)', marginTop: '1rem' }}>
+              Note: If no pincodes are added, delivery is allowed to all pincodes. Add pincodes to restrict delivery to specific areas only.
+            </p>
           </div>
         )}
 

@@ -7,6 +7,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import ProductImage from '../components/ProductImage';
 import ProductCard from '../components/ProductCard';
+import PincodeChecker from '../components/PincodeChecker';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { showToast } from '../utils/toast';
@@ -223,6 +224,8 @@ export default function ProductDetail() {
                 <span className="out-of-stock">Out of Stock</span>
               )}
             </div>
+
+            <PincodeChecker />
 
             {displayStock > 0 && (
               <div className="add-to-cart-section">

@@ -907,7 +907,45 @@ input, textarea, select { font-family: var(--font-body); }
 .variant-sku { font-size: 0.78rem; color: var(--text-light); margin-top: 0.5rem; }
 .cart-item-variant { font-size: 0.78rem; color: var(--copper); margin-top: 2px; }
 
-.stock-status { margin: 1rem 0; font-size: 0.85rem; }
+.stock-status { margin: 1rem 0 0.75rem; font-size: 0.85rem; }
+
+/* Pincode Checker */
+.pincode-checker { margin-bottom: 1.25rem; }
+.pincode-input-row {
+  display: flex; align-items: center;
+  border: 1.5px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; transition: border-color 0.3s var(--ease);
+}
+.pincode-input-row:focus-within { border-color: var(--copper); }
+.pincode-icon { margin-left: 0.75rem; color: var(--text-light); flex-shrink: 0; }
+.pincode-input-row input {
+  flex: 1; border: none; outline: none; padding: 0.6rem 0.75rem;
+  font-size: 0.88rem; background: transparent; color: var(--text);
+  font-family: var(--font-body);
+}
+.pincode-input-row input::placeholder { color: var(--text-light); }
+.pincode-input-row button {
+  padding: 0.6rem 1.1rem; border: none;
+  background: var(--bg-dark); color: var(--text-inverse);
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  transition: background 0.2s var(--ease);
+}
+.pincode-input-row button:hover { background: var(--copper); }
+.pincode-input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+.pincode-result {
+  margin-top: 0.5rem; padding: 0.6rem 0.75rem;
+  border-radius: var(--radius); font-size: 0.82rem;
+}
+.pincode-result.available { background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); }
+.pincode-result.unavailable { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); }
+.pincode-result-row {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.15rem 0;
+}
+.pincode-result.available .pincode-result-row { color: var(--success); }
+.pincode-result.unavailable .pincode-result-row { color: var(--danger); }
+.pincode-result-row.sub { color: var(--text-secondary); font-size: 0.78rem; }
 .in-stock { color: var(--success); font-weight: 600; }
 .out-of-stock { color: var(--danger); font-weight: 600; }
 .add-to-cart-section {
@@ -2231,13 +2269,19 @@ input, textarea, select { font-family: var(--font-body); }
   font-size: 2.2rem; font-weight: 500;
   margin-bottom: 2rem; letter-spacing: -0.5px;
 }
-.admin-tabs { display: flex; gap: 0.25rem; margin-bottom: 2.5rem; }
+.admin-tabs {
+  display: flex; gap: 0.25rem; margin-bottom: 2rem;
+  overflow-x: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.25rem;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
 .admin-tabs button {
-  padding: 0.7rem 1.75rem; border: 1.5px solid var(--border);
+  padding: 0.5rem 1.1rem; border: 1.5px solid var(--border);
   border-radius: var(--radius); background: var(--bg-card);
-  cursor: pointer; font-weight: 500; font-size: 0.82rem;
+  cursor: pointer; font-weight: 500; font-size: 0.72rem;
   letter-spacing: 0.8px; text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--text-secondary); white-space: nowrap;
   transition: all 0.3s var(--ease);
 }
 .admin-tabs button:hover { border-color: var(--copper-light); color: var(--text); }
