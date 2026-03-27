@@ -26,6 +26,8 @@ import cancellationRoutes from './routes/cancellation.js';
 import staffRoutes from './routes/staff.js';
 import googleAuthRoutes from './routes/googleAuth.js';
 import pincodeRoutes from './routes/pincodes.js';
+import abandonedCartRoutes from './routes/abandonedCart.js';
+import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { sanitizeInput, preventInjection, forceHttps } from './middleware/security.js';
 
 dotenv.config();
@@ -97,6 +99,7 @@ app.use('/api/orders', cancellationRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/auth', googleAuthRoutes);
 app.use('/api/pincodes', pincodeRoutes);
+app.use('/api/abandoned-cart', abandonedCartRoutes);
 
 // Frontend is served by Nginx in production
 // In development, Vite dev server handles it
@@ -126,6 +129,7 @@ const start = async () => {
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      startAbandonedCartJob();
     });
   } catch (error) {
     console.error('Failed to start server:', error);

@@ -290,4 +290,62 @@ export async function sendPasswordResetEmail(email, resetUrl) {
   return sendEmail(email, `Reset Your Password - ${storeName}`, html);
 }
 
-export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation, sendPasswordResetEmail };
+// ============================================
+// ABANDONED CART RECOVERY
+// ============================================
+export async function sendAbandonedCartEmail(email, items, cartTotal, recoveryUrl) {
+  const itemsHtml = items.map((item) => `
+    <tr>
+      <td style="padding:10px 16px;border-bottom:1px solid #e8e0d8;font-size:14px;color:#2c2420;">
+        ${item.name}${item.quantity > 1 ? ` x ${item.quantity}` : ''}
+      </td>
+      <td style="padding:10px 16px;border-bottom:1px solid #e8e0d8;font-size:14px;color:#2c2420;text-align:right;">
+        Rs.${(item.price * item.quantity).toFixed(2)}
+      </td>
+    </tr>
+  `).join('');
+
+  const html = baseTemplate(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;background:rgba(196,120,74,0.12);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+        <span style="font-size:28px;">🛒</span>
+      </div>
+      <h2 style="margin:0 0 4px;font-size:22px;color:#2c2420;">You Left Something Behind!</h2>
+      <p style="margin:0;font-size:14px;color:#8a7e76;">Your shopping cart is waiting for you</p>
+    </div>
+
+    <p style="font-size:14px;color:#2c2420;line-height:1.6;margin-bottom:20px;">
+      Looks like you left some great items in your cart. Don't worry — we've saved them for you!
+    </p>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+      <thead>
+        <tr style="background:#faf8f5;">
+          <th style="padding:10px 16px;text-align:left;font-size:11px;color:#8a7e76;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e8e0d8;">Item</th>
+          <th style="padding:10px 16px;text-align:right;font-size:11px;color:#8a7e76;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e8e0d8;">Price</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${itemsHtml}
+      </tbody>
+    </table>
+
+    <div style="text-align:right;margin-bottom:24px;">
+      <span style="font-size:16px;font-weight:700;color:#2c2420;">Total: Rs.${parseFloat(cartTotal).toFixed(2)}</span>
+    </div>
+
+    <div style="text-align:center;margin-bottom:24px;">
+      <a href="${recoveryUrl}" style="display:inline-block;padding:14px 40px;background:#1a1614;color:#ffffff;text-decoration:none;border-radius:4px;font-size:14px;font-weight:600;letter-spacing:0.5px;">
+        Complete Your Purchase
+      </a>
+    </div>
+
+    <p style="font-size:12px;color:#b5aaa2;text-align:center;line-height:1.6;">
+      If you have any questions, reply to this email. We're happy to help!
+    </p>
+  `);
+
+  return sendEmail(email, `You left items in your cart - ${storeName}`, html);
+}
+
+export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation, sendPasswordResetEmail, sendAbandonedCartEmail };

@@ -409,6 +409,9 @@ export default function Admin() {
   const [pincodeForm, setPincodeForm] = useState(null);
   const [pincodeSearch, setPincodeSearch] = useState('');
   const [bulkPincodes, setBulkPincodes] = useState('');
+  const [abandonedCarts, setAbandonedCarts] = useState([]);
+  const [abandonedStats, setAbandonedStats] = useState({});
+  const [abandonedFilter, setAbandonedFilter] = useState('');
   const [staffList, setStaffList] = useState([]);
   const [staffForm, setStaffForm] = useState(null);
   const [availablePerms, setAvailablePerms] = useState([]);
@@ -451,6 +454,11 @@ export default function Admin() {
     } else if (tab === 'customers') {
       api.get(`/customers?search=${customerSearch}`).then((res) => setCustomers(res.data.customers));
       api.get('/customers/guests').then((res) => setGuestCustomers(res.data));
+    } else if (tab === 'abandoned') {
+      api.get(`/abandoned-cart?status=${abandonedFilter}`).then((res) => {
+        setAbandonedCarts(res.data.carts);
+        setAbandonedStats(res.data.stats);
+      });
     } else if (tab === 'pincodes') {
       api.get(`/pincodes?search=${pincodeSearch}&limit=100`).then((res) => setPincodes(res.data.pincodes));
     } else if (tab === 'staff') {
@@ -462,7 +470,7 @@ export default function Admin() {
         api.get('/products?limit=100').then((res) => setProducts(res.data.products));
       }
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -520,6 +528,7 @@ export default function Admin() {
           {hasAccess('customers') && <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>}
           {hasAccess('coupons') && <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>Coupons</button>}
           {hasAccess('reviews') && <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>Reviews</button>}
+          {hasAccess('orders') && <button className={tab === 'abandoned' ? 'active' : ''} onClick={() => setTab('abandoned')}>Abandoned</button>}
           {hasAccess('settings') && <button className={tab === 'pincodes' ? 'active' : ''} onClick={() => setTab('pincodes')}>Pincodes</button>}
           {hasAccess('settings') && <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Theme</button>}
           {isAdmin && <button className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>Staff</button>}
@@ -1581,6 +1590,101 @@ export default function Admin() {
                   ))}
                   {reviews.length === 0 && (
                     <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No reviews yet</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {tab === 'abandoned' && (
+          <div>
+            {/* Stats */}
+            <div className="dash-cards" style={{ marginBottom: '1.5rem' }}>
+              <div className="dash-card">
+                <div className="dash-card-label">Total</div>
+                <div className="dash-card-value">{abandonedStats.total || 0}</div>
+              </div>
+              <div className="dash-card">
+                <div className="dash-card-label">Pending</div>
+                <div className="dash-card-value">{abandonedStats.pending || 0}</div>
+              </div>
+              <div className="dash-card">
+                <div className="dash-card-label">Email Sent</div>
+                <div className="dash-card-value">{abandonedStats.sent || 0}</div>
+              </div>
+              <div className="dash-card">
+                <div className="dash-card-label">Recovered</div>
+                <div className="dash-card-value" style={{ color: 'var(--success)' }}>{abandonedStats.recovered || 0}</div>
+              </div>
+            </div>
+
+            {/* Filter */}
+            <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden', width: 'fit-content' }}>
+              {[
+                { val: '', label: 'All' },
+                { val: 'pending', label: 'Pending' },
+                { val: 'sent', label: 'Sent' },
+                { val: 'recovered', label: 'Recovered' },
+              ].map((f) => (
+                <button key={f.val}
+                  onClick={() => setAbandonedFilter(f.val)}
+                  style={{ padding: '0.45rem 1rem', border: 'none', borderRight: '1px solid var(--border)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', background: abandonedFilter === f.val ? 'var(--bg-dark)' : 'var(--bg-card)', color: abandonedFilter === f.val ? 'var(--text-inverse)' : 'var(--text-secondary)' }}
+                >{f.label}</button>
+              ))}
+            </div>
+
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {abandonedCarts.map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ fontWeight: 500 }}>{c.email}</td>
+                      <td style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.items.map((i) => i.name).join(', ')}
+                      </td>
+                      <td>₹{parseFloat(c.cartTotal).toFixed(2)}</td>
+                      <td style={{ fontSize: '0.82rem' }}>{new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td>
+                        {c.recovered ? (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: 'rgba(16,185,129,0.1)', color: 'var(--success)' }}>Recovered</span>
+                        ) : c.emailSent ? (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>Sent</span>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>Pending</span>
+                        )}
+                      </td>
+                      <td>
+                        {!c.recovered && !c.emailSent && (
+                          <button className="icon-btn" style={{ fontSize: '0.65rem', fontWeight: 600 }}
+                            onClick={async () => {
+                              await api.post(`/abandoned-cart/${c.id}/send`);
+                              toast.success('Recovery email sent');
+                              api.get(`/abandoned-cart?status=${abandonedFilter}`).then((res) => { setAbandonedCarts(res.data.carts); setAbandonedStats(res.data.stats); });
+                            }}>Send</button>
+                        )}
+                        <button className="icon-btn danger" onClick={async () => {
+                          await api.delete(`/abandoned-cart/${c.id}`);
+                          setAbandonedCarts(abandonedCarts.filter((x) => x.id !== c.id));
+                          toast.success('Deleted');
+                        }}>
+                          <HiTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {abandonedCarts.length === 0 && (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No abandoned carts</td></tr>
                   )}
                 </tbody>
               </table>

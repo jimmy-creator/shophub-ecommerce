@@ -61,6 +61,18 @@ export default function Checkout() {
     paymentMethod: 'cod',
   });
 
+  // Save abandoned cart when checkout page loads
+  useEffect(() => {
+    const email = user?.email || form.email;
+    if (email && cart.length > 0) {
+      api.post('/abandoned-cart/save', {
+        email,
+        items: cart.map((item) => ({ name: item.name, price: parseFloat(item.price), quantity: item.quantity })),
+        cartTotal,
+      }).catch(() => {});
+    }
+  }, [cart, user]);
+
   useEffect(() => {
     api.get('/payment/gateways')
       .then((res) => {
@@ -157,10 +169,12 @@ export default function Checkout() {
     if (isGuest) {
       orderData.guestEmail = form.email;
       const { data } = await api.post('/orders/guest', orderData);
+      api.post('/abandoned-cart/recover', { email: form.email }).catch(() => {});
       navigate(successUrl(data.orderNumber));
       clearCart();
     } else {
       const { data } = await api.post('/orders', orderData);
+      api.post('/abandoned-cart/recover', { email: user.email }).catch(() => {});
       navigate(successUrl(data.orderNumber));
       clearCart();
     }
