@@ -1,8 +1,10 @@
 import { Truck, Zap, Package, MapPin, Clock, HelpCircle } from 'lucide-react';
+import SEO from '../components/SEO';
 
 export default function ShippingInfo() {
   return (
     <div className="static-page">
+      <SEO title="Shipping Information" description="Free shipping on orders over ₹500. Standard and express delivery across India." />
       <div className="container">
         <div className="static-hero">
           <h1>Shipping Information</h1>

@@ -6,6 +6,7 @@ import api from '../api/axios';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import ProductCard from '../components/ProductCard';
 import { SkeletonGrid } from '../components/Skeleton';
+import SEO from '../components/SEO';
 
 const fallbackIcons = {
   Electronics: <Monitor size={24} />,
@@ -35,6 +36,7 @@ export default function Home() {
 
   return (
     <div className="home">
+      <SEO title="Home" description="Shop the latest products at great prices. Free shipping on orders over ₹500. Electronics, clothing, accessories and more." />
       {/* Marketplace mobile search bar above hero */}
       <div className="home-search-bar">
         <div className="container">

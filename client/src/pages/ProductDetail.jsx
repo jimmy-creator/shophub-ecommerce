@@ -8,6 +8,7 @@ import { useRecentlyViewed } from '../context/RecentlyViewedContext';
 import ProductImage from '../components/ProductImage';
 import ProductCard from '../components/ProductCard';
 import PincodeChecker from '../components/PincodeChecker';
+import SEO from '../components/SEO';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
 import { showToast } from '../utils/toast';
@@ -109,6 +110,13 @@ export default function ProductDetail() {
 
   return (
     <div className="product-detail">
+      <SEO
+        title={product.name}
+        description={product.description?.slice(0, 160) || `Buy ${product.name} at ₹${parseFloat(displayPrice).toFixed(2)}`}
+        image={product.images?.[0] ? `${window.location.origin}${product.images[0]}` : undefined}
+        type="product"
+        product={{ price: displayPrice, stock: displayStock }}
+      />
       <div className="container">
         <Link to="/products" className="back-link">
           <HiArrowLeft /> Back to Collection

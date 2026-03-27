@@ -5,6 +5,7 @@ import { Grid2x2, Grid3x3, LayoutList } from 'lucide-react';
 import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
 import { SkeletonGrid } from '../components/Skeleton';
+import SEO from '../components/SEO';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -56,6 +57,10 @@ export default function Products() {
 
   return (
     <div className="products-page">
+      <SEO
+        title={search ? `Search: ${search}` : category || 'All Products'}
+        description={`Browse ${category || 'all'} products. Best deals on electronics, clothing, accessories and more.`}
+      />
       <div className="container">
         <div className="products-header">
           <h1>{search ? `Search: "${search}"` : category || 'All Products'}</h1>

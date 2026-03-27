@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -42,6 +43,7 @@ const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function App() {
   const app = (
+    <HelmetProvider>
     <BrowserRouter>
       <ScrollToTop />
       <AuthProvider>
@@ -83,6 +85,7 @@ export default function App() {
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>
+    </HelmetProvider>
   );
 
   if (googleClientId) {

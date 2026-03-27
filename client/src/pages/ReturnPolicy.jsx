@@ -1,8 +1,10 @@
 import { RotateCcw, ShieldCheck, Clock, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import SEO from '../components/SEO';
 
 export default function ReturnPolicy() {
   return (
     <div className="static-page">
+      <SEO title="Return & Refund Policy" description="Easy 30-day returns. Full refund or exchange on all products. Quick refund processing." />
       <div className="container">
         <div className="static-hero">
           <h1>Return & Refund Policy</h1>

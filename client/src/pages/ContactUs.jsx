@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Clock, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SEO from '../components/SEO';
 
 export default function ContactUs() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -18,6 +19,7 @@ export default function ContactUs() {
 
   return (
     <div className="static-page">
+      <SEO title="Contact Us" description="Get in touch with ShopHub. We're here to help with orders, products, and more." />
       <div className="container">
         <div className="static-hero">
           <h1>Contact Us</h1>
