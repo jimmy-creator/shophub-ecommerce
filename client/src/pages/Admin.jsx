@@ -412,6 +412,7 @@ export default function Admin() {
   const [abandonedCarts, setAbandonedCarts] = useState([]);
   const [abandonedStats, setAbandonedStats] = useState({});
   const [abandonedFilter, setAbandonedFilter] = useState('');
+  const [lowStockProducts, setLowStockProducts] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [staffForm, setStaffForm] = useState(null);
   const [availablePerms, setAvailablePerms] = useState([]);
@@ -435,13 +436,15 @@ export default function Admin() {
         api.get('/analytics/order-status'),
         api.get('/analytics/recent-orders'),
         api.get('/analytics/payment-methods'),
-      ]).then(([ov, rc, tp, os, ro, pm]) => {
+        api.get('/analytics/low-stock'),
+      ]).then(([ov, rc, tp, os, ro, pm, ls]) => {
         setDashboard(ov.data);
         setRevenueChart(rc.data);
         setTopProducts(tp.data);
         setOrderStatus(os.data);
         setRecentOrders(ro.data);
         setPaymentMethods(pm.data);
+        setLowStockProducts(ls.data);
       }).catch(console.error);
     } else if (tab === 'products') {
       api.get('/products?limit=100').then((res) => setProducts(res.data.products));
@@ -677,20 +680,33 @@ export default function Admin() {
             </div>
 
             {/* Inventory Alerts */}
-            {(dashboard.products.lowStock > 0 || dashboard.products.outOfStock > 0) && (
-              <div className="dash-panel dash-alerts">
-                <h3>Inventory Alerts</h3>
-                <div className="dash-alert-items">
+            {lowStockProducts.length > 0 && (
+              <div className="dash-panel">
+                <h3>Inventory Alerts ({lowStockProducts.length})</h3>
+                <div className="dash-alert-items" style={{ marginBottom: '1rem' }}>
                   {dashboard.products.outOfStock > 0 && (
                     <div className="dash-alert danger">
-                      <strong>{dashboard.products.outOfStock}</strong> product{dashboard.products.outOfStock > 1 ? 's' : ''} out of stock
+                      <strong>{dashboard.products.outOfStock}</strong> out of stock
                     </div>
                   )}
                   {dashboard.products.lowStock > 0 && (
                     <div className="dash-alert warning">
-                      <strong>{dashboard.products.lowStock}</strong> product{dashboard.products.lowStock > 1 ? 's' : ''} with low stock (≤5)
+                      <strong>{dashboard.products.lowStock}</strong> low stock (≤5)
                     </div>
                   )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {lowStockProducts.map((p) => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: p.stock === 0 ? 'rgba(239,68,68,0.04)' : 'rgba(245,158,11,0.04)', borderRadius: 'var(--radius)', border: `1px solid ${p.stock === 0 ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)'}` }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-light)' }}>{p.category}</span>
+                      </div>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: p.stock === 0 ? 'var(--danger)' : '#f59e0b', minWidth: '60px', textAlign: 'right' }}>
+                        {p.stock === 0 ? 'Out' : `${p.stock} left`}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

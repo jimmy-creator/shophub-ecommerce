@@ -28,6 +28,7 @@ import googleAuthRoutes from './routes/googleAuth.js';
 import pincodeRoutes from './routes/pincodes.js';
 import abandonedCartRoutes from './routes/abandonedCart.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
+import { startLowStockJob } from './services/lowStockJob.js';
 import sitemapRoutes from './routes/sitemap.js';
 import { sanitizeInput, preventInjection, forceHttps } from './middleware/security.js';
 
@@ -132,6 +133,7 @@ const start = async () => {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       startAbandonedCartJob();
+      startLowStockJob();
     });
   } catch (error) {
     console.error('Failed to start server:', error);

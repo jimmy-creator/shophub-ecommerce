@@ -239,4 +239,22 @@ router.get('/payment-methods', protect, admin, async (req, res) => {
   }
 });
 
+// Low stock products list
+router.get('/low-stock', protect, admin, async (req, res) => {
+  try {
+    const threshold = parseInt(process.env.LOW_STOCK_THRESHOLD || '5');
+    const products = await Product.findAll({
+      where: {
+        active: true,
+        stock: { [Op.lte]: threshold },
+      },
+      attributes: ['id', 'name', 'slug', 'stock', 'category', 'images'],
+      order: [['stock', 'ASC']],
+    });
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
