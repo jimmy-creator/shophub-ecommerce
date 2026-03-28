@@ -1,9 +1,16 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { OAuth2Client } from 'google-auth-library';
 import { User } from '../models/index.js';
 import { generateToken } from '../middleware/auth.js';
 
 const router = Router();
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Too many attempts. Try again later.' },
+});
 
 const cookieOptions = {
   httpOnly: true,
@@ -12,7 +19,7 @@ const cookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
-router.post('/google', async (req, res) => {
+router.post('/google', authLimiter, async (req, res) => {
   try {
     const { credential } = req.body;
 
@@ -33,10 +40,14 @@ router.post('/google', async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { email, name, picture, sub: googleId } = payload;
+    const { email, name, picture, sub: googleId, email_verified } = payload;
 
     if (!email) {
       return res.status(400).json({ message: 'Email not found in Google account' });
+    }
+
+    if (!email_verified) {
+      return res.status(400).json({ message: 'Google email not verified' });
     }
 
     // Find or create user
@@ -46,7 +57,7 @@ router.post('/google', async (req, res) => {
       // Existing user — log them in
       const token = generateToken(user.id);
       res.cookie('token', token, cookieOptions);
-      return res.json({ user, token });
+      return res.json({ user });
     }
 
     // New user — create account
@@ -63,7 +74,7 @@ router.post('/google', async (req, res) => {
     const token = generateToken(user.id);
     res.cookie('token', token, cookieOptions);
 
-    res.status(201).json({ user, token });
+    res.status(201).json({ user });
   } catch (error) {
     console.error('Google auth error:', error.message);
     res.status(401).json({ message: 'Google authentication failed' });

@@ -17,8 +17,7 @@ export default function GoogleLoginButton() {
         credential: credentialResponse.credential,
       });
 
-      // Set user in auth context
-      localStorage.setItem('token', data.token);
+      // Cookie is set by server — just store user info and redirect
       localStorage.setItem('user', JSON.stringify(data.user));
       window.location.href = '/';
     } catch (error) {

@@ -12,10 +12,22 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(false);
 
+  // Verify session on mount via cookie (no token in localStorage)
+  useEffect(() => {
+    api.get('/auth/profile')
+      .then((res) => {
+        setUser(res.data);
+        localStorage.setItem('user', JSON.stringify(res.data));
+      })
+      .catch(() => {
+        setUser(null);
+        localStorage.removeItem('user');
+      });
+  }, []);
+
   const login = async (email, password) => {
     const { data } = await api.post('/auth/login', { email, password });
     setUser(data.user);
-    localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     return data;
   };
@@ -23,7 +35,6 @@ export function AuthProvider({ children }) {
   const register = async (name, email, password) => {
     const { data } = await api.post('/auth/register', { name, email, password });
     setUser(data.user);
-    localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     return data;
   };
@@ -31,7 +42,6 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     await api.post('/auth/logout');
     setUser(null);
-    localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
 

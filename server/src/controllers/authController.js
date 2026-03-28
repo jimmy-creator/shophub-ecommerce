@@ -33,7 +33,7 @@ export const register = async (req, res) => {
 
     const existingUser = await User.findOne({ where: { email: email.toLowerCase().trim() } });
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already registered' });
+      return res.status(400).json({ message: 'Registration failed. Please check your input.' });
     }
 
     // Force role to 'customer' — never trust client input for role
@@ -47,8 +47,7 @@ export const register = async (req, res) => {
     const token = generateToken(user.id);
     res.cookie('token', token, cookieOptions);
 
-    // Send token in body for localStorage (needed for API calls from frontend)
-    res.status(201).json({ user, token });
+    res.status(201).json({ user });
   } catch (error) {
     res.status(500).json({ message: 'Registration failed' });
   }
@@ -70,7 +69,7 @@ export const login = async (req, res) => {
     const token = generateToken(user.id);
     res.cookie('token', token, cookieOptions);
 
-    res.json({ user, token });
+    res.json({ user });
   } catch (error) {
     res.status(500).json({ message: 'Login failed' });
   }
@@ -82,6 +81,7 @@ export const logout = (req, res) => {
 };
 
 export const getProfile = async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   res.json(req.user);
 };
 

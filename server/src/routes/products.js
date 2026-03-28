@@ -7,7 +7,7 @@ import {
   updateProduct,
   deleteProduct,
 } from '../controllers/productController.js';
-import { protect, admin } from '../middleware/auth.js';
+import { protect, admin, requirePermission } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -71,8 +71,8 @@ router.get('/:slug/related', async (req, res) => {
 });
 
 router.get('/:slug', getProduct);
-router.post('/', protect, admin, createProduct);
-router.put('/:id', protect, admin, updateProduct);
-router.delete('/:id', protect, admin, deleteProduct);
+router.post('/', protect, admin, requirePermission('products'), createProduct);
+router.put('/:id', protect, admin, requirePermission('products'), updateProduct);
+router.delete('/:id', protect, admin, requirePermission('products'), deleteProduct);
 
 export default router;

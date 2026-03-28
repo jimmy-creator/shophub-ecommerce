@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Setting } from '../models/index.js';
-import { protect, admin } from '../middleware/auth.js';
+import { protect, admin, requirePermission } from '../middleware/auth.js';
 
 const router = Router();
 

@@ -2,24 +2,18 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
-  withCredentials: true,
+  withCredentials: true, // Sends httpOnly cookie automatically
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
+// No Bearer token — authentication is via httpOnly cookie only
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
+      if (window.location.pathname !== '/login' &&
+          window.location.pathname !== '/register' &&
+          window.location.pathname !== '/forgot-password') {
         window.location.href = '/login';
       }
     }

@@ -8,7 +8,7 @@ import {
   getAllOrders,
   updateOrderStatus,
 } from '../controllers/orderController.js';
-import { protect, admin, optionalAuth } from '../middleware/auth.js';
+import { protect, admin, requirePermission, optionalAuth } from '../middleware/auth.js';
 import { Order } from '../models/index.js';
 import { generateInvoice } from '../services/invoiceService.js';
 
@@ -26,11 +26,13 @@ router.get('/:id/invoice', optionalAuth, async (req, res) => {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    // Auth check: must be order owner, guest with matching email, or admin
+    // Auth check: must be order owner, admin, or guest with valid token
     const isOwner = req.user && order.userId === req.user.id;
-    const isAdmin = req.user && req.user.role === 'admin';
+    const isAdmin = req.user && (req.user.role === 'admin' || req.user.role === 'staff');
+    // Guest access requires both email AND orderNumber match (not just email)
     const isGuest = !req.user && order.guestEmail && req.query.email &&
-      order.guestEmail === req.query.email.toLowerCase().trim();
+      order.guestEmail === req.query.email.toLowerCase().trim() &&
+      req.query.orderNumber === order.orderNumber;
 
     if (!isOwner && !isAdmin && !isGuest) {
       return res.status(403).json({ message: 'Not authorized' });

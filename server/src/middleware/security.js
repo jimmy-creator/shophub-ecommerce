@@ -3,7 +3,9 @@ function sanitizeValue(value) {
   if (typeof value === 'string') {
     return value
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+      .replace(/>/g, '&gt;')
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+\s*=/gi, '');
   }
   if (Array.isArray(value)) {
     return value.map(sanitizeValue);

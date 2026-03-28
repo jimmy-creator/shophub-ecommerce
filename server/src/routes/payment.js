@@ -219,6 +219,8 @@ router.post('/verify', optionalAuth, async (req, res) => {
     const where = { orderNumber };
     if (req.user) {
       where.userId = req.user.id;
+    } else if (req.body.guestEmail) {
+      where.guestEmail = req.body.guestEmail.toLowerCase().trim();
     }
     const order = await Order.findOne({ where });
     if (!order) {
@@ -226,7 +228,8 @@ router.post('/verify', optionalAuth, async (req, res) => {
     }
 
     if (order.paymentStatus === 'paid') {
-      return res.json({ verified: true, order });
+      // Don't leak full order data — return minimal info
+      return res.json({ verified: true, status: 'paid' });
     }
 
     const paymentGateway = getPaymentGateway(gateway);

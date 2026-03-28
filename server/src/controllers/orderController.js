@@ -107,9 +107,18 @@ async function applyCoupon(couponCode, subtotal, userId) {
     throw new Error(`Minimum order ₹${parseFloat(coupon.minOrderAmount).toFixed(2)} required`);
   }
 
-  if (userId && coupon.perUserLimit) {
-    const used = await Order.count({ where: { userId, couponCode: coupon.code } });
-    if (used >= coupon.perUserLimit) throw new Error('You have already used this coupon');
+  if (coupon.perUserLimit) {
+    if (userId) {
+      const used = await Order.count({ where: { userId, couponCode: coupon.code } });
+      if (used >= coupon.perUserLimit) throw new Error('You have already used this coupon');
+    }
+    // Also check guest email usage if provided
+    const guestEmail = arguments[3]; // passed from createGuestOrder
+    if (!userId && guestEmail) {
+      const { Op } = await import('sequelize');
+      const guestUsed = await Order.count({ where: { guestEmail, couponCode: coupon.code } });
+      if (guestUsed >= coupon.perUserLimit) throw new Error('This coupon has already been used');
+    }
   }
 
   let discount = 0;
@@ -188,7 +197,7 @@ export const createGuestOrder = async (req, res) => {
     }
 
     const { orderItems, totalAmount, products } = await buildOrderItems(items);
-    const { discount, code } = await applyCoupon(couponCode, totalAmount, null);
+    const { discount, code } = await applyCoupon(couponCode, totalAmount, null, guestEmail);
     const afterDiscount = Math.round((totalAmount - discount) * 100) / 100;
 
     const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingAddress?.state));

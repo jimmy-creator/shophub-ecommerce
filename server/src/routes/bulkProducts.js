@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Product } from '../models/index.js';
-import { protect, admin } from '../middleware/auth.js';
+import { protect, admin, requirePermission } from '../middleware/auth.js';
 import multer from 'multer';
 import csvParser from 'csv-parser';
 import { createObjectCsvStringifier } from 'csv-writer';

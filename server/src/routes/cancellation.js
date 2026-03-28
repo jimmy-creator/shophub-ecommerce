@@ -11,10 +11,11 @@ router.post('/:id/cancel', optionalAuth, async (req, res) => {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    // Auth check
+    // Auth check — guest must provide both email AND orderNumber
     const isOwner = req.user && order.userId === req.user.id;
     const isGuest = !req.user && order.guestEmail && req.body.email &&
-      order.guestEmail === req.body.email.toLowerCase().trim();
+      order.guestEmail === req.body.email.toLowerCase().trim() &&
+      req.body.orderNumber === order.orderNumber;
 
     if (!isOwner && !isGuest) {
       return res.status(403).json({ message: 'Not authorized' });

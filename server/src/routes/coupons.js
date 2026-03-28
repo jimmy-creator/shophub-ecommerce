@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { Coupon, Order } from '../models/index.js';
-import { protect, admin, optionalAuth } from '../middleware/auth.js';
+import { protect, admin, requirePermission, optionalAuth } from '../middleware/auth.js';
 import { Op } from 'sequelize';
 
 const router = Router();
