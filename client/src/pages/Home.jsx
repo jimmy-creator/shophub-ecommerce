@@ -22,12 +22,17 @@ export default function Home() {
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const [heroImage, setHeroImage] = useState('/images/hero-banner.jpeg');
 
   useEffect(() => {
     api.get('/products?featured=true&limit=8')
       .then((res) => setFeatured(res.data.products))
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    api.get('/settings/hero-image')
+      .then((res) => { if (res.data.value) setHeroImage(res.data.value); })
+      .catch(() => {});
 
     api.get('/categories')
       .then((res) => setCategories(res.data))
@@ -45,7 +50,7 @@ export default function Home() {
       </div>
 
       <section className="hero">
-        <img src="/images/hero-banner.jpeg" alt="ShopHub Collection" className="hero-banner" />
+        <img src={heroImage} alt="ShopHub Collection" className="hero-banner" />
         <div className="hero-overlay" />
         <div className="container hero-content">
           <h1>Curated for the<br />Modern Lifestyle</h1>

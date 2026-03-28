@@ -30,4 +30,26 @@ router.put('/theme', protect, admin, async (req, res) => {
   }
 });
 
+// Get hero image (public)
+router.get('/hero-image', async (req, res) => {
+  try {
+    const setting = await Setting.findByPk('hero-image');
+    res.json({ value: setting?.value || null });
+  } catch (error) {
+    res.json({ value: null });
+  }
+});
+
+// Update hero image (admin only)
+router.put('/hero-image', protect, admin, async (req, res) => {
+  try {
+    const { value } = req.body;
+    if (!value) return res.status(400).json({ message: 'Image URL is required' });
+    await Setting.upsert({ key: 'hero-image', value });
+    res.json({ value });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

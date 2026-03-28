@@ -228,6 +228,70 @@ function VariantEditor({ variantOptions, variants, onChange }) {
   );
 }
 
+function HeroBannerEditor() {
+  const [heroImage, setHeroImage] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    api.get('/settings/hero-image').then((res) => {
+      if (res.data.value) setHeroImage(res.data.value);
+    }).catch(() => {});
+  }, []);
+
+  const handleUpload = async (file) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setHeroImage(data.url);
+      await api.put('/settings/hero-image', { value: data.url });
+      toast.success('Hero banner updated');
+    } catch (err) {
+      toast.error('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '3rem' }}>
+      <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1rem' }}>
+        Hero Banner Image
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+        This image appears as the main banner on the home page.
+      </p>
+
+      {heroImage && (
+        <div style={{ marginBottom: '1rem', borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-light)', maxWidth: '500px' }}>
+          <img src={heroImage} alt="Hero Banner" style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }} />
+        </div>
+      )}
+
+      <label style={{
+        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+        padding: '0.7rem 1.5rem', border: '2px dashed var(--border)',
+        borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+        fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)',
+        transition: 'all 0.25s ease',
+      }}>
+        <HiPhotograph style={{ fontSize: '1.2rem' }} />
+        {uploading ? 'Uploading...' : heroImage ? 'Change Banner' : 'Upload Banner Image'}
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => handleUpload(e.target.files[0])}
+        />
+      </label>
+    </div>
+  );
+}
+
 function ImageUploader({ images = [], onChange }) {
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -1894,6 +1958,9 @@ export default function Admin() {
                 </button>
               ))}
             </div>
+
+            {/* Hero Banner Image */}
+            <HeroBannerEditor />
           </div>
         )}
 
