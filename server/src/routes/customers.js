@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { User, Order } from '../models/index.js';
-import { protect, admin, requirePermission, requirePermission } from '../middleware/auth.js';
+import { protect, admin, requirePermission } from '../middleware/auth.js';
 import sequelize from '../config/database.js';
 import { Op } from 'sequelize';
 
