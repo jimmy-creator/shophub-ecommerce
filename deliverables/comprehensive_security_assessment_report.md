@@ -1,3 +1,65 @@
+# Security Assessment Report
+
+## Executive Summary
+
+**Target:** https://shophubonline.store
+**Assessment Date:** 2026-03-28
+**Scope:** Authentication, XSS, SQL and Command Injection, SSRF, Authorization testing
+
+### Summary by Vulnerability Type
+
+**Authentication Vulnerabilities:**
+Five authentication vulnerabilities were successfully exploited, ranging from High to Low severity. Critical issues include:
+- JWT revocation gap allowing token replay indefinitely after logout (AUTH-VULN-01, High)
+- Dual JWT storage in localStorage enabling XSS-to-account-takeover conversion (AUTH-VULN-02, High)
+- User enumeration via registration endpoint allowing account reconnaissance (AUTH-VULN-04, High)
+- Permissive Google OAuth rate limit (10× vs standard auth, AUTH-VULN-03, Medium)
+- Missing Cache-Control headers exposing authentication responses on shared devices (AUTH-VULN-07, Low)
+
+**Authorization Vulnerabilities:**
+Five authorization vulnerabilities were successfully exploited, ranging from Critical to Medium severity. Most critical issues include:
+- Staff account privilege escalation to full admin access regardless of permission assignment (AUTHZ-VULN-03, Critical)
+- Guest invoice download via email-only IDOR exposing complete PII (AUTHZ-VULN-01, Critical)
+- Guest order cancellation via email-only IDOR enabling order disruption (AUTHZ-VULN-02, High)
+- Unauthenticated payment verify endpoint leaking order data (AUTHZ-VULN-05, High)
+- Guest coupon per-user limit bypass allowing unlimited discount reuse (AUTHZ-VULN-04, Medium)
+
+**Cross-Site Scripting (XSS) Vulnerabilities:**
+No XSS vulnerabilities were successfully exploited during this assessment.
+
+**SQL/Command Injection Vulnerabilities:**
+No SQL or command injection vulnerabilities were successfully exploited during this assessment.
+
+**Server-Side Request Forgery (SSRF) Vulnerabilities:**
+No SSRF vulnerabilities were successfully exploited during this assessment.
+
+## Network Reconnaissance
+
+### Open Ports & Exposed Services
+- **Port 80/tcp:** HTTP (Nginx, redirects to HTTPS)
+- **Port 443/tcp:** HTTPS (Nginx reverse proxy → Express on 127.0.0.1:3000)
+- **Port 3000:** Express.js (internal only, not publicly exposed)
+- **MySQL:** localhost only (not publicly exposed)
+
+### Subdomain Discoveries
+- **Primary Domain:** `shophubonline.store`
+- **Subdomains:** No subdomains discovered via subfinder
+
+### Attack Surface
+- **API Endpoints:** 86 network-accessible endpoints across 18 route files
+- **Frontend Stack:** React 19.2.4 SPA with Vite 5.4.21 (no CSP, disabled)
+- **Backend:** Node.js 20 with Express.js v5.2.1
+
+### Security Configuration Findings
+- **Content Security Policy:** Disabled (enabled via helmet but CSP disabled in middleware)
+- **HTTPS/HSTS:** Enabled with HTTP redirect; HSTS max-age 31536000
+- **Authentication Tokens:** Dual-storage (HttpOnly cookie + localStorage Bearer token)
+- **JWT Configuration:** HS256 with 7-day expiry; no revocation mechanism
+- **API Rate Limiting:** Global (100 req/15min) with selective auth endpoints (10 req/15min) except Google OAuth
+- **Database:** MySQL on localhost (unencrypted TCP, not publicly exposed)
+
+---
+
 # Authentication Exploitation Evidence
 ## ShopHub E-Commerce Platform — `https://shophubonline.store`
 ### Engagement Date: 2026-03-28 | Tester: Auth Exploitation Specialist
@@ -323,178 +385,6 @@ Enumeration run results (15 emails tested across two batches):
 - On a shared computer: after the legitimate user logs out and closes the tab, the next user can open DevTools → Application → Cache → find the cached login/profile response containing the JWT token, then use it to impersonate the victim (compounding AUTH-VULN-01).
 
 ---
-
-## Potential Vulnerabilities (Validation Blocked by External Constraints)
-
-### AUTH-VULN-05: Password Reset Token Exposed in URL Query Parameter
-
-**Summary:**
-- **Vulnerable location:** `POST /api/auth/forgot-password` → reset email URL
-- **Current Blocker:** Cannot receive the actual reset email externally (test accounts use `@mailnull.com`; no email inbox access). Token entropy (256-bit, `crypto.randomBytes(32)`) prevents brute-force guessing.
-- **Potential Impact:** Account takeover of any user who requests a password reset, within the 1-hour TTL window, if an attacker can observe any of the leakage channels.
-- **Confidence:** MEDIUM
-
-**Evidence of Vulnerability:**
-
-1. **Reset URL structure confirmed (from server code `authController.js:116-117`):**
-   ```
-   https://shophubonline.store/reset-password?token=<64-hex>&email=<encoded-email>
-   ```
-   Example: `https://shophubonline.store/reset-password?token=a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2&email=victim%40example.com`
-
-2. **Live URL structure confirmed in browser (Playwright):**
-   ```
-   Page URL: https://shophubonline.store/reset-password?token=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa&email=tokenreplay_1774675009%40mailnull.com
-   ```
-   Token is fully visible in the browser address bar.
-
-3. **Nginx HTML pages have NO Referrer-Policy header** (confirmed live):
-   ```
-   HTTP/1.1 200 OK
-   Server: nginx/1.24.0 (Ubuntu)
-   Content-Type: text/html
-   ETag: "69c67ef9-32a"
-   [NO Referrer-Policy header — only API responses via Helmet have this]
-   ```
-   While Express API responses set `Referrer-Policy: no-referrer`, the Nginx-served SPA HTML pages do NOT. This means navigating from the reset page to any external URL (product links, social media, etc.) sends the full reset URL (including token) in the HTTP `Referer` header.
-
-4. **Token stored as plaintext in database** (from code `authController.js:114`):
-   ```javascript
-   const resetToken = crypto.randomBytes(32).toString('hex');
-   user.resetToken = resetToken; // stored plaintext, not hashed
-   ```
-   A database compromise would expose all pending reset tokens directly.
-
-**Attempted Exploitation:**
-- Sent `POST /api/auth/forgot-password` for test account → HTTP 200 (generic message). Cannot intercept the actual email to obtain the token.
-- Navigated to `/reset-password?token=<fake>&email=<test>` to confirm URL structure — token is visible.
-- Cannot observe server access logs or browser history from external position.
-
-**How This Would Be Exploited:**
-
-If an attacker can observe any leakage channel (server logs, shared browser, Referer header):
-
-1. Attacker creates a malicious page at `https://attacker.com/landing`
-2. Attacker persuades the victim to click a link to `https://attacker.com/landing` while the victim is on the reset page (e.g., via a "contact support" link embedded on the reset page)
-3. Victim's browser sends `Referer: https://shophubonline.store/reset-password?token=<TOKEN>&email=<victim@example.com>` to attacker's server
-4. Attacker calls `POST /api/auth/reset-password` with the captured token and a new password:
-   ```bash
-   curl -X POST https://shophubonline.store/api/auth/reset-password \
-     -H "Content-Type: application/json" \
-     -d '{"token":"<CAPTURED_TOKEN>","email":"victim@example.com","password":"AttackerNewPass1"}'
-   ```
-5. Attacker logs in as the victim with the new password.
-
-**Expected Impact:** Complete account takeover within the 1-hour reset token TTL.
-
----
-
-### AUTH-VULN-06: Google OAuth Account Linkage by Mutable Email Claim Only (nOAuth)
-
-**Summary:**
-- **Vulnerable location:** `POST /api/auth/google` → `googleAuth.js:43-48`
-- **Current Blocker:** Exploiting this vulnerability requires controlling a real Google account (Google Workspace) with the same email address as the target victim. Google ID tokens are cryptographically signed by Google and cannot be forged from an external network position.
-- **Potential Impact:** Full account takeover of any ShopHub user whose email is associated with a domain controlled by an attacker (e.g., expired/acquired Google Workspace domain).
-- **Confidence:** MEDIUM
-
-**Evidence of Vulnerability:**
-
-1. **Server code uses only email for account lookup** (`googleAuth.js:43-45`):
-   ```javascript
-   const { email, name, picture, sub: googleId } = payload;
-   // ...
-   let user = await User.findOne({ where: { email: email.toLowerCase() } });
-   // googleId is extracted but NEVER stored — sub not in User model
-   ```
-
-2. **No `email_verified` check** before account creation or login:
-   ```javascript
-   // Missing: if (!payload.email_verified) throw error;
-   let user = await User.findOne({ where: { email: email.toLowerCase() } });
-   if (!user) {
-     user = await User.create({ name, email, role: 'customer' }); // creates account regardless
-   }
-   // Issues JWT directly
-   ```
-
-3. **Attack feasibility test — forged Google token rejected** (cryptographic protection works):
-   ```bash
-   curl -X POST https://shophubonline.store/api/auth/google \
-     -H "Content-Type: application/json" \
-     -d '{"credential":"eyJhbGciOiJSUzI1NiIsImtpZCI6ImZha2UifQ.eyJlbWFpbCI6ImFkbWluQHNob3BodWJvbmxpbmUuc3RvcmUifQ.FAKE_SIGNATURE"}'
-   ```
-   *Result:* `{"message":"Google authentication failed"}` — Google's signature verification blocks forged tokens.
-
-**Attempted Exploitation:**
-- Attempted to forge a Google ID token with `email: admin@shophubonline.store` — rejected by `OAuth2Client.verifyIdToken` cryptographic verification.
-- Cannot create a real Google account with another user's email from an external position (Gmail does not allow registering existing emails; Workspace requires domain admin access).
-
-**How This Would Be Exploited:**
-
-If an attacker controls a Google Workspace domain matching the victim's email:
-
-1. Attacker gains control of `victim.com` domain (e.g., domain expiry, acquisition, admin credential compromise)
-2. Attacker creates Google Workspace account `targetuser@victim.com`
-3. Attacker authenticates to ShopHub via Google One-Tap with `targetuser@victim.com`
-4. Server finds existing ShopHub account with `email = targetuser@victim.com`
-5. Server issues JWT for victim's account — **complete account takeover without knowing the password**
-6. Attacker now has access to victim's orders, saved addresses, payment history
-
-**Expected Impact:** Stealthy account takeover. Victim is unaware because no password was changed. Attack persists until victim notices unauthorized access.
-
----
-
-## Vulnerability Classification Summary
-
-| ID | Type | Classification | Severity | Evidence Level |
-|---|---|---|---|---|
-| AUTH-VULN-01 | Session_Management_Flaw | **EXPLOITED** | High | Level 4 — Account Takeover Demonstrated |
-| AUTH-VULN-02 | Token_Management_Issue | **EXPLOITED** | High | Level 3 — Auth Bypass Confirmed |
-| AUTH-VULN-04 | Login_Flow_Logic | **EXPLOITED** | High | Level 2 — Partial Bypass + Enumeration |
-| AUTH-VULN-03 | Abuse_Defenses_Missing | **EXPLOITED** | Medium | Level 1 — Security Control Bypass Confirmed |
-| AUTH-VULN-07 | Transport_Exposure | **EXPLOITED** | Low | Level 1 — Security Control Absent Confirmed |
-| AUTH-VULN-05 | Reset_Recovery_Flaw | **POTENTIAL** | Medium | Level 1 — Blocked by email access constraint |
-| AUTH-VULN-06 | OAuth_Flow_Issue | **POTENTIAL** | Medium | Level 1 — Blocked by Google account control requirement |
-
----
-
-## Key Attack Chains Demonstrated
-
-### Chain 1: XSS → Permanent Session Takeover (AUTH-VULN-02 + AUTH-VULN-01)
-1. Attacker achieves XSS execution on `https://shophubonline.store`
-2. XSS payload reads `localStorage.getItem('token')` — succeeds because CSP is disabled
-3. Token exfiltrated to attacker's server
-4. Victim logs out — their cookie is cleared, but attacker still holds the Bearer token
-5. Attacker uses Bearer token for 7 days with no revocation possible
-6. **Impact:** Full account impersonation for 7-day JWT TTL
-
-### Chain 2: User Enumeration → Targeted Attack (AUTH-VULN-04 → credential attacks)
-1. Attacker enumerates registered emails via registration oracle
-2. `admin@shophubonline.store` confirmed as pre-existing registered account
-3. Enumerated email list used for:
-   - Credential stuffing against `/api/auth/login`
-   - Spear-phishing campaigns using confirmed valid email targets
-   - Password reset abuse against known accounts
-4. **Impact:** Targeted attacks against confirmed user base
-
-### Chain 3: Token Replay + Cached JWT (AUTH-VULN-01 + AUTH-VULN-07)
-1. Victim logs in on a shared/public device
-2. Browser caches the login response (no `Cache-Control: no-store`)
-3. Victim logs out and closes browser tab
-4. Subsequent user opens DevTools → Application → Cache Storage
-5. Finds cached `POST /api/auth/login` response containing JWT in body
-6. Uses JWT via `Authorization: Bearer` to authenticate as victim
-7. **Impact:** Account takeover from shared device without any password
-
----
-
-## Engagement Scope Compliance
-
-All exploitation was performed exclusively against `https://shophubonline.store` from an external network position. No internal network access, VPN, or direct server/database access was used.
-
-- **Total accounts created during testing:** ~16 test accounts (all with `@mailnull.com` addresses)
-- **Exploited production accounts:** None (all tests used attacker-controlled accounts)
-- **Production data exfiltrated:** None (all exploited data belongs to test accounts created during engagement)
 
 
 # Authorization Exploitation Evidence
@@ -860,77 +750,3 @@ The `verified:true` response occurred because order 17's `paymentStatus` was alr
 
 ---
 
-## Potential Vulnerabilities (Validation Blocked)
-
-### AUTHZ-VULN-06: Paytm Callback Without HMAC Verification
-
-**Summary:**
-- **Vulnerable location:** `POST /api/payment/paytm-callback` — `server/src/routes/payment.js:294-335`
-- **Current Blocker:** The Paytm `verifyPayment()` API call acts as a secondary guard — it rejects fabricated/replay TXNIDs by querying the real Paytm transaction status API. A forged TXNID was correctly rejected, preventing order confirmation in testing. Full exploitation requires a real captured Paytm TXNID (replay attack scenario).
-- **Potential Impact:** Mark any order as paid without actual payment; trigger stock reduction and confirmation emails; financial fraud against arbitrary orders.
-- **Confidence:** HIGH
-
-**Evidence of Vulnerability:**
-
-The endpoint is fully public with no authentication and no inbound HMAC/checksum verification:
-
-```javascript
-// payment.js:294-310 (confirmed in source code)
-router.post('/paytm-callback', async (req, res) => {
-  const { ORDERID, STATUS, TXNID } = req.body;  // Fully attacker-controlled
-  if (STATUS === 'TXN_SUCCESS') {
-    const order = await Order.findOne({ where: { orderNumber: ORDERID } });
-    if (order && order.paymentStatus !== 'paid') {
-      const paymentGateway = getPaymentGateway('paytm');
-      const result = await paymentGateway.verifyPayment({ orderId: ORDERID });
-      if (result.verified) {
-        await order.update({ paymentStatus: 'paid', orderStatus: 'confirmed' });
-      }
-    }
-  }
-});
-```
-
-Live testing confirmed the endpoint accepts arbitrary POST requests:
-
-```
-POST https://shophubonline.store/api/payment/paytm-callback
-Content-Type: application/json
-Body: {"ORDERID": "ORD-MN9WB6HW-GK92", "STATUS": "TXN_SUCCESS", "TXNID": "FAKE_TXN_123"}
-
-Response HTTP 302 → Location: https://shophubonline.store/orders
-(Fake TXNID rejected by Paytm API — secondary guard worked)
-
-POST https://shophubonline.store/api/payment/paytm-callback
-Body: {"ORDERID": "ORD-MN9WB6HW-GK92", "STATUS": "TXN_FAILURE", "TXNID": "ANY"}
-
-Response HTTP 302 → Location: /order-success?orderNumber=ORD-MN9WB6HW-GK92&status=failed
-(TXN_FAILURE branch executed without any HMAC check)
-```
-
-**Attempted Exploitation:**
-- Form-encoded POST with fabricated TXNID: processed (redirected to `/orders` after Paytm API rejection)
-- JSON POST with fabricated TXNID: processed (same outcome)
-- TXN_FAILURE branch: executed without HMAC verification
-- TXN_SUCCESS with real-looking TXNID format: rejected by Paytm API secondary guard
-- All attempts confirmed no inbound signature verification occurs before processing
-
-**How This Would Be Exploited:**
-
-If a real Paytm TXNID were obtained (e.g., via network interception of a legitimate transaction, or Paytm test-mode keys exposure):
-
-1. Attacker observes or captures TXNID from a real Paytm transaction for any order
-2. Send forged callback:
-   ```
-   POST https://shophubonline.store/api/payment/paytm-callback
-   Body: {"ORDERID": "ORD-TARGET-ORDER", "STATUS": "TXN_SUCCESS", "TXNID": "[REAL_CAPTURED_TXNID]"}
-   ```
-3. Paytm API `verifyPayment()` call returns `verified:true` (real transaction exists)
-4. Order marked as `paymentStatus: 'paid'`, `orderStatus: 'confirmed'`
-5. Stock reduced and confirmation email sent — order fulfilled without actual payment to this order
-
-**Expected Impact:**
-- Any order could be confirmed as paid without the associated payment being made
-- Financial fraud: receive goods/services without payment
-- Stock depletion without revenue
-- Replay attacks across multiple orders using a single captured TXNID
