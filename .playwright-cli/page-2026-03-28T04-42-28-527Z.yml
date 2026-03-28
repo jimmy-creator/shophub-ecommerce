@@ -1,0 +1,269 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link "ShopHub" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e8]:
+        - textbox "Search for products..." [ref=e9]
+        - button "Search" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+      - link "Shop" [ref=e15] [cursor=pointer]:
+        - /url: /products
+      - generic [ref=e16]:
+        - link "Wishlist" [ref=e17] [cursor=pointer]:
+          - /url: /wishlist
+          - img [ref=e18]
+        - link [ref=e20] [cursor=pointer]:
+          - /url: /cart
+          - img [ref=e21]
+        - link "Sign In" [ref=e25] [cursor=pointer]:
+          - /url: /login
+          - generic [ref=e26]: Sign In
+  - main [ref=e27]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - img "ShopHub Collection" [ref=e31]
+        - generic [ref=e33]:
+          - heading "Curated for the Modern Lifestyle" [level=1] [ref=e34]:
+            - text: Curated for the
+            - text: Modern Lifestyle
+          - paragraph [ref=e35]: Discover thoughtfully selected products at exceptional value. Free shipping on orders over ₹500.
+          - link "Explore Collection" [ref=e37] [cursor=pointer]:
+            - /url: /products
+            - text: Explore Collection
+            - img [ref=e38]
+      - generic [ref=e157]:
+        - link "Electronics Electronics" [ref=e158] [cursor=pointer]:
+          - /url: /products?category=Electronics
+          - img "Electronics" [ref=e160]
+          - generic [ref=e161]: Electronics
+        - link "Clothing Clothing" [ref=e162] [cursor=pointer]:
+          - /url: /products?category=Clothing
+          - img "Clothing" [ref=e164]
+          - generic [ref=e165]: Clothing
+        - link "Footwear Footwear" [ref=e166] [cursor=pointer]:
+          - /url: /products?category=Footwear
+          - img "Footwear" [ref=e168]
+          - generic [ref=e169]: Footwear
+        - link "Accessories Accessories" [ref=e170] [cursor=pointer]:
+          - /url: /products?category=Accessories
+          - img "Accessories" [ref=e172]
+          - generic [ref=e173]: Accessories
+        - link "Sports Sports" [ref=e174] [cursor=pointer]:
+          - /url: /products?category=Sports
+          - img "Sports" [ref=e176]
+          - generic [ref=e177]: Sports
+        - link "Home Home" [ref=e178] [cursor=pointer]:
+          - /url: /products?category=Home
+          - img "Home" [ref=e180]
+          - generic [ref=e181]: Home
+        - link "All" [ref=e182] [cursor=pointer]:
+          - /url: /products
+          - img [ref=e184]
+          - generic [ref=e189]: All
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - heading "Featured Collection" [level=2] [ref=e64]
+          - link "View All" [ref=e65] [cursor=pointer]:
+            - /url: /products
+            - text: View All
+            - img [ref=e66]
+        - generic [ref=e190]:
+          - link "Wireless Bluetooth Headphones -38% Electronics Wireless Bluetooth Headphones 4.50 (128) ₹79.99 ₹129.99 Add to Cart" [ref=e191] [cursor=pointer]:
+            - /url: /product/wireless-bluetooth-headphones
+            - generic [ref=e192]:
+              - img "Wireless Bluetooth Headphones" [ref=e194]
+              - generic [ref=e195]: "-38%"
+              - button [ref=e196]:
+                - img [ref=e197]
+            - generic [ref=e199]:
+              - generic [ref=e200]: Electronics
+              - heading "Wireless Bluetooth Headphones" [level=3] [ref=e201]
+              - generic [ref=e202]:
+                - img [ref=e203]
+                - generic [ref=e205]: "4.50"
+                - generic [ref=e206]: (128)
+              - generic [ref=e207]:
+                - generic [ref=e208]: ₹79.99
+                - generic [ref=e209]: ₹129.99
+              - button "Add to Cart" [ref=e210]:
+                - img [ref=e211]
+                - text: Add to Cart
+          - link "Smart Watch Pro -20% Electronics Smart Watch Pro 4.30 (89) ₹199.99 ₹249.99 Add to Cart" [ref=e213] [cursor=pointer]:
+            - /url: /product/smart-watch-pro
+            - generic [ref=e214]:
+              - img "Smart Watch Pro" [ref=e216]
+              - generic [ref=e217]: "-20%"
+              - button [ref=e218]:
+                - img [ref=e219]
+            - generic [ref=e221]:
+              - generic [ref=e222]: Electronics
+              - heading "Smart Watch Pro" [level=3] [ref=e223]
+              - generic [ref=e224]:
+                - img [ref=e225]
+                - generic [ref=e227]: "4.30"
+                - generic [ref=e228]: (89)
+              - generic [ref=e229]:
+                - generic [ref=e230]: ₹199.99
+                - generic [ref=e231]: ₹249.99
+              - button "Add to Cart" [ref=e232]:
+                - img [ref=e233]
+                - text: Add to Cart
+          - link "Portable Bluetooth Speaker -25% Electronics Portable Bluetooth Speaker 4.60 (312) ₹59.99 ₹79.99 Add to Cart" [ref=e235] [cursor=pointer]:
+            - /url: /product/portable-bluetooth-speaker
+            - generic [ref=e236]:
+              - img "Portable Bluetooth Speaker" [ref=e238]
+              - generic [ref=e239]: "-25%"
+              - button [ref=e240]:
+                - img [ref=e241]
+            - generic [ref=e243]:
+              - generic [ref=e244]: Electronics
+              - heading "Portable Bluetooth Speaker" [level=3] [ref=e245]
+              - generic [ref=e246]:
+                - img [ref=e247]
+                - generic [ref=e249]: "4.60"
+                - generic [ref=e250]: (312)
+              - generic [ref=e251]:
+                - generic [ref=e252]: ₹59.99
+                - generic [ref=e253]: ₹79.99
+              - button "Add to Cart" [ref=e254]:
+                - img [ref=e255]
+                - text: Add to Cart
+          - link "Noise Cancelling Earbuds -25% Electronics Noise Cancelling Earbuds 4.70 (445) ₹89.99 ₹119.99 Add to Cart" [ref=e257] [cursor=pointer]:
+            - /url: /product/noise-cancelling-earbuds
+            - generic [ref=e258]:
+              - img "Noise Cancelling Earbuds" [ref=e260]
+              - generic [ref=e261]: "-25%"
+              - button [ref=e262]:
+                - img [ref=e263]
+            - generic [ref=e265]:
+              - generic [ref=e266]: Electronics
+              - heading "Noise Cancelling Earbuds" [level=3] [ref=e267]
+              - generic [ref=e268]:
+                - img [ref=e269]
+                - generic [ref=e271]: "4.70"
+                - generic [ref=e272]: (445)
+              - generic [ref=e273]:
+                - generic [ref=e274]: ₹89.99
+                - generic [ref=e275]: ₹119.99
+              - button "Add to Cart" [ref=e276]:
+                - img [ref=e277]
+                - text: Add to Cart
+          - link "Organic Cotton T-Shirt -25% Clothing Organic Cotton T-Shirt 4.20 (78) ₹29.99 ₹39.99 Add to Cart" [ref=e279] [cursor=pointer]:
+            - /url: /product/organic-cotton-tshirt
+            - generic [ref=e280]:
+              - img "Organic Cotton T-Shirt" [ref=e282]
+              - generic [ref=e283]: "-25%"
+              - button [ref=e284]:
+                - img [ref=e285]
+            - generic [ref=e287]:
+              - generic [ref=e288]: Clothing
+              - heading "Organic Cotton T-Shirt" [level=3] [ref=e289]
+              - generic [ref=e290]:
+                - img [ref=e291]
+                - generic [ref=e293]: "4.20"
+                - generic [ref=e294]: (78)
+              - generic [ref=e295]:
+                - generic [ref=e296]: ₹29.99
+                - generic [ref=e297]: ₹39.99
+              - button "Add to Cart" [ref=e298]:
+                - img [ref=e299]
+                - text: Add to Cart
+          - link "Merino Wool Sweater -25% Clothing Merino Wool Sweater 4.60 (93) ₹89.99 ₹119.99 Add to Cart" [ref=e301] [cursor=pointer]:
+            - /url: /product/merino-wool-sweater
+            - generic [ref=e302]:
+              - img "Merino Wool Sweater" [ref=e304]
+              - generic [ref=e305]: "-25%"
+              - button [ref=e306]:
+                - img [ref=e307]
+            - generic [ref=e309]:
+              - generic [ref=e310]: Clothing
+              - heading "Merino Wool Sweater" [level=3] [ref=e311]
+              - generic [ref=e312]:
+                - img [ref=e313]
+                - generic [ref=e315]: "4.60"
+                - generic [ref=e316]: (93)
+              - generic [ref=e317]:
+                - generic [ref=e318]: ₹89.99
+                - generic [ref=e319]: ₹119.99
+              - button "Add to Cart" [ref=e320]:
+                - img [ref=e321]
+                - text: Add to Cart
+          - link "Running Shoes Ultra -25% Footwear Running Shoes Ultra 4.50 (203) ₹119.99 ₹159.99 Add to Cart" [ref=e323] [cursor=pointer]:
+            - /url: /product/running-shoes-ultra
+            - generic [ref=e324]:
+              - img "Running Shoes Ultra" [ref=e326]
+              - generic [ref=e327]: "-25%"
+              - button [ref=e328]:
+                - img [ref=e329]
+            - generic [ref=e331]:
+              - generic [ref=e332]: Footwear
+              - heading "Running Shoes Ultra" [level=3] [ref=e333]
+              - generic [ref=e334]:
+                - img [ref=e335]
+                - generic [ref=e337]: "4.50"
+                - generic [ref=e338]: (203)
+              - generic [ref=e339]:
+                - generic [ref=e340]: ₹119.99
+                - generic [ref=e341]: ₹159.99
+              - button "Add to Cart" [ref=e342]:
+                - img [ref=e343]
+                - text: Add to Cart
+          - link "Leather Chelsea Boots -25% Footwear Leather Chelsea Boots 4.70 (178) ₹149.99 ₹199.99 Add to Cart" [ref=e345] [cursor=pointer]:
+            - /url: /product/leather-chelsea-boots
+            - generic [ref=e346]:
+              - img "Leather Chelsea Boots" [ref=e348]
+              - generic [ref=e349]: "-25%"
+              - button [ref=e350]:
+                - img [ref=e351]
+            - generic [ref=e353]:
+              - generic [ref=e354]: Footwear
+              - heading "Leather Chelsea Boots" [level=3] [ref=e355]
+              - generic [ref=e356]:
+                - img [ref=e357]
+                - generic [ref=e359]: "4.70"
+                - generic [ref=e360]: (178)
+              - generic [ref=e361]:
+                - generic [ref=e362]: ₹149.99
+                - generic [ref=e363]: ₹199.99
+              - button "Add to Cart" [ref=e364]:
+                - img [ref=e365]
+                - text: Add to Cart
+      - generic [ref=e126]:
+        - heading "Stay in the Loop" [level=2] [ref=e127]
+        - paragraph [ref=e128]: Subscribe for early access to new arrivals and exclusive offers.
+        - generic [ref=e129]:
+          - textbox "Your email address" [ref=e130]
+          - button "Subscribe" [ref=e131] [cursor=pointer]
+  - contentinfo [ref=e132]:
+    - generic [ref=e133]:
+      - generic [ref=e134]:
+        - heading "ShopHub" [level=3] [ref=e135]
+        - paragraph [ref=e136]: Curated essentials for the modern lifestyle. Quality products, thoughtfully selected.
+      - generic [ref=e137]:
+        - heading "Shop" [level=4] [ref=e138]
+        - link "All Products" [ref=e139] [cursor=pointer]:
+          - /url: /products
+        - link "Electronics" [ref=e140] [cursor=pointer]:
+          - /url: /products?category=Electronics
+        - link "Clothing" [ref=e141] [cursor=pointer]:
+          - /url: /products?category=Clothing
+        - link "Accessories" [ref=e142] [cursor=pointer]:
+          - /url: /products?category=Accessories
+      - generic [ref=e143]:
+        - heading "Account" [level=4] [ref=e144]
+        - link "Cart" [ref=e145] [cursor=pointer]:
+          - /url: /cart
+        - link "Orders" [ref=e146] [cursor=pointer]:
+          - /url: /orders
+        - link "Profile" [ref=e147] [cursor=pointer]:
+          - /url: /profile
+      - generic [ref=e148]:
+        - heading "Support" [level=4] [ref=e149]
+        - link "Contact Us" [ref=e150] [cursor=pointer]:
+          - /url: /contact
+        - link "Shipping Info" [ref=e151] [cursor=pointer]:
+          - /url: /shipping-info
+        - link "Return Policy" [ref=e152] [cursor=pointer]:
+          - /url: /return-policy
+    - paragraph [ref=e154]: © 2026 ShopHub. All rights reserved.

@@ -1,0 +1,1 @@
+[     875ms] [WARNING] You should call navigate() in a React.useEffect(), not when your component is first rendered. @ https://shophubonline.store/assets/index-C4mZB0V4.js:57

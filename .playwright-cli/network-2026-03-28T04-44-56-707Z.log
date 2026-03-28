@@ -1,0 +1,8 @@
+[GET] https://shophubonline.store/api/analytics/overview
+[GET] https://shophubonline.store/api/analytics/revenue-chart?period=30days
+[GET] https://shophubonline.store/api/analytics/top-products
+[GET] https://shophubonline.store/api/analytics/order-status
+[GET] https://shophubonline.store/api/analytics/recent-orders
+[GET] https://shophubonline.store/api/analytics/payment-methods
+[GET] https://shophubonline.store/api/analytics/low-stock
+[GET] https://shophubonline.store/api/settings/theme

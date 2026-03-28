@@ -1,0 +1,3 @@
+[GET] https://shophubonline.store/api/products?featured=true&limit=8 => [200] OK
+[GET] https://shophubonline.store/api/categories => [200] OK
+[GET] https://shophubonline.store/api/settings/theme => [200] OK
