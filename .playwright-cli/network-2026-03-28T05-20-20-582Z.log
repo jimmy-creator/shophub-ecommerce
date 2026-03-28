@@ -1,0 +1,2 @@
+[GET] https://shophubonline.store/api/settings/theme => [429] Too Many Requests
+[POST] https://shophubonline.store/api/auth/forgot-password => [429] Too Many Requests

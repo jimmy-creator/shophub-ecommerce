@@ -1,0 +1,66 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - link "ShopHub" [ref=e6] [cursor=pointer]:
+        - /url: /
+      - generic [ref=e8]:
+        - textbox "Search for products..." [ref=e9]
+        - button "Search" [ref=e10] [cursor=pointer]:
+          - img [ref=e11]
+      - link "Shop" [ref=e15] [cursor=pointer]:
+        - /url: /products
+      - generic [ref=e16]:
+        - link "Wishlist" [ref=e17] [cursor=pointer]:
+          - /url: /wishlist
+          - img [ref=e18]
+        - link [ref=e20] [cursor=pointer]:
+          - /url: /cart
+          - img [ref=e21]
+        - button "Token" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+          - text: Token
+          - img [ref=e30]
+  - main [ref=e32]:
+    - generic [ref=e35]:
+      - heading "Forgot Password" [level=2] [ref=e36]
+      - paragraph [ref=e37]: Enter your email and we'll send you a link to reset your password.
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - generic [ref=e40]: Email Address
+          - textbox "Enter your registered email" [ref=e41]
+        - button "Send Reset Link" [ref=e42] [cursor=pointer]
+      - paragraph [ref=e43]:
+        - link "Back to Login" [ref=e44] [cursor=pointer]:
+          - /url: /login
+  - contentinfo [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - heading "ShopHub" [level=3] [ref=e48]
+        - paragraph [ref=e49]: Curated essentials for the modern lifestyle. Quality products, thoughtfully selected.
+      - generic [ref=e50]:
+        - heading "Shop" [level=4] [ref=e51]
+        - link "All Products" [ref=e52] [cursor=pointer]:
+          - /url: /products
+        - link "Electronics" [ref=e53] [cursor=pointer]:
+          - /url: /products?category=Electronics
+        - link "Clothing" [ref=e54] [cursor=pointer]:
+          - /url: /products?category=Clothing
+        - link "Accessories" [ref=e55] [cursor=pointer]:
+          - /url: /products?category=Accessories
+      - generic [ref=e56]:
+        - heading "Account" [level=4] [ref=e57]
+        - link "Cart" [ref=e58] [cursor=pointer]:
+          - /url: /cart
+        - link "Orders" [ref=e59] [cursor=pointer]:
+          - /url: /orders
+        - link "Profile" [ref=e60] [cursor=pointer]:
+          - /url: /profile
+      - generic [ref=e61]:
+        - heading "Support" [level=4] [ref=e62]
+        - link "Contact Us" [ref=e63] [cursor=pointer]:
+          - /url: /contact
+        - link "Shipping Info" [ref=e64] [cursor=pointer]:
+          - /url: /shipping-info
+        - link "Return Policy" [ref=e65] [cursor=pointer]:
+          - /url: /return-policy
+    - paragraph [ref=e67]: © 2026 ShopHub. All rights reserved.

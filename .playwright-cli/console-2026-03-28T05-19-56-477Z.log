@@ -1,0 +1,2 @@
+[    1943ms] [ERROR] Failed to load resource: the server responded with a status of 429 (Too Many Requests) @ https://shophubonline.store/api/settings/theme:0
+[   13792ms] [ERROR] Failed to load resource: the server responded with a status of 429 (Too Many Requests) @ https://shophubonline.store/api/auth/forgot-password:0
