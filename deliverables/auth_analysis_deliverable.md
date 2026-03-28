@@ -236,3 +236,78 @@ let user = await User.findOne({ where: { email: email.toLowerCase() } });
 
 ---
 
+## 5. Secure by Design: Validated Components
+
+These components were analyzed and found to have robust defenses. They are low-priority for further testing.
+
+| Component / Flow | Endpoint / File Location | Defense Mechanism Implemented | Verdict |
+|---|---|---|---|
+| Password Hashing | `server/src/models/User.js:53` | `bcryptjs` with 12 salt rounds via `beforeCreate`/`beforeUpdate` hooks; constant-time `comparePassword` via `bcrypt.compare` | SAFE |
+| Password Policy | `server/src/controllers/authController.js:22-26` | Server-side enforcement: min 8 chars, upper+lower+digit required | SAFE |
+| Cookie Security Flags | `server/src/controllers/authController.js:6-11` | `HttpOnly: true`, `Secure: true` (production), `SameSite: 'strict'` — confirmed in live `Set-Cookie` header | SAFE |
+| HTTPS / HTTP Redirect | Nginx (production), `security.js:57-65` | HTTP 301 redirect to HTTPS confirmed live; Nginx terminates TLS | SAFE |
+| HSTS Header | `server/src/index.js:49-53` (Helmet default) | `Strict-Transport-Security: max-age=31536000; includeSubDomains` confirmed in all API responses | SAFE |
+| JWT Secret Strength | `server/.env` (production) | Live test confirms production JWT secret ≠ `dev_secret_change_in_production`; signatures do not match | SAFE |
+| Role Injection Prevention | `server/src/controllers/authController.js:44` | Registration hardcodes `role: 'customer'`; client-supplied `role` field is ignored | SAFE |
+| JWT Payload Minimization | `server/src/middleware/auth.js:62-66` | JWT contains only `{ id }`; role is fetched live from DB on every request via `User.findByPk()` | SAFE |
+| Forgot-Password Enumeration | `server/src/controllers/authController.js:100-109` | Returns identical generic response for both existing and non-existing emails | SAFE |
+| Login Error Messages | `server/src/controllers/authController.js:68-70` | Generic `"Invalid email or password"` returned regardless of whether email exists | SAFE |
+| Reset Token Entropy | `server/src/controllers/authController.js:111` | `crypto.randomBytes(32).toString('hex')` — 256 bits of entropy; not guessable | SAFE |
+| Reset Token TTL | `server/src/controllers/authController.js:112` | 1-hour expiry enforced server-side | SAFE |
+| Reset Token Single-Use | `server/src/controllers/authController.js:158-159` | Token cleared (`resetToken: null`) after successful reset | SAFE |
+| Auth Rate Limiting (standard endpoints) | `server/src/routes/auth.js:8-14` | 10 requests per 15 minutes per IP on login, register, forgot-password, reset-password | SAFE |
+| CORS Configuration | `server/src/index.js:55-61` | `Access-Control-Allow-Origin: https://shophubonline.store` (production `CLIENT_URL` properly set); confirmed live | SAFE |
+| Google ID Token Verification | `server/src/routes/googleAuth.js:24-29` | Uses `OAuth2Client.verifyIdToken` with audience check against `GOOGLE_CLIENT_ID`; cryptographic signature validation | SAFE |
+| Role Hardcoding in Google OAuth | `server/src/routes/googleAuth.js:60` | Google OAuth-created accounts hardcoded to `role: 'customer'` | SAFE |
+| Admin Credentials | `server/src/models/User.js`, `server/src/controllers/authController.js` | No default admin credentials in code or fixtures; admin accounts require direct DB setup | SAFE |
+| XSS Sanitization | `server/src/middleware/security.js:1-18` | HTML-encodes `<` and `>` in request bodies (note: query parameters are not sanitized — separate concern) | SAFE (partial) |
+
+---
+
+## 6. Methodology Coverage Checklist
+
+| Check | Methodology Step | Status | Finding |
+|---|---|---|---|
+| HTTPS enforcement | §1 Transport | SAFE | HTTP→HTTPS redirect confirmed (301) |
+| HSTS header | §1 Transport | SAFE | `max-age=31536000; includeSubDomains` confirmed |
+| Cache-Control on auth responses | §1 Caching | VULNERABLE | No `no-store` on `GET /api/auth/profile` or login responses |
+| Rate limit — login | §2 Rate Limiting | SAFE | `authLimiter`: 10/15min |
+| Rate limit — register | §2 Rate Limiting | SAFE | `authLimiter`: 10/15min |
+| Rate limit — forgot-password | §2 Rate Limiting | SAFE | `authLimiter`: 10/15min |
+| Rate limit — reset-password | §2 Rate Limiting | SAFE | `authLimiter`: 10/15min |
+| Rate limit — Google OAuth | §2 Rate Limiting | VULNERABLE | Only global 100/15min; `AUTH-VULN-03` |
+| CAPTCHA / account lockout | §2 Rate Limiting | NOTE | None implemented; partially mitigated by IP-based rate limits |
+| Cookie HttpOnly flag | §3 Session Cookies | SAFE | Confirmed in live `Set-Cookie` |
+| Cookie Secure flag | §3 Session Cookies | SAFE | Confirmed in live `Set-Cookie` |
+| Cookie SameSite | §3 Session Cookies | SAFE | `SameSite=Strict` confirmed |
+| Session ID rotation after login | §3/§5 Session Fixation | SAFE | New JWT generated on each login; no pre-login session exists |
+| Server-side logout invalidation | §3 Session Management | VULNERABLE | Cookie cleared; Bearer token remains valid; `AUTH-VULN-01` |
+| Idle / absolute session timeout | §3 Session Management | NOTE | 7-day absolute TTL; no idle timeout; acceptable for e-commerce |
+| Session IDs not in URLs | §3 Session Management | SAFE | Session via cookie + Authorization header only |
+| Token entropy | §4 Token Properties | SAFE | JWT signed with HS256; `crypto.randomBytes` for reset tokens |
+| Token sent over HTTPS only | §4 Token Properties | SAFE | HTTPS enforced; `Secure` cookie flag set |
+| Token not logged | §4 Token Properties | NOTE | JWT returned in response body — potentially logged by infra |
+| Token expiration | §4 Token Properties | SAFE | 7-day `exp` claim enforced by `jwt.verify` |
+| Token invalidated on logout | §4 Token Properties | VULNERABLE | No server-side revocation; `AUTH-VULN-01` |
+| Token in localStorage (secure storage) | §4 Token Properties | VULNERABLE | JWT in response body → localStorage; `AUTH-VULN-02` |
+| Default credentials | §6 Password Policy | SAFE | None found in code or fixtures |
+| Password policy enforcement | §6 Password Policy | SAFE | Server-side regex; min 8 chars, upper+lower+digit |
+| Password hashing | §6 Password Policy | SAFE | bcrypt 12 rounds |
+| MFA available | §6 Password Policy | NOTE | Not implemented; no policy requirement found |
+| Login error — no enumeration | §7 Login Responses | SAFE | Generic message for invalid credentials |
+| Register error — no enumeration | §7 Login Responses | VULNERABLE | `"Email already registered"` disclosed; `AUTH-VULN-04` |
+| Auth state not in URLs | §7 Login Responses | SAFE | No session tokens in redirect URLs |
+| Reset token — single-use | §8 Recovery | SAFE | Token cleared after use |
+| Reset token — short TTL | §8 Recovery | SAFE | 1-hour expiry |
+| Reset token — rate limited | §8 Recovery | SAFE | `authLimiter`: 10/15min |
+| Reset token — no enumeration | §8 Recovery | SAFE | Generic response for unknown emails |
+| Reset token — URL exposure | §8 Recovery | VULNERABLE | Token in query string; `AUTH-VULN-05` |
+| Logout — server-side invalidation | §8 Recovery | VULNERABLE | No revocation; captured in `AUTH-VULN-01` |
+| Logout — cookie clearing | §8 Recovery | SAFE | Cookie expired on logout |
+| Google OAuth — state/nonce | §9 OAuth | NOTE | Not applicable for credential (One-Tap) flow; `SameSite=Strict` provides CSRF protection |
+| Google OAuth — redirect URI | §9 OAuth | NOTE | Not applicable for credential flow (no redirect URI) |
+| Google OAuth — token verification | §9 OAuth | SAFE | `verifyIdToken` with audience check |
+| Google OAuth — sub vs email | §9 OAuth | VULNERABLE | Account linked by email; sub not stored; `AUTH-VULN-06` |
+| Google OAuth — email_verified | §9 OAuth | VULNERABLE | `email_verified` not checked; included in `AUTH-VULN-06` |
+
+
