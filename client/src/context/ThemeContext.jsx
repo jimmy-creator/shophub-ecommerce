@@ -149,7 +149,7 @@ export const themeList = Object.entries(themes).map(([id, t]) => ({
 
 export function ThemeProvider({ children }) {
   const [currentTheme, setCurrentTheme] = useState(() => {
-    return localStorage.getItem('store-theme') || 'default';
+    return localStorage.getItem('store-theme') || 'marketplace';
   });
 
   // Fetch store theme setting on mount
