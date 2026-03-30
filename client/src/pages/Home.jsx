@@ -21,8 +21,9 @@ const fallbackIcons = {
 export default function Home() {
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState([]);
-  const [heroImage, setHeroImage] = useState('/images/hero-banner.jpeg');
+  const [categories, setCategories] = useState(null);
+  const [heroImage, setHeroImage] = useState(null);
+  const [heroReady, setHeroReady] = useState(false);
 
   useEffect(() => {
     api.get('/products?featured=true&limit=8')
@@ -31,12 +32,13 @@ export default function Home() {
       .finally(() => setLoading(false));
 
     api.get('/settings/hero-image')
-      .then((res) => { if (res.data.value) setHeroImage(res.data.value); })
-      .catch(() => {});
+      .then((res) => setHeroImage(res.data.value || '/images/hero-banner.jpeg'))
+      .catch(() => setHeroImage('/images/hero-banner.jpeg'))
+      .finally(() => setHeroReady(true));
 
     api.get('/categories')
       .then((res) => setCategories(res.data))
-      .catch(() => {});
+      .catch(() => setCategories([]));
   }, []);
 
   return (
@@ -50,7 +52,7 @@ export default function Home() {
       </div>
 
       <section className="hero">
-        <img src={heroImage} alt="ShopHub Collection" className="hero-banner" />
+        {heroReady && heroImage && <img src={heroImage} alt="ShopHub Collection" className="hero-banner" />}
         <div className="hero-overlay" />
         <div className="container hero-content">
           <h1>Curated for the<br />Modern Lifestyle</h1>
@@ -67,7 +69,7 @@ export default function Home() {
       <section className="category-bar">
         <div className="container">
           <div className="category-icons">
-            {(categories.length > 0 ? categories : [
+            {(categories === null ? [] : categories.length > 0 ? categories : [
               { name: 'Electronics' }, { name: 'Clothing' }, { name: 'Footwear' },
               { name: 'Accessories' }, { name: 'Sports' }, { name: 'Home' }, { name: 'Beauty' },
             ]).map((c) => (
