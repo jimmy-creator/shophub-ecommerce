@@ -113,6 +113,7 @@ export default function ProductImage({ product, size = 'normal' }) {
         <img
           src={imageUrl}
           alt={product.name}
+          loading="lazy"
           onError={() => setImgError(true)}
           style={{
             width: '100%', height: '100%',
