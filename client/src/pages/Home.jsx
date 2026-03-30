@@ -21,9 +21,12 @@ const fallbackIcons = {
 export default function Home() {
   const [featured, setFeatured] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState(null);
-  const [heroImage, setHeroImage] = useState(null);
-  const [heroReady, setHeroReady] = useState(false);
+  const [categories, setCategories] = useState(() => {
+    const cached = localStorage.getItem('cached-categories');
+    return cached ? JSON.parse(cached) : null;
+  });
+  const [heroImage, setHeroImage] = useState(() => localStorage.getItem('cached-hero-image') || null);
+  const [heroReady, setHeroReady] = useState(!!heroImage);
 
   useEffect(() => {
     api.get('/products?featured=true&limit=8')
@@ -32,12 +35,24 @@ export default function Home() {
       .finally(() => setLoading(false));
 
     api.get('/settings/hero-image')
-      .then((res) => setHeroImage(res.data.value || '/images/hero-banner.jpeg'))
+      .then((res) => {
+        const url = res.data.value || '/images/hero-banner.jpeg';
+        setHeroImage(url);
+        localStorage.setItem('cached-hero-image', url);
+        // Preload the image
+        const img = new Image();
+        img.src = url;
+      })
       .catch(() => setHeroImage('/images/hero-banner.jpeg'))
       .finally(() => setHeroReady(true));
 
     api.get('/categories')
-      .then((res) => setCategories(res.data))
+      .then((res) => {
+        setCategories(res.data);
+        localStorage.setItem('cached-categories', JSON.stringify(res.data));
+        // Preload category images
+        res.data.forEach((c) => { if (c.image) { const img = new Image(); img.src = c.image; } });
+      })
       .catch(() => setCategories([]));
   }, []);
 
