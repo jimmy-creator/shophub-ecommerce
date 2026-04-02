@@ -67,9 +67,6 @@ npm run dev:client   # Frontend on :5173
 | `SMTP_EMAIL`, `SMTP_APP_PASSWORD` | Email (Gmail) |
 | `SMTP_HOST`, `SMTP_PORT` | Custom SMTP (Hostinger, Zoho, etc.) |
 
-## Deployment
-
-See [DEPLOY_HOSTINGER.md](DEPLOY_HOSTINGER.md) for deployment instructions.
 
 ## License
 
