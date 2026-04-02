@@ -69,8 +69,8 @@ npm run dev:client   # Frontend on :5173
 
 ## Deployment
 
-See [DEPLOY_HOSTINGER.md](DEPLOY_HOSTINGER.md) for Hostinger-specific deployment instructions.
 
-## License
 
-Private
+## MIT License
+
+
