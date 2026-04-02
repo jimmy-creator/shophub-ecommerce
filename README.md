@@ -69,8 +69,8 @@ npm run dev:client   # Frontend on :5173
 
 ## Deployment
 
+See [DEPLOY_HOSTINGER.md](DEPLOY_HOSTINGER.md) for deployment instructions.
 
+## License
 
-## MIT License
-
-
+MIT — see [LICENSE](LICENSE)
