@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { HiFilter, HiX } from 'react-icons/hi';
 import { Grid2x2, Grid3x3, LayoutList } from 'lucide-react';
-import api from '../api/axios';
-import ProductCard from '../components/ProductCard';
-import { SkeletonGrid } from '../components/Skeleton';
-import SEO from '../components/SEO';
+import api from '../../api/axios';
+import ProductCard from '../../components/ProductCard';
+import { SkeletonGrid } from '../../components/Skeleton';
+import SEO from '../../components/SEO';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();

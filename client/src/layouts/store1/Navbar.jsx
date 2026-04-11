@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Home, LayoutGrid, ShoppingBag, User, Heart, Search, X, ShoppingCart, ChevronDown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
-import { useWishlist } from '../context/WishlistContext';
-import SearchAutocomplete from './SearchAutocomplete';
+import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
+import { useWishlist } from '../../context/WishlistContext';
+import SearchAutocomplete from '../../components/SearchAutocomplete';
 
 export default function Navbar() {
   const { user, logout } = useAuth();

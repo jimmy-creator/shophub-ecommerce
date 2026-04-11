@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { HiShoppingCart, HiStar, HiMinus, HiPlus, HiArrowLeft, HiLightningBolt, HiHeart, HiOutlineHeart } from 'react-icons/hi';
-import { useCart } from '../context/CartContext';
-import { useAuth } from '../context/AuthContext';
-import { useWishlist } from '../context/WishlistContext';
-import { useRecentlyViewed } from '../context/RecentlyViewedContext';
-import ProductImage from '../components/ProductImage';
-import ProductCard from '../components/ProductCard';
-import PincodeChecker from '../components/PincodeChecker';
-import SEO from '../components/SEO';
-import api from '../api/axios';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
+import { useWishlist } from '../../context/WishlistContext';
+import { useRecentlyViewed } from '../../context/RecentlyViewedContext';
+import ProductImage from '../../components/ProductImage';
+import ProductCard from '../../components/ProductCard';
+import PincodeChecker from '../../components/PincodeChecker';
+import SEO from '../../components/SEO';
+import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { showToast } from '../utils/toast';
+import { showToast } from '../../utils/toast';
 
 export default function ProductDetail() {
   const { slug } = useParams();

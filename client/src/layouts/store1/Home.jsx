@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { HiArrowRight, HiShieldCheck, HiTruck, HiRefresh } from 'react-icons/hi';
 import { Monitor, Shirt, Footprints, Watch, Briefcase, Dumbbell, Home as HomeIcon, Sparkles, LayoutGrid } from 'lucide-react';
-import api from '../api/axios';
-import SearchAutocomplete from '../components/SearchAutocomplete';
-import ProductCard from '../components/ProductCard';
-import { SkeletonGrid } from '../components/Skeleton';
-import SEO from '../components/SEO';
+import api from '../../api/axios';
+import SearchAutocomplete from '../../components/SearchAutocomplete';
+import ProductCard from '../../components/ProductCard';
+import { SkeletonGrid } from '../../components/Skeleton';
+import SEO from '../../components/SEO';
 
 const fallbackIcons = {
   Electronics: <Monitor size={24} />,
