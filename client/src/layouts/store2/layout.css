@@ -45,8 +45,8 @@
   --s2-radius-lg:      28px;
   --s2-radius-pill:    999px;
 
-  --s2-font-display:   'Instrument Serif', Georgia, serif;
-  --s2-font-body:      'Manrope', system-ui, -apple-system, sans-serif;
+  --s2-font-display:   -apple-system, 'SF Pro Display', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --s2-font-body:      -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ---------- Root wrapper + atmosphere ---------- */
@@ -644,6 +644,9 @@
   aspect-ratio: 16 / 9;
   display: flex;
   align-items: flex-end;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
 }
 .s2-banner-img {
   position: absolute;
@@ -1999,7 +2002,7 @@
 body {
   background: var(--bg, #f8fafc) !important;
   color: var(--text, #0f172a);
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   position: relative;
   overflow-x: clip;
@@ -2033,7 +2036,7 @@ body::after {
 
 /* ── Shared headings → Instrument Serif ───────────────────── */
 h1, h2, h3 {
-  font-family: 'Instrument Serif', Georgia, serif;
+  font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* ── Shared buttons → glass (light) ──────────────────────── */
@@ -2044,7 +2047,7 @@ h1, h2, h3 {
   border: 1px solid rgba(0, 20, 60, 0.08) !important;
   color: var(--text) !important;
   border-radius: 999px !important;
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   transition: all 0.3s ease;
   box-shadow: 0 2px 8px -2px rgba(0, 20, 60, 0.06);
 }
@@ -2099,7 +2102,7 @@ select {
   border: 1px solid rgba(0, 20, 60, 0.1) !important;
   color: var(--text) !important;
   border-radius: 14px !important;
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 .form-group input:focus,
 .form-group textarea:focus,
@@ -2123,7 +2126,7 @@ textarea::placeholder {
 
 .form-group label {
   color: #475569 !important;
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 select option {

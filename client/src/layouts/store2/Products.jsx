@@ -130,7 +130,7 @@ export default function Products() {
             className={!category ? 'active' : ''}
             onClick={() => { updateFilter('category', ''); setShowFilters(false); }}
           >
-            All rooms
+            All categories
           </button>
           {categories.map((cat) => (
             <button

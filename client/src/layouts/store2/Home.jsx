@@ -124,19 +124,14 @@ export default function Home() {
         >
           <div className="s2-banner-track" style={{ transform: `translateX(-${activeBanner * 100}%)` }}>
             {banners.map((banner, i) => (
-              <div key={i} className="s2-banner-slide">
+              <Link key={i} to={banner.link || '/products'} className="s2-banner-slide">
                 <img src={banner.image} alt={banner.title || ''} className="s2-banner-img" fetchPriority={i === 0 ? 'high' : 'auto'} loading={i === 0 ? 'eager' : 'lazy'} />
                 <div className="s2-banner-overlay" />
                 <div className="s2-banner-content">
                   {banner.subtitle && <p className="s2-eyebrow">{banner.subtitle}</p>}
                   {banner.title && <h2 className="s2-banner-title">{banner.title}</h2>}
-                  {banner.link && (
-                    <Link to={banner.link} className="s2-btn s2-banner-cta">
-                      Shop Collection
-                    </Link>
-                  )}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
           {banners.length > 1 && (
@@ -159,10 +154,10 @@ export default function Home() {
       <section className="s2-section">
         <div className="s2-section-head">
           <h2 className="s2-section-title">
-            Drift through <em>rooms</em>
+            Shop by <em>category</em>
           </h2>
           <Link to="/products" className="s2-view-all">
-            All rooms <ArrowRight size={14} strokeWidth={2} />
+            View all <ArrowRight size={14} strokeWidth={2} />
           </Link>
         </div>
         <div className="s2-category-rail">
@@ -184,7 +179,7 @@ export default function Home() {
       <section className="s2-section">
         <div className="s2-section-head">
           <h2 className="s2-section-title">
-            Tonight's <em>features</em>
+            Trending <em>now</em>
           </h2>
           <Link to="/products" className="s2-view-all">
             See all <ArrowRight size={14} strokeWidth={2} />
