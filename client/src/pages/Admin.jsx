@@ -666,6 +666,7 @@ export default function Admin() {
       }).catch(console.error);
     } else if (tab === 'products') {
       api.get('/products?limit=100').then((res) => setProducts(res.data.products));
+      if (adminCategories.length === 0) api.get('/categories/all').then((res) => setAdminCategories(res.data));
     } else if (tab === 'orders') {
       api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
     } else if (tab === 'coupons') {
@@ -1002,15 +1003,9 @@ export default function Admin() {
                         <label>Category</label>
                         <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
                           <option value="">Select category</option>
-                          <option value="Electronics">Electronics</option>
-                          <option value="Clothing">Clothing</option>
-                          <option value="Footwear">Footwear</option>
-                          <option value="Accessories">Accessories</option>
-                          <option value="Sports">Sports</option>
-                          <option value="Home">Home</option>
-                          <option value="Beauty">Beauty</option>
-                          <option value="Food">Food</option>
-                          <option value="Books">Books</option>
+                          {adminCategories.map((cat) => (
+                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
