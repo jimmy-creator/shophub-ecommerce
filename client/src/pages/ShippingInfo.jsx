@@ -1,10 +1,11 @@
 import { Truck, Zap, Package, MapPin, Clock, HelpCircle } from 'lucide-react';
 import SEO from '../components/SEO';
+import { CURRENCY } from '../utils/currency';
 
 export default function ShippingInfo() {
   return (
     <div className="static-page">
-      <SEO title="Shipping Information" description="Free shipping on orders over ₹500. Standard and express delivery across India." />
+      <SEO title="Shipping Information" description={`Free shipping on orders over ${CURRENCY}500. Standard and express delivery across India.`} />
       <div className="container">
         <div className="static-hero">
           <h1>Shipping Information</h1>
@@ -16,20 +17,20 @@ export default function ShippingInfo() {
             <div className="info-card">
               <Truck size={24} />
               <h3>Standard Shipping</h3>
-              <p className="info-card-price">₹49</p>
+              <p className="info-card-price">{CURRENCY}49</p>
               <p>Delivered in 5-7 business days. Available for all orders across India.</p>
             </div>
             <div className="info-card">
               <Zap size={24} />
               <h3>Express Shipping</h3>
-              <p className="info-card-price">₹99</p>
+              <p className="info-card-price">{CURRENCY}99</p>
               <p>Delivered in 1-2 business days. Get your order faster when you need it.</p>
             </div>
             <div className="info-card highlight">
               <Package size={24} />
               <h3>Free Shipping</h3>
-              <p className="info-card-price">₹0</p>
-              <p>Free standard shipping on all orders above ₹500. No code needed!</p>
+              <p className="info-card-price">{CURRENCY}0</p>
+              <p>{`Free standard shipping on all orders above ${CURRENCY}500.`} No code needed!</p>
             </div>
           </div>
 

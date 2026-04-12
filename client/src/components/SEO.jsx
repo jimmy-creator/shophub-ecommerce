@@ -1,7 +1,8 @@
 import { Helmet } from 'react-helmet-async';
+import { CURRENCY } from '../utils/currency';
 
 const SITE_NAME = 'ShopHub';
-const DEFAULT_DESC = 'Shop the latest products at great prices. Free shipping on orders over ₹500.';
+const DEFAULT_DESC = `Shop the latest products at great prices. Free shipping on orders over ${CURRENCY}500.`;
 const SITE_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
 export default function SEO({

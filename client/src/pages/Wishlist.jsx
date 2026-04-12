@@ -4,6 +4,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import ProductImage from '../components/ProductImage';
 import { showToast } from '../utils/toast';
+import { CURRENCY } from '../utils/currency';
 
 export default function Wishlist() {
   const { wishlist, removeFromWishlist } = useWishlist();
@@ -46,9 +47,9 @@ export default function Wishlist() {
                 </Link>
                 <span className="product-category">{item.category}</span>
                 <div className="product-pricing">
-                  <span className="price">₹{parseFloat(item.price).toFixed(2)}</span>
+                  <span className="price">{CURRENCY}{parseFloat(item.price).toFixed(2)}</span>
                   {item.comparePrice && (
-                    <span className="compare-price">₹{parseFloat(item.comparePrice).toFixed(2)}</span>
+                    <span className="compare-price">{CURRENCY}{parseFloat(item.comparePrice).toFixed(2)}</span>
                   )}
                 </div>
                 <div className="wishlist-item-actions">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import api from '../api/axios';
 import ProductImage from './ProductImage';
+import { CURRENCY } from '../utils/currency';
 
 export default function SearchAutocomplete({ onSubmit, className = '' }) {
   const [query, setQuery] = useState('');
@@ -110,7 +111,7 @@ export default function SearchAutocomplete({ onSubmit, className = '' }) {
               <div className="search-ac-info">
                 <span className="search-ac-name">{product.name}</span>
                 <span className="search-ac-meta">
-                  {product.category} · ₹{parseFloat(product.price).toFixed(2)}
+                  {product.category} · {CURRENCY}{parseFloat(product.price).toFixed(2)}
                 </span>
               </div>
             </button>

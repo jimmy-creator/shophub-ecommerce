@@ -4,6 +4,7 @@ import { HiCheckCircle, HiXCircle, HiDownload } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import { CURRENCY } from '../utils/currency';
 
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,7 @@ export default function OrderSuccess() {
 
   const orderNumber = searchParams.get('orderNumber');
   const guestEmail = searchParams.get('email');
+  const sessionId = searchParams.get('session_id');
   const status = searchParams.get('status');
   const isFailed = status === 'failed';
   const isGuest = !user;
@@ -21,6 +23,14 @@ export default function OrderSuccess() {
   useEffect(() => {
     if (!isFailed) {
       clearCart();
+    }
+
+    if (sessionId && orderNumber) {
+      api.post('/payment/verify', {
+        orderNumber,
+        gateway: 'stripe',
+        paymentData: { sessionId },
+      }).catch(() => {});
     }
 
     if (orderNumber) {
@@ -75,7 +85,7 @@ export default function OrderSuccess() {
               </div>
               <div className="order-success-row">
                 <span>Amount</span>
-                <strong>₹{parseFloat(order.totalAmount).toFixed(2)}</strong>
+                <strong>{CURRENCY}{parseFloat(order.totalAmount).toFixed(2)}</strong>
               </div>
               <div className="order-success-row">
                 <span>Payment</span>

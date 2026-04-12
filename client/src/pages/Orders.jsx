@@ -4,6 +4,7 @@ import { HiDownload } from 'react-icons/hi';
 import { XCircle } from 'lucide-react';
 import api from '../api/axios';
 import { showToast } from '../utils/toast';
+import { CURRENCY } from '../utils/currency';
 
 const statusColors = {
   processing: '#f59e0b',
@@ -94,7 +95,7 @@ export default function Orders() {
                         {item.variant && ` (${Object.entries(item.variant).filter(([k]) => k !== 'sku').map(([,v]) => v).join(', ')})`}
                         {' x '}{item.quantity}
                       </span>
-                      <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                      <span>{CURRENCY}{(item.price * item.quantity).toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -106,7 +107,7 @@ export default function Orders() {
                       Refund {order.refundStatus}
                     </span>
                     {order.refundAmount > 0 && (
-                      <span>₹{parseFloat(order.refundAmount).toFixed(2)}</span>
+                      <span>{CURRENCY}{parseFloat(order.refundAmount).toFixed(2)}</span>
                     )}
                   </div>
                 )}
@@ -135,7 +136,7 @@ export default function Orders() {
                       <HiDownload /> Invoice
                     </button>
                     <span className="order-total">
-                      Total: ₹{parseFloat(order.totalAmount).toFixed(2)}
+                      Total: {CURRENCY}{parseFloat(order.totalAmount).toFixed(2)}
                     </span>
                   </div>
                 </div>

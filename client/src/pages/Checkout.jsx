@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { HiShieldCheck, HiLockClosed, HiUser } from 'react-icons/hi';
 import api from '../api/axios';
+import { CURRENCY } from '../utils/currency';
 import toast from 'react-hot-toast';
 
 const toastStyle = {
@@ -258,6 +259,25 @@ export default function Checkout() {
     rzp.open();
   };
 
+  const handleStripePayment = async () => {
+    const createPayload = {
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
+      shippingAddress: getShippingAddress(),
+      shippingMethod,
+      gateway: 'stripe',
+      couponCode: couponApplied?.code || null,
+    };
+    if (isGuest) createPayload.guestEmail = form.email;
+
+    const { data } = await api.post('/payment/create-order', createPayload);
+    if (data.payment?.sessionUrl) {
+      clearCart();
+      window.location.href = data.payment.sessionUrl;
+    } else {
+      toast.error('Failed to create Stripe checkout session');
+    }
+  };
+
   const verifyPaytmOrder = async (orderNumber, paymentOrderId) => {
     try {
       const verifyRes = await api.post('/payment/verify', {
@@ -372,6 +392,8 @@ export default function Checkout() {
         await handleRazorpayPayment();
       } else if (method === 'paytm') {
         await handlePaytmPayment();
+      } else if (method === 'stripe') {
+        await handleStripePayment();
       } else {
         toast.error(`${method} gateway is not configured yet. Please choose another method.`);
         setLoading(false);
@@ -486,7 +508,7 @@ export default function Checkout() {
               {loading
                 ? 'Processing...'
                 : isOnlinePayment
-                  ? `Pay ₹${grandTotal.toFixed(2)}`
+                  ? `Pay ${CURRENCY}${grandTotal.toFixed(2)}`
                   : 'Place Order'
               }
             </button>
@@ -502,7 +524,7 @@ export default function Checkout() {
                   {item.selectedVariant && ` (${Object.values(item.selectedVariant).join(', ')})`}
                   {' x '}{item.quantity}
                 </span>
-                <span>₹{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                <span>{CURRENCY}{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
               </div>
             ))}
             {/* Coupon Input */}
@@ -533,12 +555,12 @@ export default function Checkout() {
 
             <div className="summary-row">
               <span>Subtotal</span>
-              <span>₹{cartTotal.toFixed(2)}</span>
+              <span>{CURRENCY}{cartTotal.toFixed(2)}</span>
             </div>
             {discountAmount > 0 && (
               <div className="summary-row discount-row">
                 <span>Discount</span>
-                <span>-₹{discountAmount.toFixed(2)}</span>
+                <span>-{CURRENCY}{discountAmount.toFixed(2)}</span>
               </div>
             )}
             {taxAmount > 0 && (
@@ -548,13 +570,13 @@ export default function Checkout() {
                   {taxInfo.breakdown && (
                     <span style={{ fontSize: '0.72rem', display: 'block', marginTop: '2px' }}>
                       {taxInfo.breakdown.isSameState
-                        ? `CGST ₹${taxInfo.breakdown.cgst.toFixed(2)} + SGST ₹${taxInfo.breakdown.sgst.toFixed(2)}`
-                        : `IGST ₹${taxInfo.breakdown.igst.toFixed(2)}`
+                        ? `CGST ${CURRENCY}${taxInfo.breakdown.cgst.toFixed(2)} + SGST ${CURRENCY}${taxInfo.breakdown.sgst.toFixed(2)}`
+                        : `IGST ${CURRENCY}${taxInfo.breakdown.igst.toFixed(2)}`
                       }
                     </span>
                   )}
                 </span>
-                <span>₹{taxAmount.toFixed(2)}</span>
+                <span>{CURRENCY}{taxAmount.toFixed(2)}</span>
               </div>
             )}
             {shippingOptions && (
@@ -569,7 +591,7 @@ export default function Checkout() {
                     <span className="shipping-option-days">{shippingOptions.standard.days}</span>
                   </div>
                   <span className="shipping-option-price">
-                    {shippingOptions.standard.rate === 0 ? 'Free' : `₹${shippingOptions.standard.rate.toFixed(2)}`}
+                    {shippingOptions.standard.rate === 0 ? 'Free' : `${CURRENCY}${shippingOptions.standard.rate.toFixed(2)}`}
                   </span>
                 </label>
                 <label
@@ -581,18 +603,18 @@ export default function Checkout() {
                     <span className="shipping-option-name">{shippingOptions.express.label}</span>
                     <span className="shipping-option-days">{shippingOptions.express.days}</span>
                   </div>
-                  <span className="shipping-option-price">₹{shippingOptions.express.rate.toFixed(2)}</span>
+                  <span className="shipping-option-price">{CURRENCY}{shippingOptions.express.rate.toFixed(2)}</span>
                 </label>
                 {shippingOptions.amountForFree && (
                   <p className="shipping-free-hint">
-                    Add ₹{shippingOptions.amountForFree.toFixed(2)} more for free shipping
+                    {`Add ${CURRENCY}${shippingOptions.amountForFree.toFixed(2)} more for free shipping`}
                   </p>
                 )}
               </div>
             )}
             <div className="summary-row total">
               <span>Total</span>
-              <span>₹{grandTotal.toFixed(2)}</span>
+              <span>{CURRENCY}{grandTotal.toFixed(2)}</span>
             </div>
 
             <div className="checkout-trust">

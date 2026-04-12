@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Monitor, Shirt, Footprints, Briefcase, Dumbbell, Home as HomeIcon, LayoutGrid } from 'lucide-react';
 import api from '../../api/axios';
 import SEO from '../../components/SEO';
+import { CURRENCY } from '../../utils/currency';
 import ProductCard from './ProductCard';
 
 const fallbackIcons = {
@@ -69,7 +70,7 @@ export default function Home() {
     <div className="s2-root">
       <SEO
         title="Zayara Mobiles"
-        description="A luminous after-hours showroom. Carefully chosen objects lit by aurora light — shipped free over ₹500."
+        description={`A luminous after-hours showroom. Carefully chosen objects lit by aurora light — shipped free over ${CURRENCY}500.`}
       />
 
       {/* ── Banner carousel ────────────────────────────────── */}

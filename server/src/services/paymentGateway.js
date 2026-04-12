@@ -347,6 +347,72 @@ class PaytmGateway extends PaymentGateway {
 }
 
 // ============================================
+// STRIPE
+// ============================================
+let _stripe = null;
+function getStripeInstance() {
+  if (!_stripe) {
+    const Stripe = require('stripe');
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  }
+  return _stripe;
+}
+
+class StripeGateway extends PaymentGateway {
+
+  async createOrder(amount, currency = 'AED', receipt, notes = {}) {
+    const customer = notes.customer || {};
+    const session = await getStripeInstance().checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: currency.toLowerCase(),
+          product_data: { name: `Order ${receipt}` },
+          unit_amount: Math.round(amount * 100),
+        },
+        quantity: 1,
+      }],
+      customer_email: customer.email || undefined,
+      metadata: { orderNumber: receipt, orderId: String(notes.orderId || '') },
+      success_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/order-success?orderNumber=${receipt}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.CLIENT_URL || 'http://localhost:5173'}/checkout?cancelled=true`,
+    });
+
+    return {
+      gatewayOrderId: session.id,
+      sessionId: session.id,
+      sessionUrl: session.url,
+      amount,
+      currency,
+      receipt,
+    };
+  }
+
+  async verifyPayment(paymentData) {
+    const { sessionId } = paymentData;
+    const session = await getStripeInstance().checkout.sessions.retrieve(sessionId);
+    return {
+      verified: session.payment_status === 'paid',
+      paymentId: session.payment_intent,
+      orderId: session.metadata?.orderNumber,
+      status: session.payment_status,
+    };
+  }
+
+  getCheckoutConfig(order) {
+    return {
+      gateway: 'stripe',
+      sessionId: order.sessionId,
+      sessionUrl: order.sessionUrl,
+      orderId: order.gatewayOrderId,
+      amount: order.amount,
+      currency: order.currency,
+    };
+  }
+}
+
+// ============================================
 // Gateway Factory
 // ============================================
 const gateways = {
@@ -356,6 +422,7 @@ const gateways = {
   phonepe: PhonePeGateway,
   ccavenue: CCAvenueGateway,
   paytm: PaytmGateway,
+  stripe: StripeGateway,
 };
 
 export function getPaymentGateway(name) {
@@ -387,6 +454,9 @@ export function getAvailableGateways() {
   }
   if (process.env.PAYTM_MERCHANT_ID && process.env.PAYTM_MERCHANT_KEY) {
     available.push({ id: 'paytm', name: 'Paytm', description: 'UPI, Cards, Wallets, Net Banking' });
+  }
+  if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY) {
+    available.push({ id: 'stripe', name: 'Stripe', description: 'Cards, Apple Pay, Google Pay' });
   }
 
   return available;

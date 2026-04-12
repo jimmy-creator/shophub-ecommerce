@@ -7,6 +7,7 @@ import SearchAutocomplete from '../../components/SearchAutocomplete';
 import ProductCard from '../../components/ProductCard';
 import { SkeletonGrid } from '../../components/Skeleton';
 import SEO from '../../components/SEO';
+import { CURRENCY } from '../../utils/currency';
 
 const fallbackIcons = {
   Electronics: <Monitor size={24} />,
@@ -58,7 +59,7 @@ export default function Home() {
 
   return (
     <div className="home">
-      <SEO title="Home" description="Shop the latest products at great prices. Free shipping on orders over ₹500. Electronics, clothing, accessories and more." />
+      <SEO title="Home" description="{`Shop the latest products at great prices. Free shipping on orders over ${CURRENCY}500. Electronics, clothing, accessories and more.`}" />
       {/* Marketplace mobile search bar above hero */}
       <div className="home-search-bar">
         <div className="container">
@@ -71,7 +72,7 @@ export default function Home() {
         <div className="hero-overlay" />
         <div className="container hero-content">
           <h1>Curated for the<br />Modern Lifestyle</h1>
-          <p>Discover thoughtfully selected products at exceptional value. Free shipping on orders over ₹500.</p>
+          <p>{`Discover thoughtfully selected products at exceptional value. Free shipping on orders over ${CURRENCY}500.`}</p>
           <div className="hero-actions">
             <Link to="/products" className="btn btn-primary">
               Explore Collection <HiArrowRight />
@@ -117,7 +118,7 @@ export default function Home() {
             <HiTruck className="feature-icon" />
             <div>
               <h3>Free Shipping</h3>
-              <p>On orders over ₹500</p>
+              <p>On orders over {CURRENCY}500</p>
             </div>
           </div>
           <div className="feature">

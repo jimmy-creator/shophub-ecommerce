@@ -12,6 +12,7 @@ import SEO from '../../components/SEO';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { showToast } from '../../utils/toast';
+import { CURRENCY } from '../../utils/currency';
 
 export default function ProductDetail() {
   const { slug } = useParams();
@@ -112,7 +113,7 @@ export default function ProductDetail() {
     <div className="product-detail">
       <SEO
         title={product.name}
-        description={product.description?.slice(0, 160) || `Buy ${product.name} at ₹${parseFloat(displayPrice).toFixed(2)}`}
+        description={product.description?.slice(0, 160) || `Buy ${product.name} at ${CURRENCY}${parseFloat(displayPrice).toFixed(2)}`}
         image={product.images?.[0] ? `${window.location.origin}${product.images[0]}` : undefined}
         type="product"
         product={{ price: displayPrice, stock: displayStock }}
@@ -172,10 +173,10 @@ export default function ProductDetail() {
             </div>
 
             <div className="product-detail-pricing">
-              <span className="price">₹{parseFloat(displayPrice).toFixed(2)}</span>
+              <span className="price">{CURRENCY}{parseFloat(displayPrice).toFixed(2)}</span>
               {product.comparePrice && (
                 <span className="compare-price">
-                  ₹{parseFloat(product.comparePrice).toFixed(2)}
+                  {CURRENCY}{parseFloat(product.comparePrice).toFixed(2)}
                 </span>
               )}
               {discount > 0 && <span className="save-badge">Save {discount}%</span>}

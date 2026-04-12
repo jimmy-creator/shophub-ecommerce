@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import ProductImage from './ProductImage';
 import { showToast } from '../utils/toast';
+import { CURRENCY } from '../utils/currency';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
@@ -52,10 +53,10 @@ export default function ProductCard({ product }) {
           <span className="review-count">({product.numReviews})</span>
         </div>
         <div className="product-pricing">
-          <span className="price">₹{parseFloat(product.price).toFixed(2)}</span>
+          <span className="price">{CURRENCY}{parseFloat(product.price).toFixed(2)}</span>
           {product.comparePrice && (
             <span className="compare-price">
-              ₹{parseFloat(product.comparePrice).toFixed(2)}
+              {CURRENCY}{parseFloat(product.comparePrice).toFixed(2)}
             </span>
           )}
         </div>

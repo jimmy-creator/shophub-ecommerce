@@ -3,6 +3,7 @@ import { ShoppingBag, Heart } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { showToast } from '../../utils/toast';
+import { CURRENCY } from '../../utils/currency';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
@@ -55,9 +56,9 @@ export default function ProductCard({ product }) {
         </Link>
         <div className="s2-product-row">
           <div className="s2-product-price">
-            <span className="now">₹{parseFloat(product.price).toFixed(0)}</span>
+            <span className="now">{CURRENCY}{parseFloat(product.price).toFixed(0)}</span>
             {hasDiscount && (
-              <span className="was">₹{parseFloat(product.comparePrice).toFixed(0)}</span>
+              <span className="was">{CURRENCY}{parseFloat(product.comparePrice).toFixed(0)}</span>
             )}
           </div>
           <button

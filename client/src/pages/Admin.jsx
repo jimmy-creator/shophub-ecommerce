@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX } from 'react-icons/hi';
 import ProductImage from '../components/ProductImage';
 import { useTheme } from '../context/ThemeContext';
+import { CURRENCY } from '../utils/currency';
 
 const emptyProduct = {
   name: '', description: '', price: '', comparePrice: '',
@@ -760,15 +761,15 @@ export default function Admin() {
             <div className="dash-cards">
               <div className="dash-card">
                 <div className="dash-card-label">Total Revenue</div>
-                <div className="dash-card-value">₹{dashboard.revenue.total.toLocaleString('en-IN')}</div>
+                <div className="dash-card-value">{CURRENCY}{dashboard.revenue.total.toLocaleString('en-IN')}</div>
                 <div className={`dash-card-change ${dashboard.revenue.growth >= 0 ? 'up' : 'down'}`}>
                   {dashboard.revenue.growth >= 0 ? '↑' : '↓'} {Math.abs(dashboard.revenue.growth)}% vs last month
                 </div>
               </div>
               <div className="dash-card">
                 <div className="dash-card-label">This Month</div>
-                <div className="dash-card-value">₹{dashboard.revenue.month.toLocaleString('en-IN')}</div>
-                <div className="dash-card-sub">Today: ₹{dashboard.revenue.today.toLocaleString('en-IN')}</div>
+                <div className="dash-card-value">{CURRENCY}{dashboard.revenue.month.toLocaleString('en-IN')}</div>
+                <div className="dash-card-sub">Today: {CURRENCY}{dashboard.revenue.today.toLocaleString('en-IN')}</div>
               </div>
               <div className="dash-card">
                 <div className="dash-card-label">Orders</div>
@@ -800,7 +801,7 @@ export default function Admin() {
                       {(() => {
                         const maxRev = Math.max(...revenueChart.map((d) => d.revenue), 1);
                         return revenueChart.map((d, i) => (
-                          <div key={i} className="chart-bar-col" title={`${d.period}: ₹${d.revenue.toLocaleString('en-IN')} (${d.orders} orders)`}>
+                          <div key={i} className="chart-bar-col" title={`${d.period}: ${CURRENCY}${d.revenue.toLocaleString('en-IN')} (${d.orders} orders)`}>
                             <div className="chart-bar" style={{ height: `${(d.revenue / maxRev) * 100}%` }} />
                             <span className="chart-bar-label">
                               {chartPeriod === '12months'
@@ -855,7 +856,7 @@ export default function Admin() {
                           <span className="dash-top-name">{p.name}</span>
                           <span className="dash-top-qty">{p.quantity} sold</span>
                         </div>
-                        <span className="dash-top-rev">₹{p.revenue.toLocaleString('en-IN')}</span>
+                        <span className="dash-top-rev">{CURRENCY}{p.revenue.toLocaleString('en-IN')}</span>
                       </div>
                     ))}
                   </div>
@@ -873,7 +874,7 @@ export default function Admin() {
                         <span className="dash-recent-name">{o.User?.name || o.guestEmail || 'Guest'}</span>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span className="dash-recent-amount">₹{parseFloat(o.totalAmount).toLocaleString('en-IN')}</span>
+                        <span className="dash-recent-amount">{CURRENCY}{parseFloat(o.totalAmount).toLocaleString('en-IN')}</span>
                         <span className={`dash-recent-status ${o.paymentStatus}`}>{o.paymentStatus}</span>
                       </div>
                     </div>
@@ -887,7 +888,7 @@ export default function Admin() {
                       {paymentMethods.map((pm) => (
                         <div key={pm.method} className="dash-pm-row">
                           <span style={{ textTransform: 'capitalize' }}>{pm.method}</span>
-                          <span>{pm.count} orders · ₹{pm.revenue.toLocaleString('en-IN')}</span>
+                          <span>{pm.count} orders · {CURRENCY}{pm.revenue.toLocaleString('en-IN')}</span>
                         </div>
                       ))}
                     </div>
@@ -1115,7 +1116,7 @@ export default function Admin() {
                       </td>
                       <td style={{ fontWeight: 500 }}>{p.name}</td>
                       <td>{p.category}</td>
-                      <td>₹{parseFloat(p.price).toFixed(2)}</td>
+                      <td>{CURRENCY}{parseFloat(p.price).toFixed(2)}</td>
                       <td>{p.stock}</td>
                       <td>{p.featured ? 'Yes' : 'No'}</td>
                       <td>
@@ -1167,7 +1168,7 @@ export default function Admin() {
                   <tr key={o.id}>
                     <td>{o.orderNumber}</td>
                     <td>{new Date(o.createdAt).toLocaleDateString()}</td>
-                    <td>₹{parseFloat(o.totalAmount).toFixed(2)}</td>
+                    <td>{CURRENCY}{parseFloat(o.totalAmount).toFixed(2)}</td>
                     <td>{o.paymentStatus}</td>
                     <td>{o.orderStatus}</td>
                     <td>
@@ -1430,7 +1431,7 @@ export default function Admin() {
                           </div>
                           <div style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                             {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            {' · '}{o.paymentMethod} · <strong>₹{parseFloat(o.totalAmount).toFixed(2)}</strong>
+                            {' · '}{o.paymentMethod} · <strong>{CURRENCY}{parseFloat(o.totalAmount).toFixed(2)}</strong>
                           </div>
                           <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                             {o.items.map((item, i) => (
@@ -1473,7 +1474,7 @@ export default function Admin() {
                         <td>{c.email}</td>
                         <td>{c.phone || '-'}</td>
                         <td>{c.orderCount}</td>
-                        <td>₹{c.totalSpent.toFixed(2)}</td>
+                        <td>{CURRENCY}{c.totalSpent.toFixed(2)}</td>
                         <td>{new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
                         <td>
                           <button
@@ -1519,7 +1520,7 @@ export default function Admin() {
                         <td>{g.email}</td>
                         <td>{g.phone}</td>
                         <td>{g.orderCount}</td>
-                        <td>₹{g.totalSpent.toFixed(2)}</td>
+                        <td>{CURRENCY}{g.totalSpent.toFixed(2)}</td>
                         <td>{new Date(g.lastOrder).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
                         <td>
                           <button
@@ -1586,11 +1587,11 @@ export default function Admin() {
                       <label>Type</label>
                       <select value={couponForm.type} onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value })} required>
                         <option value="percentage">Percentage (%)</option>
-                        <option value="fixed">Fixed Amount (₹)</option>
+                        <option value="fixed">{`Fixed Amount (${CURRENCY})`}</option>
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>{couponForm.type === 'percentage' ? 'Discount (%)' : 'Discount (₹)'}</label>
+                      <label>{couponForm.type === 'percentage' ? 'Discount (%)' : `Discount (${CURRENCY})`}</label>
                       <input type="number" step="0.01" value={couponForm.value} onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })} required />
                     </div>
                   </div>
@@ -1605,7 +1606,7 @@ export default function Admin() {
                     </div>
                     {couponForm.type === 'percentage' && (
                       <div className="form-group">
-                        <label>Max Discount Cap (₹)</label>
+                        <label>{`Max Discount Cap (${CURRENCY})`}</label>
                         <input type="number" step="0.01" value={couponForm.maxDiscount} onChange={(e) => setCouponForm({ ...couponForm, maxDiscount: e.target.value })} placeholder="No limit" />
                       </div>
                     )}
@@ -1660,8 +1661,8 @@ export default function Admin() {
                     <tr key={c.id}>
                       <td style={{ fontWeight: 600, letterSpacing: '0.5px' }}>{c.code}</td>
                       <td style={{ textTransform: 'capitalize' }}>{c.type}</td>
-                      <td>{c.type === 'percentage' ? `${c.value}%` : `₹${parseFloat(c.value).toFixed(2)}`}{c.maxDiscount ? ` (max ₹${parseFloat(c.maxDiscount).toFixed(0)})` : ''}</td>
-                      <td>{parseFloat(c.minOrderAmount) > 0 ? `₹${parseFloat(c.minOrderAmount).toFixed(0)}` : '-'}</td>
+                      <td>{c.type === 'percentage' ? `${c.value}%` : `${CURRENCY}${parseFloat(c.value).toFixed(2)}`}{c.maxDiscount ? ` (max ${CURRENCY}${parseFloat(c.maxDiscount).toFixed(0)})` : ''}</td>
+                      <td>{parseFloat(c.minOrderAmount) > 0 ? `${CURRENCY}${parseFloat(c.minOrderAmount).toFixed(0)}` : '-'}</td>
                       <td>{c.usedCount}{c.usageLimit ? `/${c.usageLimit}` : ''}</td>
                       <td>
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: c.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)', color: c.active ? 'var(--success)' : 'var(--danger)' }}>
@@ -1886,7 +1887,7 @@ export default function Admin() {
                       <td style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {c.items.map((i) => i.name).join(', ')}
                       </td>
-                      <td>₹{parseFloat(c.cartTotal).toFixed(2)}</td>
+                      <td>{CURRENCY}{parseFloat(c.cartTotal).toFixed(2)}</td>
                       <td style={{ fontSize: '0.82rem' }}>{new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                       <td>
                         {c.recovered ? (

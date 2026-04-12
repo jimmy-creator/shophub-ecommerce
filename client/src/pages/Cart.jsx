@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { HiTrash, HiMinus, HiPlus, HiShoppingCart } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import ProductImage from '../components/ProductImage';
+import { CURRENCY } from '../utils/currency';
 
 export default function Cart() {
   const { cart, removeFromCart, updateQuantity, cartTotal } = useCart();
@@ -37,7 +38,7 @@ export default function Cart() {
                       {Object.entries(item.selectedVariant).map(([k, v]) => `${k}: ${v}`).join(' / ')}
                     </p>
                   )}
-                  <p className="cart-item-price">₹{parseFloat(item.price).toFixed(2)}</p>
+                  <p className="cart-item-price">{CURRENCY}{parseFloat(item.price).toFixed(2)}</p>
                 </div>
                 <div className="cart-item-quantity">
                   <button onClick={() => updateQuantity(item.cartKey, item.quantity - 1)}>
@@ -49,7 +50,7 @@ export default function Cart() {
                   </button>
                 </div>
                 <div className="cart-item-total">
-                  ₹{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                  {CURRENCY}{(parseFloat(item.price) * item.quantity).toFixed(2)}
                 </div>
                 <button className="remove-btn" onClick={() => removeFromCart(item.cartKey)}>
                   <HiTrash />
@@ -62,7 +63,7 @@ export default function Cart() {
             <h3>Order Summary</h3>
             <div className="summary-row">
               <span>Subtotal</span>
-              <span>₹{cartTotal.toFixed(2)}</span>
+              <span>{CURRENCY}{cartTotal.toFixed(2)}</span>
             </div>
             <div className="summary-row">
               <span>Shipping</span>
@@ -70,7 +71,7 @@ export default function Cart() {
             </div>
             <div className="summary-row total">
               <span>Subtotal</span>
-              <span>₹{cartTotal.toFixed(2)}</span>
+              <span>{CURRENCY}{cartTotal.toFixed(2)}</span>
             </div>
             <Link to="/checkout" className="btn btn-primary btn-block">
               Proceed to Checkout

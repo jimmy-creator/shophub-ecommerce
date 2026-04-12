@@ -10,6 +10,7 @@ import PincodeChecker from '../../components/PincodeChecker';
 import SEO from '../../components/SEO';
 import api from '../../api/axios';
 import { showToast } from '../../utils/toast';
+import { CURRENCY } from '../../utils/currency';
 import ProductCard from './ProductCard';
 
 export default function ProductDetail() {
@@ -120,7 +121,7 @@ export default function ProductDetail() {
     <div className="s2-root">
       <SEO
         title={product.name}
-        description={product.description?.slice(0, 160) || `${product.name} at ₹${parseFloat(displayPrice).toFixed(2)}`}
+        description={product.description?.slice(0, 160) || `${product.name} at ${CURRENCY}${parseFloat(displayPrice).toFixed(2)}`}
         image={product.images?.[0] ? `${window.location.origin}${product.images[0]}` : undefined}
         type="product"
         product={{ price: displayPrice, stock: displayStock }}
@@ -189,9 +190,9 @@ export default function ProductDetail() {
             </div>
 
             <div className="s2-pricing">
-              <span className="now">₹{parseFloat(displayPrice).toFixed(0)}</span>
+              <span className="now">{CURRENCY}{parseFloat(displayPrice).toFixed(0)}</span>
               {product.comparePrice && (
-                <span className="was">₹{parseFloat(product.comparePrice).toFixed(0)}</span>
+                <span className="was">{CURRENCY}{parseFloat(product.comparePrice).toFixed(0)}</span>
               )}
               {discount > 0 && <span className="save">Save {discount}%</span>}
             </div>

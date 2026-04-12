@@ -177,9 +177,10 @@ router.post('/create-order', optionalAuth, async (req, res) => {
 
     // Create gateway payment order
     const paymentGateway = getPaymentGateway(gateway);
+    const currencyCode = process.env.CURRENCY_CODE || 'INR';
     const gatewayOrder = await paymentGateway.createOrder(
       finalAmount,
-      'INR',
+      currencyCode,
       orderNumber,
       {
         orderId: order.id,
