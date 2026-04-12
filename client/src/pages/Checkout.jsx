@@ -461,13 +461,13 @@ export default function Checkout() {
                 <label>City</label>
                 <input name="city" value={form.city} onChange={handleChange} required />
               </div>
-              <div className="form-group">
-                <label>State</label>
+              <div className="form-group form-group-state">
+                <label className="label-state">State</label>
                 <input name="state" value={form.state} onChange={handleChange} required />
               </div>
-              <div className="form-group">
+              <div className="form-group form-group-zipcode">
                 <label>ZIP Code</label>
-                <input name="zipCode" value={form.zipCode} onChange={handleChange} required />
+                <input name="zipCode" value={form.zipCode} onChange={handleChange} />
               </div>
             </div>
             <div className="form-group">
