@@ -163,7 +163,7 @@ export default function Home() {
         <div className="s2-category-rail">
           {categoryList.map((c) => (
             <Link key={c.name} to={`/products?category=${c.name}`} className="s2-cat-card">
-              {c.image && <img src={c.image} alt="" className="s2-cat-img" loading="lazy" />}
+              {c.image && <img src={c.image.replace(/\/uploads\/(.+?)\.webp$/, '/api/upload/thumb/$1.webp') || c.image} alt="" className="s2-cat-img" loading="lazy" />}
               <span className="s2-cat-icon">{fallbackIcons[c.name] || <LayoutGrid size={20} strokeWidth={1.6} />}</span>
               <span className="s2-cat-label">{c.name}</span>
             </Link>

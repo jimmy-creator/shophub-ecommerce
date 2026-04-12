@@ -8,7 +8,8 @@ import { CURRENCY } from '../../utils/currency';
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
-  const img = product.images?.[0];
+  const imgFull = product.images?.[0];
+  const img = imgFull?.replace(/\/uploads\/(.+?)\.webp$/, '/api/upload/thumb/$1.webp') || imgFull;
   const hasDiscount = product.comparePrice && product.comparePrice > product.price;
   const discount = hasDiscount
     ? Math.round((1 - product.price / product.comparePrice) * 100)

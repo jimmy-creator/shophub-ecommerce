@@ -28,18 +28,45 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB input (will be compressed)
 });
 
-// Process and save image as optimized WebP
+// Process and save image as optimized WebP + thumbnail
 async function processImage(buffer, maxWidth = 1200) {
   const uniqueName = crypto.randomBytes(12).toString('hex');
   const filename = `${uniqueName}.webp`;
+  const thumbFilename = `${uniqueName}_thumb.webp`;
   const filepath = path.join(uploadsDir, filename);
+  const thumbPath = path.join(uploadsDir, thumbFilename);
 
-  await sharp(buffer)
-    .resize(maxWidth, null, { withoutEnlargement: true, fit: 'inside' })
-    .webp({ quality: 80 })
-    .toFile(filepath);
+  await Promise.all([
+    sharp(buffer)
+      .resize(maxWidth, null, { withoutEnlargement: true, fit: 'inside' })
+      .webp({ quality: 80 })
+      .toFile(filepath),
+    sharp(buffer)
+      .resize(480, null, { withoutEnlargement: true, fit: 'inside' })
+      .webp({ quality: 72 })
+      .toFile(thumbPath),
+  ]);
 
-  return { url: `/uploads/${filename}`, filename };
+  return { url: `/uploads/${filename}`, thumb: `/uploads/${thumbFilename}`, filename };
+}
+
+// Generate thumbnail for an existing image (on-demand)
+async function getOrCreateThumb(filename) {
+  const baseName = filename.replace(/\.webp$/, '');
+  const thumbFilename = `${baseName}_thumb.webp`;
+  const thumbPath = path.join(uploadsDir, thumbFilename);
+
+  if (fs.existsSync(thumbPath)) return thumbFilename;
+
+  const originalPath = path.join(uploadsDir, filename);
+  if (!fs.existsSync(originalPath)) return null;
+
+  await sharp(originalPath)
+    .resize(480, null, { withoutEnlargement: true, fit: 'inside' })
+    .webp({ quality: 72 })
+    .toFile(thumbPath);
+
+  return thumbFilename;
 }
 
 const router = Router();
@@ -74,6 +101,19 @@ router.post('/multiple', protect, admin, upload.array('images', 5), async (req, 
     res.json(results);
   } catch (error) {
     res.status(500).json({ message: 'Image processing failed' });
+  }
+});
+
+// Serve thumbnail — generates on first request, then cached on disk
+router.get('/thumb/:filename', async (req, res) => {
+  try {
+    const thumbFilename = await getOrCreateThumb(req.params.filename);
+    if (!thumbFilename) return res.status(404).json({ message: 'Image not found' });
+
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.sendFile(path.join(uploadsDir, thumbFilename));
+  } catch (error) {
+    res.status(500).json({ message: 'Thumbnail generation failed' });
   }
 });
 
