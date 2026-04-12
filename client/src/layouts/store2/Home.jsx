@@ -24,10 +24,23 @@ export default function Home() {
     return cached ? JSON.parse(cached) : null;
   });
   const [heroImage, setHeroImage] = useState(() => localStorage.getItem('cached-hero-image') || null);
-  const [banners, setBanners] = useState([]);
+  const [banners, setBanners] = useState(() => {
+    const cached = localStorage.getItem('cached-banners');
+    return cached ? JSON.parse(cached) : [];
+  });
   const [activeBanner, setActiveBanner] = useState(0);
 
   useEffect(() => {
+    api.get('/settings/banners')
+      .then((res) => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setBanners(res.data);
+          localStorage.setItem('cached-banners', JSON.stringify(res.data));
+          res.data.forEach((b) => { if (b.image) { const img = new Image(); img.src = b.image; } });
+        }
+      })
+      .catch(() => {});
+
     api.get('/products?featured=true&limit=8')
       .then((res) => setFeatured(res.data.products))
       .catch(console.error)
@@ -47,10 +60,6 @@ export default function Home() {
         localStorage.setItem('cached-categories', JSON.stringify(res.data));
       })
       .catch(() => setCategories([]));
-
-    api.get('/settings/banners')
-      .then((res) => { if (Array.isArray(res.data) && res.data.length > 0) setBanners(res.data); })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -79,7 +88,7 @@ export default function Home() {
           <div className="s2-banner-track" style={{ transform: `translateX(-${activeBanner * 100}%)` }}>
             {banners.map((banner, i) => (
               <div key={i} className="s2-banner-slide">
-                <img src={banner.image} alt={banner.title || ''} className="s2-banner-img" />
+                <img src={banner.image} alt={banner.title || ''} className="s2-banner-img" fetchPriority={i === 0 ? 'high' : 'auto'} loading={i === 0 ? 'eager' : 'lazy'} />
                 <div className="s2-banner-overlay" />
                 <div className="s2-banner-content">
                   {banner.subtitle && <p className="s2-eyebrow">{banner.subtitle}</p>}
@@ -122,7 +131,7 @@ export default function Home() {
         <div className="s2-category-rail">
           {categoryList.map((c) => (
             <Link key={c.name} to={`/products?category=${c.name}`} className="s2-cat-card">
-              {c.image && <img src={c.image} alt="" className="s2-cat-img" />}
+              {c.image && <img src={c.image} alt="" className="s2-cat-img" loading="lazy" />}
               <span className="s2-cat-icon">{fallbackIcons[c.name] || <LayoutGrid size={20} strokeWidth={1.6} />}</span>
               <span className="s2-cat-label">{c.name}</span>
             </Link>
