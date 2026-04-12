@@ -246,6 +246,14 @@
   white-space: nowrap;
 }
 .s2-nav-logo em { font-style: italic; color: var(--s2-lavender); }
+.s2-nav-logo-img {
+  height: 60px;
+  width: 160px;
+  display: block;
+  object-fit: contain;
+  border-radius: 4px;
+  margin: -10px 0;
+}
 
 .s2-nav-search {
   flex: 1;
@@ -1851,6 +1859,14 @@
   margin: 0 0 0.75rem;
 }
 .s2-footer-brand em { font-style: italic; color: var(--s2-lavender); }
+.s2-footer-logo-img {
+  height: 56px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
 .s2-footer-brand-tag {
   color: var(--s2-text-dim);
   font-size: 0.92rem;

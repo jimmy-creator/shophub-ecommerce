@@ -17,7 +17,7 @@ export default function Navbar() {
     <>
       <nav className="s2-nav s2-glass">
         <Link to="/" className="s2-nav-logo">
-          Zayara<em>&nbsp;Mobiles</em>
+          <img src="/images/zayara-logo.png" alt="Zayara Mobiles" className="s2-nav-logo-img" />
         </Link>
 
         <div className="s2-nav-search s2-nav-search-desktop">

@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="s2-footer">
       <div className="s2-footer-grid">
         <div>
-          <h3 className="s2-footer-brand">Zayara<em>&nbsp;Mobiles</em></h3>
+          <img src="/images/zayara-logo.png" alt="Zayara Mobiles" className="s2-footer-logo-img" />
           <p className="s2-footer-brand-tag">
             An after-hours showroom for things made with intention. Shipped quietly, worn loudly.
           </p>
