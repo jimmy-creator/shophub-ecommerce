@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Monitor, Shirt, Footprints, Briefcase, Dumbbell, Home as HomeIcon, LayoutGrid } from 'lucide-react';
 import api from '../../api/axios';
@@ -62,13 +62,45 @@ export default function Home() {
       .catch(() => setCategories([]));
   }, []);
 
-  useEffect(() => {
-    if (banners.length <= 1) return;
-    const timer = setInterval(() => {
+  const touchStart = useRef(null);
+  const touchDelta = useRef(0);
+  const autoplayRef = useRef(null);
+
+  const goTo = useCallback((index) => {
+    setActiveBanner(index);
+    clearInterval(autoplayRef.current);
+    autoplayRef.current = setInterval(() => {
       setActiveBanner((prev) => (prev + 1) % banners.length);
     }, 5000);
-    return () => clearInterval(timer);
   }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    autoplayRef.current = setInterval(() => {
+      setActiveBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(autoplayRef.current);
+  }, [banners.length]);
+
+  const handleTouchStart = (e) => {
+    touchStart.current = e.touches[0].clientX;
+    touchDelta.current = 0;
+  };
+  const handleTouchMove = (e) => {
+    if (touchStart.current === null) return;
+    touchDelta.current = e.touches[0].clientX - touchStart.current;
+  };
+  const handleTouchEnd = () => {
+    if (Math.abs(touchDelta.current) > 50) {
+      if (touchDelta.current < 0 && activeBanner < banners.length - 1) {
+        goTo(activeBanner + 1);
+      } else if (touchDelta.current > 0 && activeBanner > 0) {
+        goTo(activeBanner - 1);
+      }
+    }
+    touchStart.current = null;
+    touchDelta.current = 0;
+  };
 
   const categoryList = (categories === null ? [] : categories.length > 0 ? categories : [
     { name: 'Electronics' }, { name: 'Clothing' }, { name: 'Footwear' },
@@ -84,7 +116,12 @@ export default function Home() {
 
       {/* ── Banner carousel ────────────────────────────────── */}
       {banners.length > 0 && (
-        <section className="s2-banners">
+        <section
+          className="s2-banners"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div className="s2-banner-track" style={{ transform: `translateX(-${activeBanner * 100}%)` }}>
             {banners.map((banner, i) => (
               <div key={i} className="s2-banner-slide">
@@ -109,7 +146,7 @@ export default function Home() {
                   key={i}
                   type="button"
                   className={`s2-banner-dot ${activeBanner === i ? 'active' : ''}`}
-                  onClick={() => setActiveBanner(i)}
+                  onClick={() => goTo(i)}
                   aria-label={`Banner ${i + 1}`}
                 />
               ))}
