@@ -52,4 +52,29 @@ router.put('/hero-image', protect, admin, async (req, res) => {
   }
 });
 
+// Get banners (public)
+router.get('/banners', async (req, res) => {
+  try {
+    const setting = await Setting.findByPk('banners');
+    const banners = setting?.value ? JSON.parse(setting.value) : [];
+    res.json(banners);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+// Update banners (admin only) — max 5
+router.put('/banners', protect, admin, async (req, res) => {
+  try {
+    const { banners } = req.body;
+    if (!Array.isArray(banners) || banners.length > 5) {
+      return res.status(400).json({ message: 'Provide an array of up to 5 banners' });
+    }
+    await Setting.upsert({ key: 'banners', value: JSON.stringify(banners) });
+    res.json(banners);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

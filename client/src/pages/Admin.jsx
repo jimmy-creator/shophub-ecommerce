@@ -228,6 +228,159 @@ function VariantEditor({ variantOptions, variants, onChange }) {
   );
 }
 
+function BannerEditor() {
+  const [banners, setBanners] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    api.get('/settings/banners').then((res) => {
+      if (Array.isArray(res.data)) setBanners(res.data);
+    }).catch(() => {});
+  }, []);
+
+  const saveBanners = async (updated) => {
+    try {
+      await api.put('/settings/banners', { banners: updated });
+      setBanners(updated);
+      toast.success('Banners saved');
+    } catch (err) {
+      toast.error('Failed to save banners');
+    }
+  };
+
+  const handleUpload = async (file) => {
+    if (!file || banners.length >= 5) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const newBanner = { image: data.url, title: '', subtitle: '', link: '/products' };
+      const updated = [...banners, newBanner];
+      await saveBanners(updated);
+    } catch (err) {
+      toast.error('Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const updateBanner = (index, field, value) => {
+    const updated = banners.map((b, i) => i === index ? { ...b, [field]: value } : b);
+    setBanners(updated);
+  };
+
+  const removeBanner = (index) => {
+    const updated = banners.filter((_, i) => i !== index);
+    saveBanners(updated);
+  };
+
+  const moveBanner = (index, dir) => {
+    const newIndex = index + dir;
+    if (newIndex < 0 || newIndex >= banners.length) return;
+    const updated = [...banners];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    saveBanners(updated);
+  };
+
+  return (
+    <div style={{ marginTop: '3rem' }}>
+      <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1rem' }}>
+        Home Banners ({banners.length}/5)
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+        Add up to 5 banner slides for the home page carousel. Each banner needs an image, and optionally a title, subtitle, and link.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+        {banners.map((banner, i) => (
+          <div key={i} style={{
+            display: 'grid',
+            gridTemplateColumns: '140px 1fr auto',
+            gap: '1rem',
+            padding: '1rem',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--bg-card)',
+            alignItems: 'start',
+          }}>
+            <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '16/10' }}>
+              <img src={banner.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <input
+                value={banner.title || ''}
+                onChange={(e) => updateBanner(i, 'title', e.target.value)}
+                onBlur={() => saveBanners(banners)}
+                placeholder="Banner title (e.g. Traditional style for the new generation.)"
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.88rem', background: 'var(--bg-warm)' }}
+              />
+              <input
+                value={banner.subtitle || ''}
+                onChange={(e) => updateBanner(i, 'subtitle', e.target.value)}
+                onBlur={() => saveBanners(banners)}
+                placeholder="Subtitle (e.g. Kids Collection)"
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.82rem', background: 'var(--bg-warm)' }}
+              />
+              <input
+                value={banner.link || ''}
+                onChange={(e) => updateBanner(i, 'link', e.target.value)}
+                onBlur={() => saveBanners(banners)}
+                placeholder="Link (e.g. /products?category=Kids)"
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.82rem', background: 'var(--bg-warm)' }}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <button
+                onClick={() => moveBanner(i, -1)}
+                disabled={i === 0}
+                style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-warm)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.3 : 1, fontSize: '0.75rem' }}
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => moveBanner(i, 1)}
+                disabled={i === banners.length - 1}
+                style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-warm)', cursor: i === banners.length - 1 ? 'default' : 'pointer', opacity: i === banners.length - 1 ? 0.3 : 1, fontSize: '0.75rem' }}
+              >
+                ▼
+              </button>
+              <button
+                onClick={() => removeBanner(i)}
+                style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--danger)', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.75rem' }}
+              >
+                <HiTrash />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {banners.length < 5 && (
+        <label style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+          padding: '0.7rem 1.5rem', border: '2px dashed var(--border)',
+          borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+          fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-secondary)',
+          transition: 'all 0.25s ease',
+        }}>
+          <HiPhotograph style={{ fontSize: '1.2rem' }} />
+          {uploading ? 'Uploading...' : 'Add Banner Image'}
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={(e) => handleUpload(e.target.files[0])}
+            disabled={uploading}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+
 function HeroBannerEditor() {
   const [heroImage, setHeroImage] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -1959,8 +2112,8 @@ export default function Admin() {
               ))}
             </div>
 
-            {/* Hero Banner Image */}
-            <HeroBannerEditor />
+            {/* Home Page Banners Carousel */}
+            <BannerEditor />
           </div>
         )}
 

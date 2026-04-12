@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/axios';
-import themes from '@layout/themes';
+import themes, { defaultTheme } from '@layout/themes';
 
 const ThemeContext = createContext();
 
@@ -12,7 +12,7 @@ export const themeList = Object.entries(themes).map(([id, t]) => ({
 
 export function ThemeProvider({ children }) {
   const [currentTheme, setCurrentTheme] = useState(() => {
-    return localStorage.getItem('store-theme') || 'marketplace';
+    return localStorage.getItem('store-theme') || defaultTheme || 'marketplace';
   });
 
   // Fetch store theme setting on mount
