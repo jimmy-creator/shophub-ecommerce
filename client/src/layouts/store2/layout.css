@@ -451,7 +451,7 @@
 /* Mobile search bar �� sits below navbar */
 .s2-mobile-search {
   display: none;
-  margin: 1.1rem 1rem 0;
+  margin: 1.5rem 1rem 0;
   padding: 0.55rem 0.75rem;
   border-radius: var(--s2-radius-pill);
   background: rgba(255, 255, 255, 0.55);
@@ -633,7 +633,7 @@
 .s2-banner-slide {
   position: relative;
   flex: 0 0 100%;
-  min-height: 420px;
+  aspect-ratio: 16 / 9;
   display: flex;
   align-items: flex-end;
 }
@@ -643,7 +643,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: center;
 }
 .s2-banner-overlay {
   position: absolute;
@@ -1343,10 +1343,10 @@
 
 .s2-gallery-main {
   position: relative;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 5;
   border-radius: var(--s2-radius-lg);
   overflow: hidden;
-  background: var(--s2-glass-bg);
+  background: #ffffff;
   border: 1px solid var(--s2-glass-border-hi);
   box-shadow: var(--s2-shadow-lg), 0 0 120px -30px rgba(59, 130, 246, 0.4);
 }
@@ -1361,7 +1361,7 @@
 .s2-gallery-main img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 .s2-discount-badge {
@@ -1943,7 +1943,7 @@
   .s2-cat-card { flex-basis: 150px; height: 180px; }
   .s2-category-rail { padding: 0.5rem 1rem 1rem; }
   .s2-banners { margin: 0.75rem 0.75rem 0; border-radius: 20px; }
-  .s2-banner-slide { min-height: 380px; }
+  .s2-banner-slide { aspect-ratio: 4 / 5; }
   .s2-banner-content { padding: 2rem 1.5rem; }
   .s2-newsletter { margin: 3rem 1rem 0; padding: 2.4rem 1.5rem; border-radius: 24px; }
   .s2-page-head { padding: 2rem 1rem 1.5rem; }
