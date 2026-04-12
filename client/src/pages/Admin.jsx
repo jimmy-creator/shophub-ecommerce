@@ -2085,32 +2085,34 @@ export default function Admin() {
 
         {tab === 'theme' && (
           <div>
-            <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1.5rem' }}>
-              Store Theme
-            </h3>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-              Choose a theme for your storefront. The selected theme will be visible to all customers.
-            </p>
-            <div className="theme-grid">
-              {themeOptions.map((theme) => (
-                <button
-                  key={theme.id}
-                  className={`theme-card ${currentTheme === theme.id ? 'active' : ''}`}
-                  onClick={() => {
-                    changeTheme(theme.id);
-                    toast.success(`Theme changed to "${theme.name}"`);
-                  }}
-                >
-                  <div className={`theme-preview theme-preview-${theme.id}`} />
-                  <div className="theme-card-info">
-                    <strong>{theme.name}</strong>
-                    <span>{theme.description}</span>
-                  </div>
-                  {currentTheme === theme.id && (
-                    <span className="theme-active-badge">Active</span>
-                  )}
-                </button>
-              ))}
+            <div className="theme-switcher-section">
+              <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1.5rem' }}>
+                Store Theme
+              </h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                Choose a theme for your storefront. The selected theme will be visible to all customers.
+              </p>
+              <div className="theme-grid">
+                {themeOptions.map((theme) => (
+                  <button
+                    key={theme.id}
+                    className={`theme-card ${currentTheme === theme.id ? 'active' : ''}`}
+                    onClick={() => {
+                      changeTheme(theme.id);
+                      toast.success(`Theme changed to "${theme.name}"`);
+                    }}
+                  >
+                    <div className={`theme-preview theme-preview-${theme.id}`} />
+                    <div className="theme-card-info">
+                      <strong>{theme.name}</strong>
+                      <span>{theme.description}</span>
+                    </div>
+                    {currentTheme === theme.id && (
+                      <span className="theme-active-badge">Active</span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Home Page Banners Carousel */}
