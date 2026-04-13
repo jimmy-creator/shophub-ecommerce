@@ -1,7 +1,7 @@
 import { Order, Product, User, Coupon } from '../models/index.js';
 const currencySymbol = process.env.CURRENCY_SYMBOL || '${currencySymbol}';
 import { Op } from 'sequelize';
-import { sendOrderConfirmation, sendOrderStatusUpdate } from '../services/emailService.js';
+import { sendOrderConfirmation, sendOrderStatusUpdate, sendNewOrderNotification } from '../services/emailService.js';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
 import { calculateShipping } from '../utils/shipping.js';
 
@@ -174,6 +174,7 @@ export const createOrder = async (req, res) => {
 
     await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), req.user.email).catch(() => {});
+    sendNewOrderNotification(order.toJSON()).catch(() => {});
 
     res.status(201).json(order);
   } catch (error) {
@@ -226,6 +227,7 @@ export const createGuestOrder = async (req, res) => {
 
     await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), guestEmail.toLowerCase().trim()).catch(() => {});
+    sendNewOrderNotification(order.toJSON()).catch(() => {});
 
     res.status(201).json(order);
   } catch (error) {

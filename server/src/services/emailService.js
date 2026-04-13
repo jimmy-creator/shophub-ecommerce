@@ -302,7 +302,7 @@ export async function sendAbandonedCartEmail(email, items, cartTotal, recoveryUr
         ${item.name}${item.quantity > 1 ? ` x ${item.quantity}` : ''}
       </td>
       <td style="padding:10px 16px;border-bottom:1px solid #e8e0d8;font-size:14px;color:#2c2420;text-align:right;">
-        Rs.${(item.price * item.quantity).toFixed(2)}
+        ${formatPrice(item.price * item.quantity)}
       </td>
     </tr>
   `).join('');
@@ -333,7 +333,7 @@ export async function sendAbandonedCartEmail(email, items, cartTotal, recoveryUr
     </table>
 
     <div style="text-align:right;margin-bottom:24px;">
-      <span style="font-size:16px;font-weight:700;color:#2c2420;">Total: Rs.${parseFloat(cartTotal).toFixed(2)}</span>
+      <span style="font-size:16px;font-weight:700;color:#2c2420;">Total: ${formatPrice(cartTotal)}</span>
     </div>
 
     <div style="text-align:center;margin-bottom:24px;">
@@ -350,4 +350,82 @@ export async function sendAbandonedCartEmail(email, items, cartTotal, recoveryUr
   return sendEmail(email, `You left items in your cart - ${storeName}`, html);
 }
 
-export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation, sendPasswordResetEmail, sendAbandonedCartEmail };
+// ============================================
+// NEW ORDER NOTIFICATION (Admin/Staff)
+// ============================================
+export async function sendNewOrderNotification(order) {
+  const notifyEmails = process.env.ORDER_NOTIFY_EMAILS || '';
+  if (!notifyEmails) return;
+
+  const recipients = notifyEmails.split(',').map(e => e.trim()).filter(Boolean);
+  if (recipients.length === 0) return;
+
+  const address = order.shippingAddress || {};
+  const items = order.items || [];
+  const customerEmail = order.guestEmail || 'Registered user';
+
+  const html = baseTemplate(`
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="width:56px;height:56px;background:#dcfce7;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+        <span style="font-size:28px;">🛍️</span>
+      </div>
+      <h2 style="margin:0 0 4px;font-size:22px;color:#2c2420;">New Order Received!</h2>
+      <p style="margin:0;font-size:14px;color:#8a7e76;">${order.orderNumber}</p>
+    </div>
+
+    <div style="background:#faf8f5;border:1px solid #e8e0d8;border-radius:6px;padding:16px;margin-bottom:24px;">
+      <table style="width:100%;border-collapse:collapse;">
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#8a7e76;">Customer</td>
+          <td style="padding:4px 0;font-size:13px;color:#2c2420;text-align:right;font-weight:600;">${address.fullName || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#8a7e76;">Email</td>
+          <td style="padding:4px 0;font-size:13px;color:#2c2420;text-align:right;">${customerEmail}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#8a7e76;">Phone</td>
+          <td style="padding:4px 0;font-size:13px;color:#2c2420;text-align:right;">${address.phone || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#8a7e76;">Payment</td>
+          <td style="padding:4px 0;font-size:13px;color:${order.paymentStatus === 'paid' ? '#5a8a6a' : '#c4784a'};text-align:right;text-transform:capitalize;font-weight:600;">${order.paymentMethod} — ${order.paymentStatus}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#8a7e76;">Total</td>
+          <td style="padding:4px 0;font-size:18px;color:#2c2420;text-align:right;font-weight:700;">${formatPrice(order.totalAmount)}</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3 style="margin:0 0 12px;font-size:15px;color:#2c2420;text-transform:uppercase;letter-spacing:1px;">Items</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
+      <thead>
+        <tr style="background:#faf8f5;">
+          <th style="padding:10px 16px;text-align:left;font-size:11px;color:#8a7e76;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e8e0d8;">Item</th>
+          <th style="padding:10px 16px;text-align:center;font-size:11px;color:#8a7e76;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e8e0d8;">Qty</th>
+          <th style="padding:10px 16px;text-align:right;font-size:11px;color:#8a7e76;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #e8e0d8;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${orderItemsHTML(items)}
+      </tbody>
+    </table>
+
+    <h3 style="margin:24px 0 8px;font-size:15px;color:#2c2420;text-transform:uppercase;letter-spacing:1px;">Shipping To</h3>
+    <div style="background:#faf8f5;border:1px solid #e8e0d8;border-radius:6px;padding:16px;font-size:14px;color:#2c2420;line-height:1.6;">
+      ${address.fullName || ''}<br>
+      ${address.address || ''}<br>
+      ${address.city || ''}, ${address.state || ''} ${address.zipCode || ''}<br>
+      Phone: ${address.phone || ''}
+    </div>
+  `);
+
+  const subject = `🛍️ New Order ${order.orderNumber} — ${formatPrice(order.totalAmount)}`;
+
+  await Promise.all(
+    recipients.map(email => sendEmail(email, subject, html).catch(() => {}))
+  );
+}
+
+export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation, sendPasswordResetEmail, sendAbandonedCartEmail, sendNewOrderNotification };

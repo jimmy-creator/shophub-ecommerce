@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { protect, optionalAuth } from '../middleware/auth.js';
 import { Order, Product, User, Coupon } from '../models/index.js';
 import { getPaymentGateway, getAvailableGateways } from '../services/paymentGateway.js';
-import { sendOrderConfirmation, sendPaymentConfirmation } from '../services/emailService.js';
+import { sendOrderConfirmation, sendPaymentConfirmation, sendNewOrderNotification } from '../services/emailService.js';
 import { Op } from 'sequelize';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
 import { calculateShipping } from '../utils/shipping.js';
@@ -268,6 +268,7 @@ router.post('/verify', optionalAuth, async (req, res) => {
         sendPaymentConfirmation(order.toJSON(), email).catch(() => {});
         sendOrderConfirmation(order.toJSON(), email).catch(() => {});
       }
+      sendNewOrderNotification(order.toJSON()).catch(() => {});
 
       res.json({ verified: true, order: order.toJSON(), status: result.status });
     } else if (result.status === 'PENDING') {
@@ -330,6 +331,7 @@ router.post('/paytm-callback', async (req, res) => {
             sendPaymentConfirmation(order.toJSON(), email).catch(() => {});
             sendOrderConfirmation(order.toJSON(), email).catch(() => {});
           }
+          sendNewOrderNotification(order.toJSON()).catch(() => {});
         }
       }
       res.redirect(`${clientUrl}/order-success?orderNumber=${ORDERID}`);
