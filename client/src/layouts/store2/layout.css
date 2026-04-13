@@ -493,7 +493,7 @@
   position: fixed;
   left: 1rem;
   right: 1rem;
-  bottom: 0.9rem;
+  bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
   z-index: 55;
   padding: 0.65rem 0.5rem;
   border-radius: var(--s2-radius-pill);
@@ -541,7 +541,7 @@
    HOME
    ============================================================ */
 
-.s2-home { padding-bottom: 5rem; }
+.s2-home { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
 
 .s2-hero {
   position: relative;
@@ -1960,7 +1960,7 @@
   .s2-detail-name { font-size: 2.1rem; }
   .s2-add-to-cart { grid-template-columns: 1fr; }
   .s2-product-wish { opacity: 1; transform: scale(1); }
-  .s2-footer { margin: 3rem 0.75rem 4.5rem; padding: 2.25rem 1.5rem 1.5rem; border-radius: 24px; }
+  .s2-footer { margin: 3rem 0.75rem calc(5.5rem + env(safe-area-inset-bottom, 0px)); padding: 2.25rem 1.5rem 1.5rem; border-radius: 24px; }
   .s2-footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .s2-footer-bottom { flex-direction: column; gap: 0.5rem; }
   .s2-reviews { padding: 1.5rem; margin-top: 3rem; }
@@ -2486,6 +2486,6 @@ body:has(.admin-page) .s2-footer {
 @media (max-width: 720px) {
   .cart-page, .checkout-page, .orders-page, .profile-page,
   .wishlist-page, .login-page, .register-page {
-    padding-bottom: 6rem !important;
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
