@@ -3,7 +3,7 @@ import { ShoppingBag, Heart } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { showToast } from '../../utils/toast';
-import { CURRENCY } from '../../utils/currency';
+import { CurrencySymbol } from '../../utils/currency';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
@@ -49,28 +49,25 @@ export default function ProductCard({ product }) {
         >
           <Heart size={15} strokeWidth={1.8} fill={wishlisted ? 'currentColor' : 'none'} />
         </button>
+        <button
+          type="button"
+          className="s2-product-cart-btn"
+          onClick={handleAddToCart}
+          aria-label="Add to cart"
+        >
+          <ShoppingBag size={14} strokeWidth={2} />
+        </button>
       </Link>
       <div className="s2-product-body">
         <div className="s2-product-cat">{product.category}</div>
         <Link to={`/product/${product.slug}`} className="s2-product-name">
           {product.name}
         </Link>
-        <div className="s2-product-row">
-          <div className="s2-product-price">
-            <span className="now">{CURRENCY}{parseFloat(product.price).toFixed(0)}</span>
-            {hasDiscount && (
-              <span className="was">{CURRENCY}{parseFloat(product.comparePrice).toFixed(0)}</span>
-            )}
-          </div>
-          <button
-            type="button"
-            className="s2-product-cart-btn"
-            onClick={handleAddToCart}
-            aria-label="Add to cart"
-          >
-            <ShoppingBag size={14} strokeWidth={2} />
-            <span>Add</span>
-          </button>
+        <div className="s2-product-price">
+          <span className="now"><CurrencySymbol />{parseFloat(product.price).toFixed(0)}</span>
+          {hasDiscount && (
+            <span className="was"><CurrencySymbol />{parseFloat(product.comparePrice).toFixed(0)}</span>
+          )}
         </div>
       </div>
     </article>

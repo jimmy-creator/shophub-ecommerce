@@ -10,7 +10,7 @@ import PincodeChecker from '../../components/PincodeChecker';
 import SEO from '../../components/SEO';
 import api from '../../api/axios';
 import { showToast } from '../../utils/toast';
-import { CURRENCY } from '../../utils/currency';
+import { CURRENCY, CurrencySymbol } from '../../utils/currency';
 import ProductCard from './ProductCard';
 
 export default function ProductDetail() {
@@ -190,9 +190,9 @@ export default function ProductDetail() {
             </div>
 
             <div className="s2-pricing">
-              <span className="now">{CURRENCY}{parseFloat(displayPrice).toFixed(0)}</span>
+              <span className="now"><CurrencySymbol />{parseFloat(displayPrice).toFixed(0)}</span>
               {product.comparePrice && (
-                <span className="was">{CURRENCY}{parseFloat(product.comparePrice).toFixed(0)}</span>
+                <span className="was"><CurrencySymbol />{parseFloat(product.comparePrice).toFixed(0)}</span>
               )}
               {discount > 0 && <span className="save">Save {discount}%</span>}
             </div>
