@@ -41,14 +41,18 @@ const router = Router();
 // Get available payment gateways
 router.get('/gateways', (req, res) => {
   const gateways = getAvailableGateways();
+  const allMethods = [];
 
-  // Always include COD
-  const allMethods = [
-    { id: 'cod', name: 'Cash on Delivery', description: 'Pay when you receive your order' },
-    { id: 'bank_transfer', name: 'Bank Transfer', description: 'Direct bank transfer' },
-    ...gateways,
-  ];
+  const disabledMethods = (process.env.DISABLED_PAYMENT_METHODS || '').split(',').map(m => m.trim().toLowerCase());
 
+  if (!disabledMethods.includes('cod')) {
+    allMethods.push({ id: 'cod', name: 'Cash on Delivery', description: 'Pay when you receive your order' });
+  }
+  if (!disabledMethods.includes('bank_transfer')) {
+    allMethods.push({ id: 'bank_transfer', name: 'Bank Transfer', description: 'Direct bank transfer' });
+  }
+
+  allMethods.push(...gateways);
   res.json(allMethods);
 });
 
