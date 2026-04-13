@@ -13,7 +13,7 @@ const emptyProduct = {
   variantOptions: null, variants: null,
 };
 
-function VariantEditor({ variantOptions, variants, onChange }) {
+function VariantEditor({ variantOptions, variants, onChange, basePrice }) {
   const [enabled, setEnabled] = useState(!!variantOptions && Object.keys(variantOptions || {}).length > 0);
   const [types, setTypes] = useState(() => {
     if (!variantOptions) return [];
@@ -58,7 +58,7 @@ function VariantEditor({ variantOptions, variants, onChange }) {
       return {
         options: combo,
         sku: existing?.sku || '',
-        price: existing?.price ?? '',
+        price: existing?.price ?? basePrice ?? '',
         stock: existing?.stock ?? 0,
       };
     });
@@ -1070,6 +1070,7 @@ export default function Admin() {
                   <VariantEditor
                     variantOptions={form.variantOptions}
                     variants={form.variants}
+                    basePrice={form.price}
                     onChange={(variantOptions, variants) => {
                       const totalStock = variants ? variants.reduce((s, v) => s + (v.stock || 0), 0) : form.stock;
                       setForm({ ...form, variantOptions, variants, stock: totalStock });
