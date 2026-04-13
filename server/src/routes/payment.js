@@ -18,7 +18,8 @@ async function applyCouponForPayment(couponCode, subtotal, userId) {
   if (coupon.startDate && now < new Date(coupon.startDate)) throw new Error('Coupon not active yet');
   if (coupon.endDate && now > new Date(coupon.endDate)) throw new Error('Coupon has expired');
   if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new Error('Coupon usage limit reached');
-  if (subtotal < parseFloat(coupon.minOrderAmount)) throw new Error(`Minimum order ₹${parseFloat(coupon.minOrderAmount).toFixed(2)} required`);
+  const cs = process.env.CURRENCY_SYMBOL || '₹';
+  if (subtotal < parseFloat(coupon.minOrderAmount)) throw new Error(`Minimum order ${cs}${parseFloat(coupon.minOrderAmount).toFixed(2)} required`);
   if (userId && coupon.perUserLimit) {
     const used = await Order.count({ where: { userId, couponCode: coupon.code } });
     if (used >= coupon.perUserLimit) throw new Error('You have already used this coupon');

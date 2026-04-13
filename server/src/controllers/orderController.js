@@ -1,4 +1,5 @@
 import { Order, Product, User, Coupon } from '../models/index.js';
+const currencySymbol = process.env.CURRENCY_SYMBOL || '${currencySymbol}';
 import { Op } from 'sequelize';
 import { sendOrderConfirmation, sendOrderStatusUpdate } from '../services/emailService.js';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
@@ -104,7 +105,7 @@ async function applyCoupon(couponCode, subtotal, userId) {
   if (coupon.endDate && now > new Date(coupon.endDate)) throw new Error('Coupon has expired');
   if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new Error('Coupon usage limit reached');
   if (subtotal < parseFloat(coupon.minOrderAmount)) {
-    throw new Error(`Minimum order ₹${parseFloat(coupon.minOrderAmount).toFixed(2)} required`);
+    throw new Error(`Minimum order ${currencySymbol}${parseFloat(coupon.minOrderAmount).toFixed(2)} required`);
   }
 
   if (coupon.perUserLimit) {

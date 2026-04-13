@@ -23,8 +23,10 @@ const transporter = nodemailer.createTransport(smtpConfig);
 const storeName = process.env.STORE_NAME || 'ShopHub';
 const storeEmail = process.env.SMTP_EMAIL;
 
+const currencySymbol = process.env.CURRENCY_SYMBOL || '₹';
+
 function formatPrice(amount) {
-  return `₹${parseFloat(amount).toFixed(2)}`;
+  return `${currencySymbol}${parseFloat(amount).toFixed(2)}`;
 }
 
 function orderItemsHTML(items) {

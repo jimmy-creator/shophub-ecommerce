@@ -3,6 +3,8 @@ import { Coupon, Order } from '../models/index.js';
 import { protect, admin, requirePermission, optionalAuth } from '../middleware/auth.js';
 import { Op } from 'sequelize';
 
+const currencySymbol = process.env.CURRENCY_SYMBOL || '${currencySymbol}';
+
 const router = Router();
 
 // Validate/apply a coupon code (public — guests can use too)
@@ -49,7 +51,7 @@ router.post('/apply', optionalAuth, async (req, res) => {
     // Check minimum order amount
     if (cartTotal < parseFloat(coupon.minOrderAmount)) {
       return res.status(400).json({
-        message: `Minimum order of ₹${parseFloat(coupon.minOrderAmount).toFixed(2)} required`,
+        message: `Minimum order of ${currencySymbol}${parseFloat(coupon.minOrderAmount).toFixed(2)} required`,
       });
     }
 
@@ -86,7 +88,7 @@ router.post('/apply', optionalAuth, async (req, res) => {
       type: coupon.type,
       value: parseFloat(coupon.value),
       discount,
-      description: coupon.description || `${coupon.type === 'percentage' ? coupon.value + '% off' : '₹' + coupon.value + ' off'}`,
+      description: coupon.description || `${coupon.type === 'percentage' ? coupon.value + '% off' : '${currencySymbol}' + coupon.value + ' off'}`,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

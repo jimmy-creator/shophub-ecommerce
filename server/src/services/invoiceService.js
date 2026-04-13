@@ -7,8 +7,10 @@ const storeGSTIN = process.env.STORE_GSTIN || '';
 const storeAddress = process.env.STORE_ADDRESS || '';
 const storePhone = process.env.STORE_PHONE || '';
 
+const currencySymbol = process.env.CURRENCY_SYMBOL || 'Rs.';
+
 function formatPrice(amount) {
-  return `Rs.${parseFloat(amount).toFixed(2)}`;
+  return `${currencySymbol}${parseFloat(amount).toFixed(2)}`;
 }
 
 export function generateInvoice(order) {
