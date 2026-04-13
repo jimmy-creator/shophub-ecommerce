@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Star, Minus, Plus, ArrowLeft, Zap, Heart, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
@@ -134,48 +134,15 @@ export default function ProductDetail() {
 
         <div className="s2-detail-grid">
           {/* Gallery */}
-          <div className="s2-gallery">
-            <div className="s2-gallery-main">
-              {product.images?.length > 0 ? (
-                <img
-                  src={product.images[activeImage] || product.images[0]}
-                  alt={product.name}
-                />
-              ) : (
-                <ProductImage product={product} size="large" />
-              )}
-              {discount > 0 && <span className="s2-discount-badge">−{discount}%</span>}
-              <button
-                type="button"
-                className={`s2-wishlist-btn ${isInWishlist(product.id) ? 'active' : ''}`}
-                onClick={() => {
-                  toggleWishlist(product);
-                  showToast(isInWishlist(product.id) ? 'Removed from wishlist' : 'Added to wishlist');
-                }}
-                aria-label="Toggle wishlist"
-              >
-                <Heart
-                  size={18}
-                  strokeWidth={1.8}
-                  fill={isInWishlist(product.id) ? 'currentColor' : 'none'}
-                />
-              </button>
-            </div>
-            {product.images?.length > 1 && (
-              <div className="s2-gallery-thumbs">
-                {product.images.map((url, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className={`s2-thumb ${activeImage === i ? 'active' : ''}`}
-                    onClick={() => setActiveImage(i)}
-                  >
-                    <img src={url} alt={`${product.name} ${i + 1}`} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <GallerySwipe
+            images={product.images}
+            product={product}
+            activeImage={activeImage}
+            setActiveImage={setActiveImage}
+            discount={discount}
+            isInWishlist={isInWishlist}
+            toggleWishlist={toggleWishlist}
+          />
 
           {/* Info */}
           <div className="s2-detail-info">
@@ -299,6 +266,96 @@ export default function ProductDetail() {
   );
 }
 
+
+function GallerySwipe({ images, product, activeImage, setActiveImage, discount, isInWishlist, toggleWishlist }) {
+  const touchStart = useRef(null);
+  const touchDelta = useRef(0);
+  const imgCount = images?.length || 0;
+
+  const handleTouchStart = (e) => {
+    touchStart.current = e.touches[0].clientX;
+    touchDelta.current = 0;
+  };
+  const handleTouchMove = (e) => {
+    if (touchStart.current === null) return;
+    touchDelta.current = e.touches[0].clientX - touchStart.current;
+  };
+  const handleTouchEnd = () => {
+    if (Math.abs(touchDelta.current) > 50) {
+      if (touchDelta.current < 0 && activeImage < imgCount - 1) {
+        setActiveImage(activeImage + 1);
+      } else if (touchDelta.current > 0 && activeImage > 0) {
+        setActiveImage(activeImage - 1);
+      }
+    }
+    touchStart.current = null;
+    touchDelta.current = 0;
+  };
+
+  return (
+    <div className="s2-gallery">
+      <div
+        className="s2-gallery-main"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="s2-gallery-track" style={{ transform: `translateX(-${activeImage * 100}%)` }}>
+          {imgCount > 0 ? (
+            images.map((url, i) => (
+              <div key={i} className="s2-gallery-slide">
+                <img src={url} alt={`${product.name} ${i + 1}`} />
+              </div>
+            ))
+          ) : (
+            <div className="s2-gallery-slide">
+              <ProductImage product={product} size="large" />
+            </div>
+          )}
+        </div>
+        {discount > 0 && <span className="s2-discount-badge">−{discount}%</span>}
+        <button
+          type="button"
+          className={`s2-wishlist-btn ${isInWishlist(product.id) ? 'active' : ''}`}
+          onClick={() => {
+            toggleWishlist(product);
+            showToast(isInWishlist(product.id) ? 'Removed from wishlist' : 'Added to wishlist');
+          }}
+          aria-label="Toggle wishlist"
+        >
+          <Heart size={18} strokeWidth={1.8} fill={isInWishlist(product.id) ? 'currentColor' : 'none'} />
+        </button>
+        {imgCount > 1 && (
+          <div className="s2-gallery-dots">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`s2-gallery-dot ${activeImage === i ? 'active' : ''}`}
+                onClick={() => setActiveImage(i)}
+                aria-label={`Image ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      {imgCount > 1 && (
+        <div className="s2-gallery-thumbs">
+          {images.map((url, i) => (
+            <button
+              key={i}
+              type="button"
+              className={`s2-thumb ${activeImage === i ? 'active' : ''}`}
+              onClick={() => setActiveImage(i)}
+            >
+              <img src={url} alt={`${product.name} ${i + 1}`} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ReviewsSection({ productId, user }) {
   const [reviews, setReviews] = useState([]);

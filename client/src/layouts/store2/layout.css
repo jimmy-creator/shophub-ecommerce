@@ -1357,11 +1357,44 @@
   background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 35%, transparent 80%, rgba(2, 6, 23, 0.25) 100%);
   border-radius: inherit;
 }
-.s2-gallery-main img {
+.s2-gallery-track {
+  display: flex;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+}
+.s2-gallery-slide {
+  flex: 0 0 100%;
+  height: 100%;
+}
+.s2-gallery-slide img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   display: block;
+}
+.s2-gallery-dots {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.4rem;
+  z-index: 3;
+}
+.s2-gallery-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+.s2-gallery-dot.active {
+  width: 22px;
+  border-radius: 999px;
+  background: var(--s2-lavender);
 }
 .s2-discount-badge {
   position: absolute;
