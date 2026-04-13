@@ -350,10 +350,13 @@ class PaytmGateway extends PaymentGateway {
 // STRIPE
 // ============================================
 let _stripe = null;
-function getStripeInstance() {
+let _stripeModule = null;
+async function getStripeInstance() {
   if (!_stripe) {
-    const Stripe = require('stripe');
-    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    if (!_stripeModule) {
+      _stripeModule = (await import('stripe')).default;
+    }
+    _stripe = new _stripeModule(process.env.STRIPE_SECRET_KEY);
   }
   return _stripe;
 }
@@ -362,7 +365,7 @@ class StripeGateway extends PaymentGateway {
 
   async createOrder(amount, currency = 'AED', receipt, notes = {}) {
     const customer = notes.customer || {};
-    const session = await getStripeInstance().checkout.sessions.create({
+    const session = await (await getStripeInstance()).checkout.sessions.create({
       payment_method_types: ['card'],
       mode: 'payment',
       line_items: [{
@@ -391,7 +394,7 @@ class StripeGateway extends PaymentGateway {
 
   async verifyPayment(paymentData) {
     const { sessionId } = paymentData;
-    const session = await getStripeInstance().checkout.sessions.retrieve(sessionId);
+    const session = await (await getStripeInstance()).checkout.sessions.retrieve(sessionId);
     return {
       verified: session.payment_status === 'paid',
       paymentId: session.payment_intent,
