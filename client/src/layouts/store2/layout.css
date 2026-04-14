@@ -910,18 +910,17 @@
   display: block;
   aspect-ratio: 1;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
+  background: #ffffff;
   text-decoration: none;
   position: relative;
 }
 .s2-product-img img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #ffffff;
+  padding: 8px;
   transition: transform 0.8s cubic-bezier(0.2, 0.9, 0.3, 1);
-  background: linear-gradient(135deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
-  background-size: 200% 100%;
-  animation: s2-shimmer 1.5s ease-in-out infinite;
 }
 @keyframes s2-shimmer {
   0% { background-position: 200% 0; }
