@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Heart } from 'lucide-react';
+import { Plus, Heart } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { showToast } from '../../utils/toast';
@@ -55,7 +55,7 @@ export default function ProductCard({ product }) {
           onClick={handleAddToCart}
           aria-label="Add to cart"
         >
-          <ShoppingBag size={14} strokeWidth={2} />
+          <Plus size={18} strokeWidth={2.5} />
         </button>
       </Link>
       <div className="s2-product-body">
