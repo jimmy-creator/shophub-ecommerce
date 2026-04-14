@@ -18,6 +18,7 @@ const fallbackIcons = {
 
 export default function Home() {
   const [featured, setFeatured] = useState([]);
+  const [latest, setLatest] = useState([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState(() => {
     const cached = localStorage.getItem('cached-categories');
@@ -45,6 +46,10 @@ export default function Home() {
       .then((res) => setFeatured(res.data.products))
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    api.get('/products?sort=createdAt&order=DESC&limit=8')
+      .then((res) => setLatest(res.data.products))
+      .catch(console.error);
 
     api.get('/settings/hero-image')
       .then((res) => {
@@ -193,6 +198,23 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* ── Latest launches ─────────────────────────────── */}
+      {latest.length > 0 && (
+        <section className="s2-section">
+          <div className="s2-section-head">
+            <h2 className="s2-section-title">
+              Latest <em>launches</em>
+            </h2>
+            <Link to="/products?sort=createdAt&order=DESC" className="s2-view-all">
+              See all <ArrowRight size={14} strokeWidth={2} />
+            </Link>
+          </div>
+          <div className="s2-grid">
+            {latest.map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+        </section>
+      )}
 
     </div>
   );
