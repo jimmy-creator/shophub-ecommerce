@@ -168,10 +168,6 @@ export default function Home() {
               <span className="s2-cat-label">{c.name}</span>
             </Link>
           ))}
-          <Link to="/products" className="s2-cat-card">
-            <span className="s2-cat-icon"><LayoutGrid size={20} strokeWidth={1.6} /></span>
-            <span className="s2-cat-label"><em>All</em></span>
-          </Link>
         </div>
       </section>
 
