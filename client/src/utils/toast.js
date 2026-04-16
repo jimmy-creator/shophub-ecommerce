@@ -1,10 +1,29 @@
 import toast from 'react-hot-toast';
 
 export function showToast(message, type = 'success') {
-  // Read current theme from body class or localStorage
   const isMarketplace = document.body.classList.contains('theme-marketplace');
+  const isStore2 = !!document.querySelector('.s2-root');
 
-  if (isMarketplace) {
+  if (isStore2) {
+    toast[type](message, {
+      style: {
+        background: 'rgba(255, 255, 255, 0.82)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        color: '#0f172a',
+        fontSize: '0.88rem',
+        fontFamily: "'DM Sans', sans-serif",
+        borderRadius: '999px',
+        padding: '10px 18px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.06)',
+        border: '1px solid rgba(0, 20, 60, 0.1)',
+      },
+      iconTheme: {
+        primary: type === 'error' ? '#ef4444' : '#8B1A1A',
+        secondary: '#fff',
+      },
+    });
+  } else if (isMarketplace) {
     toast[type](message, {
       style: {
         background: '#fff',

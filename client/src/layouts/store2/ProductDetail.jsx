@@ -236,6 +236,21 @@ export default function ProductDetail() {
           </div>
         </div>
 
+        {/* Mobile sticky bottom bar */}
+        {displayStock > 0 && (
+          <div className="s2-mobile-buy-bar">
+            <span className="s2-mobile-buy-price">
+              <CurrencySymbol />{parseFloat(displayPrice).toFixed(0)}
+            </span>
+            <button type="button" className="s2-mobile-buy-btn s2-mobile-buy-now" onClick={handleBuyNow}>
+              <Zap size={15} strokeWidth={1.8} /> Buy now
+            </button>
+            <button type="button" className="s2-mobile-buy-btn s2-mobile-add-cart" onClick={handleAddToCart}>
+              <ShoppingBag size={15} strokeWidth={1.8} /> Add to cart
+            </button>
+          </div>
+        )}
+
         <ReviewsSection productId={product.id} user={user} />
 
         {relatedProducts.length > 0 && (
