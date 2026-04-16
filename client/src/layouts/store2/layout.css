@@ -23,8 +23,8 @@
   --s2-text-dim:       #475569;
   --s2-text-faint:     #94a3b8;
 
-  --s2-lavender:       #0ea5e9;
-  --s2-lavender-deep:  #0369a1;
+  --s2-lavender:       #8B1A1A;
+  --s2-lavender-deep:  #6B1A1A;
   --s2-cyan:           #06b6d4;
   --s2-cyan-deep:      #0891b2;
   --s2-rose:           #14b8a6;
@@ -2393,6 +2393,110 @@ tr:hover td {
   margin: 0 !important;
   border-radius: 4px !important;
   flex-shrink: 0;
+}
+
+/* ── Contact page ─────────────────────────────────────────── */
+.s2-contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 2.5rem;
+  max-width: 960px;
+  margin: 0 auto;
+  align-items: start;
+}
+.s2-contact-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.s2-contact-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.4rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(0, 20, 60, 0.06);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.3s ease;
+}
+.s2-contact-card:hover {
+  border-color: rgba(0, 20, 60, 0.12);
+  box-shadow: 0 8px 24px -8px rgba(0, 20, 60, 0.08);
+  transform: translateY(-2px);
+}
+.s2-contact-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(14, 165, 233, 0.08);
+  color: var(--s2-lavender);
+  flex-shrink: 0;
+}
+.s2-contact-card h4 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0 0 2px;
+  color: var(--s2-text);
+}
+.s2-contact-card p {
+  font-size: 0.88rem;
+  margin: 0;
+  color: var(--s2-text-dim);
+  line-height: 1.4;
+}
+.s2-contact-form {
+  padding: 2rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(0, 20, 60, 0.06);
+}
+.s2-field {
+  margin-bottom: 0.75rem;
+}
+.s2-field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--s2-text-faint);
+  margin-bottom: 0.4rem;
+}
+.s2-field input,
+.s2-field textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 20, 60, 0.08);
+  color: var(--s2-text);
+  font: inherit;
+  font-size: 0.92rem;
+  transition: all 0.25s ease;
+  resize: vertical;
+}
+.s2-field input:focus,
+.s2-field textarea:focus {
+  outline: none;
+  border-color: var(--s2-lavender);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+.s2-field input::placeholder,
+.s2-field textarea::placeholder {
+  color: var(--s2-text-faint);
+}
+@media (max-width: 720px) {
+  .s2-contact-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .s2-contact-form { padding: 1.5rem; }
+  .s2-contact-form .s2-field div[style] { grid-template-columns: 1fr !important; }
 }
 
 /* ── Hide pincode/zipcode, rename State → Emirate (UAE) ──── */

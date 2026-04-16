@@ -4,3 +4,9 @@ dist/
 .DS_Store
 uploads/*
 !uploads/.gitkeep
+
+# Proposals
+PROPOSAL.md
+PROPOSAL-VPS.md
+PROPOSAL-1000AED.md
+

@@ -1,25 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Mail, Phone, MapPin, Clock, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../api/axios';
 import SEO from '../components/SEO';
 
 export default function ContactUs() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [loading, setLoading] = useState(false);
+  const [info, setInfo] = useState({
+    email: '',
+    phone: '',
+    address: '',
+    hours: 'Mon - Sat: 9AM - 7PM',
+    storeName: 'ShopHub',
+  });
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    api.get('/contact/info')
+      .then((res) => setInfo(res.data))
+      .catch(() => {});
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await api.post('/contact/send', form);
       toast.success('Message sent! We\'ll get back to you soon.');
       setForm({ name: '', email: '', subject: '', message: '' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send message. Please try again.');
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
     <div className="static-page">
-      <SEO title="Contact Us" description="Get in touch with ShopHub. We're here to help with orders, products, and more." />
+      <SEO title="Contact Us" description={`Get in touch with ${info.storeName}. We're here to help with orders, products, and more.`} />
       <div className="container">
         <div className="static-hero">
           <h1>Contact Us</h1>
@@ -28,34 +46,42 @@ export default function ContactUs() {
 
         <div className="contact-layout">
           <div className="contact-info">
-            <div className="contact-card">
-              <Mail size={20} />
-              <div>
-                <h4>Email</h4>
-                <p>support@shophub.com</p>
+            {info.email && (
+              <div className="contact-card">
+                <Mail size={20} />
+                <div>
+                  <h4>Email</h4>
+                  <p>{info.email}</p>
+                </div>
               </div>
-            </div>
-            <div className="contact-card">
-              <Phone size={20} />
-              <div>
-                <h4>Phone</h4>
-                <p>+91 9072262297</p>
+            )}
+            {info.phone && (
+              <div className="contact-card">
+                <Phone size={20} />
+                <div>
+                  <h4>Phone</h4>
+                  <p>{info.phone}</p>
+                </div>
               </div>
-            </div>
-            <div className="contact-card">
-              <MapPin size={20} />
-              <div>
-                <h4>Address</h4>
-                <p>Kozhikode, Kerala, India</p>
+            )}
+            {info.address && (
+              <div className="contact-card">
+                <MapPin size={20} />
+                <div>
+                  <h4>Address</h4>
+                  <p>{info.address}</p>
+                </div>
               </div>
-            </div>
-            <div className="contact-card">
-              <Clock size={20} />
-              <div>
-                <h4>Business Hours</h4>
-                <p>Mon - Sat: 9AM - 7PM</p>
+            )}
+            {info.hours && (
+              <div className="contact-card">
+                <Clock size={20} />
+                <div>
+                  <h4>Business Hours</h4>
+                  <p>{info.hours}</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <form className="contact-form" onSubmit={handleSubmit}>
