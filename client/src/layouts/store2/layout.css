@@ -1365,17 +1365,23 @@
 .s2-gallery-track {
   display: flex;
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .s2-gallery-slide {
   flex: 0 0 100%;
-  height: 100%;
-  overflow: hidden;
+  position: relative;
+  /* height comes from align-self:stretch (default) against track's definite height */
 }
 .s2-gallery-slide img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -2123,6 +2129,8 @@
   .s2-features { grid-template-columns: 1fr; gap: 0.8rem; }
   .s2-detail-grid { grid-template-columns: 1fr; gap: 2rem; }
   .s2-gallery { position: relative; top: unset; }
+  /* Explicit height so percentage-height children always resolve on mobile */
+  .s2-gallery-main { height: calc(100vw - 2rem); }
   .s2-detail-info { padding: 1rem 0 0; max-height: none; overflow-y: visible; padding-right: 0; }
   .s2-products-layout { grid-template-columns: 1fr; }
   .s2-filters {
