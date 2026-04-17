@@ -8,7 +8,7 @@ import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
-import { Home, Navbar, Footer, Products, ProductDetail, ContactUs } from '@layout';
+import { Home, Navbar, Footer, Products, ProductDetail, ContactUs, AboutUs, PrivacyPolicy, RefundPolicy, ShippingPolicy, TermsOfService } from '@layout';
 import Wishlist from './pages/Wishlist';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -69,6 +69,11 @@ export default function App() {
                 <Route path="/contact" element={<ContactUs />} />
                 <Route path="/shipping-info" element={<ShippingInfo />} />
                 <Route path="/return-policy" element={<ReturnPolicy />} />
+                <Route path="/about" element={<AboutUs />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/shipping-policy" element={<ShippingPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
               </Routes>
               </PageWrapper>
             </main>

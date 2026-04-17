@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import api from '../../api/axios';
 
 export default function Footer() {
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    api.get('/categories').then(res => setCategories(res.data.slice(0, 5))).catch(() => {});
+  }, []);
+
   return (
     <footer className="s2-footer">
       <div className="s2-footer-grid">
@@ -13,9 +21,9 @@ export default function Footer() {
         <div className="s2-footer-col">
           <h4>Shop</h4>
           <Link to="/products">All Products</Link>
-          <Link to="/products?category=Electronics">Electronics</Link>
-          <Link to="/products?category=Clothing">Clothing</Link>
-          <Link to="/products?category=Accessories">Accessories</Link>
+          {categories.map(cat => (
+            <Link key={cat.id} to={`/products?category=${encodeURIComponent(cat.name)}`}>{cat.name}</Link>
+          ))}
         </div>
         <div className="s2-footer-col">
           <h4>Account</h4>
@@ -25,9 +33,16 @@ export default function Footer() {
           <Link to="/wishlist">Wishlist</Link>
         </div>
         <div className="s2-footer-col">
-          <h4>Support</h4>
+          <h4>Company</h4>
+          <Link to="/about">About Us</Link>
           <Link to="/contact">Contact</Link>
-          <Link to="/shipping-info">Shipping</Link>
+          <Link to="/privacy-policy">Privacy Policy</Link>
+          <Link to="/terms">Terms of Service</Link>
+        </div>
+        <div className="s2-footer-col">
+          <h4>Support</h4>
+          <Link to="/shipping-policy">Shipping Policy</Link>
+          <Link to="/refund-policy">Refund Policy</Link>
           <Link to="/return-policy">Returns</Link>
         </div>
       </div>

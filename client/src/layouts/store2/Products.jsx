@@ -114,6 +114,7 @@ export default function Products() {
       </div>
 
       <div className="s2-products-layout">
+        {showFilters && <div className="s2-filters-overlay" onClick={() => setShowFilters(false)} />}
         <aside className={`s2-filters ${showFilters ? 'open' : ''}`}>
           <button
             type="button"
