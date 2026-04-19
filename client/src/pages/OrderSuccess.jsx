@@ -34,21 +34,17 @@ export default function OrderSuccess() {
       }).catch(() => {});
     }
 
-    // Nomod: verify by orderNumber — backend uses order.trackingNumber (saved at checkout creation)
-    const gateway = searchParams.get('gateway');
-    if ((gateway === 'nomod' || nomodCheckoutId) && orderNumber) {
-      api.post('/payment/nomod-verify', {
-        orderNumber,
-        nomodCheckoutId: nomodCheckoutId || null,
-        guestEmail: guestEmail || undefined,
-      }).catch(() => {});
-    }
-
     if (orderNumber) {
       if (isGuest && guestEmail) {
         // Guest: track by order number + email
         api.get(`/orders/track?orderNumber=${orderNumber}&email=${encodeURIComponent(guestEmail)}`)
-          .then((res) => setOrder(res.data))
+          .then((res) => {
+            setOrder(res.data);
+            // If nomod order still pending, verify now
+            if (res.data?.paymentMethod === 'nomod' && res.data?.paymentStatus !== 'paid') {
+              api.post('/payment/nomod-verify', { orderNumber, guestEmail }).catch(() => {});
+            }
+          })
           .catch(console.error)
           .finally(() => setLoading(false));
       } else if (!isGuest) {
@@ -56,7 +52,13 @@ export default function OrderSuccess() {
         api.get('/orders/my-orders')
           .then((res) => {
             const found = res.data.find((o) => o.orderNumber === orderNumber);
-            if (found) setOrder(found);
+            if (found) {
+              setOrder(found);
+              // If nomod order still pending, verify now
+              if (found.paymentMethod === 'nomod' && found.paymentStatus !== 'paid') {
+                api.post('/payment/nomod-verify', { orderNumber }).catch(() => {});
+              }
+            }
           })
           .catch(console.error)
           .finally(() => setLoading(false));
