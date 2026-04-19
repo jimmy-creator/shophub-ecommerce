@@ -2191,7 +2191,7 @@
   .s2-cat-card { flex-basis: 150px; height: 180px; }
   .s2-category-rail { padding: 0.5rem 1rem 1rem; }
   .s2-banners { margin: 0.75rem 0.75rem 0; border-radius: 20px; }
-  .s2-banner-slide { aspect-ratio: 4 / 5; }
+  .s2-banner-slide { aspect-ratio: 16 / 9; }
   .s2-banner-content { padding: 2rem 1.5rem; }
   .s2-newsletter { margin: 3rem 1rem 0; padding: 2.4rem 1.5rem; border-radius: 24px; }
   .s2-page-head { padding: 2rem 1rem 1.5rem; }
