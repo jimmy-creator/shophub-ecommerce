@@ -430,20 +430,33 @@ class NomodGateway extends PaymentGateway {
     const customer = notes.customer || {};
     const orderItems = notes.items || [];
 
-    // Build items array — Nomod requires at least one item
+    // Build items array — Nomod requires item_id, name, unit_amount
     const items = orderItems.length > 0
-      ? orderItems.map(item => ({
-          name: item.name,
-          amount: item.price.toFixed(2),
-          quantity: item.quantity,
-        }))
-      : [{ name: `Order ${receipt}`, amount: amount.toFixed(2), quantity: 1 }];
+      ? orderItems.map(item => {
+          const unitAmount = parseFloat(item.price).toFixed(2);
+          const qty = item.quantity || 1;
+          return {
+            item_id: String(item.productId || item.id || item.name),
+            name: item.name,
+            quantity: qty,
+            unit_amount: unitAmount,
+            total_amount: (parseFloat(unitAmount) * qty).toFixed(2),
+          };
+        })
+      : [{
+          item_id: receipt,
+          name: `Order ${receipt}`,
+          quantity: 1,
+          unit_amount: amount.toFixed(2),
+          total_amount: amount.toFixed(2),
+        }];
 
     const body = {
       reference_id: receipt,
-      amount: amount.toFixed(2),          // must be string decimal
+      amount: amount.toFixed(2),
       currency: currency.toUpperCase(),
       items,
+      metadata: { order_number: receipt },
       success_url: `${this.clientUrl}/order-success?orderNumber=${receipt}&nomod_checkout_id={id}`,
       failure_url: `${this.clientUrl}/checkout?payment=failed`,
       cancelled_url: `${this.clientUrl}/checkout?cancelled=true`,
@@ -457,7 +470,7 @@ class NomodGateway extends PaymentGateway {
         if (rest.length) body.customer.last_name = rest.join(' ');
       }
       if (customer.email) body.customer.email = customer.email;
-      if (customer.phone) body.customer.phone = customer.phone;
+      if (customer.phone) body.customer.phone_number = customer.phone;
     }
 
     console.log('[Nomod] apiKey prefix:', this.apiKey?.slice(0, 10), '| length:', this.apiKey?.length);
