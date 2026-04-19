@@ -449,6 +449,7 @@ class NomodGateway extends PaymentGateway {
     }
 
     console.log('[Nomod] apiKey prefix:', this.apiKey?.slice(0, 10), '| length:', this.apiKey?.length);
+    console.log('[Nomod] request body:', JSON.stringify(body));
 
     const response = await fetch(`${this.baseUrl}/v1/checkout`, {
       method: 'POST',
