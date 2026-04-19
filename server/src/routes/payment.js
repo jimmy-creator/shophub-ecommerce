@@ -345,4 +345,56 @@ router.post('/paytm-callback', async (req, res) => {
   }
 });
 
+// Nomod — verify payment by checkout ID (called from frontend after redirect back)
+router.post('/nomod-verify', optionalAuth, async (req, res) => {
+  try {
+    const { orderNumber, nomodCheckoutId, guestEmail } = req.body;
+
+    const where = { orderNumber };
+    if (req.user) {
+      where.userId = req.user.id;
+    } else if (guestEmail) {
+      where.guestEmail = guestEmail.toLowerCase().trim();
+    }
+
+    const order = await Order.findOne({ where });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    if (order.paymentStatus === 'paid') {
+      return res.json({ verified: true, status: 'paid' });
+    }
+
+    const paymentGateway = getPaymentGateway('nomod');
+    const result = await paymentGateway.verifyPayment({ sessionId: nomodCheckoutId });
+
+    if (result.verified) {
+      await order.update({ paymentStatus: 'paid', orderStatus: 'confirmed' });
+
+      for (const item of order.items) {
+        await Product.increment({ stock: -item.quantity }, { where: { id: item.productId } });
+      }
+
+      let email = order.guestEmail;
+      if (!email && req.user) email = req.user.email;
+      if (!email && order.userId) {
+        const customer = await User.findByPk(order.userId);
+        if (customer) email = customer.email;
+      }
+      if (email) {
+        sendPaymentConfirmation(order.toJSON(), email).catch(() => {});
+        sendOrderConfirmation(order.toJSON(), email).catch(() => {});
+      }
+      sendNewOrderNotification(order.toJSON()).catch(() => {});
+
+      res.json({ verified: true, order: order.toJSON(), status: result.status });
+    } else {
+      await order.update({ paymentStatus: 'failed' });
+      res.json({ verified: false, status: result.status, message: 'Payment not completed' });
+    }
+  } catch (error) {
+    console.error('Nomod verify error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

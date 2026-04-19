@@ -16,6 +16,7 @@ export default function OrderSuccess() {
   const orderNumber = searchParams.get('orderNumber');
   const guestEmail = searchParams.get('email');
   const sessionId = searchParams.get('session_id');
+  const nomodCheckoutId = searchParams.get('nomod_checkout_id');
   const status = searchParams.get('status');
   const isFailed = status === 'failed';
   const isGuest = !user;
@@ -30,6 +31,14 @@ export default function OrderSuccess() {
         orderNumber,
         gateway: 'stripe',
         paymentData: { sessionId },
+      }).catch(() => {});
+    }
+
+    if (nomodCheckoutId && orderNumber) {
+      api.post('/payment/nomod-verify', {
+        orderNumber,
+        nomodCheckoutId,
+        guestEmail: guestEmail || undefined,
       }).catch(() => {});
     }
 

@@ -416,6 +416,94 @@ class StripeGateway extends PaymentGateway {
 }
 
 // ============================================
+// NOMOD (Hosted Checkout — UAE)
+// ============================================
+class NomodGateway extends PaymentGateway {
+  constructor() {
+    super();
+    this.apiKey = process.env.NOMOD_API_KEY;
+    this.baseUrl = 'https://api.nomod.com';
+    this.clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  }
+
+  async createOrder(amount, currency = 'AED', receipt, notes = {}) {
+    const customer = notes.customer || {};
+
+    const body = {
+      amount: parseFloat(amount.toFixed(2)),
+      currency: currency.toUpperCase(),
+      reference_id: receipt,
+      success_url: `${this.clientUrl}/order-success?orderNumber=${receipt}&nomod_checkout_id={id}`,
+      cancel_url: `${this.clientUrl}/checkout?cancelled=true`,
+    };
+
+    if (customer.name || customer.email || customer.phone) {
+      body.customer = {};
+      if (customer.name) {
+        const [first, ...rest] = customer.name.split(' ');
+        body.customer.first_name = first;
+        if (rest.length) body.customer.last_name = rest.join(' ');
+      }
+      if (customer.email) body.customer.email = customer.email;
+      if (customer.phone) body.customer.phone = customer.phone;
+    }
+
+    const response = await fetch(`${this.baseUrl}/v1/checkout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': this.apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`Nomod error: ${JSON.stringify(data)}`);
+    }
+
+    return {
+      gatewayOrderId: data.id,
+      sessionId: data.id,
+      sessionUrl: data.url || data.checkout_url || data.link,
+      amount,
+      currency,
+      receipt,
+    };
+  }
+
+  async verifyPayment({ sessionId }) {
+    const response = await fetch(`${this.baseUrl}/v1/checkout/${sessionId}`, {
+      headers: { 'X-API-KEY': this.apiKey },
+    });
+
+    const data = await response.json();
+
+    // Nomod checkout statuses: paid, pending, expired, cancelled
+    const isPaid = data.status === 'paid' || data.payment_status === 'paid';
+
+    return {
+      verified: isPaid,
+      paymentId: data.charge_id || data.id,
+      orderId: data.reference_id,
+      status: data.status || data.payment_status,
+    };
+  }
+
+  getCheckoutConfig(order) {
+    return {
+      gateway: 'nomod',
+      sessionId: order.sessionId,
+      sessionUrl: order.sessionUrl,
+      orderId: order.gatewayOrderId,
+      amount: order.amount,
+      currency: order.currency,
+    };
+  }
+}
+
+// ============================================
 // Gateway Factory
 // ============================================
 const gateways = {
@@ -426,6 +514,7 @@ const gateways = {
   ccavenue: CCAvenueGateway,
   paytm: PaytmGateway,
   stripe: StripeGateway,
+  nomod: NomodGateway,
 };
 
 export function getPaymentGateway(name) {
@@ -460,6 +549,9 @@ export function getAvailableGateways() {
   }
   if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY) {
     available.push({ id: 'stripe', name: 'Stripe', description: 'Cards, Apple Pay, Google Pay' });
+  }
+  if (process.env.NOMOD_API_KEY) {
+    available.push({ id: 'nomod', name: 'Nomod', description: 'Cards, Apple Pay, Google Pay, Tabby, Tamara' });
   }
 
   return available;
