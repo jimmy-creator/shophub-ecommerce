@@ -473,6 +473,8 @@ class NomodGateway extends PaymentGateway {
       if (customer.phone) body.customer.phone_number = customer.phone;
     }
 
+    console.log('[Nomod] success_url:', body.success_url);
+
     const response = await fetch(`${this.baseUrl}/v1/checkout`, {
       method: 'POST',
       headers: {
