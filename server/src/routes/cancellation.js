@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Order, Product, User } from '../models/index.js';
 import { protect, admin, optionalAuth } from '../middleware/auth.js';
 import { sendOrderStatusUpdate } from '../services/emailService.js';
+import { getPaymentGateway } from '../services/paymentGateway.js';
 
 const router = Router();
 
@@ -86,6 +87,12 @@ router.post('/:id/refund', protect, admin, async (req, res) => {
     }
 
     const refundAmount = parseFloat(req.body.refundAmount || order.totalAmount);
+
+    // Call gateway refund API if applicable
+    if (order.paymentMethod === 'nomod' && order.trackingNumber) {
+      const gateway = getPaymentGateway('nomod');
+      await gateway.refund(order.trackingNumber, refundAmount, order.orderNumber);
+    }
 
     await order.update({
       refundAmount,

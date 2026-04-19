@@ -473,9 +473,6 @@ class NomodGateway extends PaymentGateway {
       if (customer.phone) body.customer.phone_number = customer.phone;
     }
 
-    console.log('[Nomod] apiKey prefix:', this.apiKey?.slice(0, 10), '| length:', this.apiKey?.length);
-    console.log('[Nomod] request body:', JSON.stringify(body));
-
     const response = await fetch(`${this.baseUrl}/v1/checkout`, {
       method: 'POST',
       headers: {
@@ -508,14 +505,51 @@ class NomodGateway extends PaymentGateway {
 
     const data = await response.json();
 
-    // Nomod checkout statuses: paid, pending, expired, cancelled
-    const isPaid = data.status === 'paid' || data.payment_status === 'paid';
+    // Session status: paid, created, cancelled, expired
+    const sessionPaid = data.status === 'paid';
+
+    // Also check charges array — a charge with status 'paid' confirms payment
+    const charges = data.charges || [];
+    const paidCharge = charges.find(c => c.status === 'paid');
+
+    const isPaid = sessionPaid || !!paidCharge;
 
     return {
       verified: isPaid,
-      paymentId: data.charge_id || data.id,
+      paymentId: paidCharge?.id || charges[0]?.id || sessionId,
       orderId: data.reference_id,
-      status: data.status || data.payment_status,
+      status: data.status,
+    };
+  }
+
+  async refund(checkoutId, amount, referenceId) {
+    const body = {
+      amount: amount.toFixed(2),
+      idempotency_key: `refund-${referenceId}-${Date.now()}`,
+      reference_id: referenceId,
+      reason: 'Refund requested by merchant',
+    };
+
+    const response = await fetch(`${this.baseUrl}/v1/checkout/${checkoutId}/refund`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-KEY': this.apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(`Nomod refund error: ${JSON.stringify(data)}`);
+    }
+
+    return {
+      refundId: data.refund_id,
+      chargeId: data.charge_id,
+      status: data.status,
+      amount: data.amount,
     };
   }
 
