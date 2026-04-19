@@ -278,6 +278,25 @@ export default function Checkout() {
     }
   };
 
+  const handleNomodPayment = async () => {
+    const createPayload = {
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
+      shippingAddress: getShippingAddress(),
+      shippingMethod,
+      gateway: 'nomod',
+      couponCode: couponApplied?.code || null,
+    };
+    if (isGuest) createPayload.guestEmail = form.email;
+
+    const { data } = await api.post('/payment/create-order', createPayload);
+    if (data.payment?.sessionUrl) {
+      clearCart();
+      window.location.href = data.payment.sessionUrl;
+    } else {
+      toast.error('Failed to create Nomod checkout session');
+    }
+  };
+
   const verifyPaytmOrder = async (orderNumber, paymentOrderId) => {
     try {
       const verifyRes = await api.post('/payment/verify', {
@@ -394,6 +413,8 @@ export default function Checkout() {
         await handlePaytmPayment();
       } else if (method === 'stripe') {
         await handleStripePayment();
+      } else if (method === 'nomod') {
+        await handleNomodPayment();
       } else {
         toast.error(`${method} gateway is not configured yet. Please choose another method.`);
         setLoading(false);
