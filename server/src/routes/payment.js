@@ -366,12 +366,13 @@ router.post('/nomod-verify', optionalAuth, async (req, res) => {
     }
 
     // Use checkout ID from DB (trackingNumber) — don't trust URL param
-    // since Nomod may not replace {id} placeholder in success_url
     const checkoutId = order.trackingNumber || nomodCheckoutId;
+    console.log('[Nomod verify] orderNumber:', orderNumber, '| trackingNumber:', order.trackingNumber, '| nomodCheckoutId:', nomodCheckoutId, '| paymentStatus:', order.paymentStatus);
     if (!checkoutId) return res.status(400).json({ message: 'Checkout ID not found' });
 
     const paymentGateway = getPaymentGateway('nomod');
     const result = await paymentGateway.verifyPayment({ sessionId: checkoutId });
+    console.log('[Nomod verify] result:', JSON.stringify(result));
 
     if (result.verified) {
       await order.update({ paymentStatus: 'paid', orderStatus: 'confirmed' });
