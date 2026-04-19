@@ -448,6 +448,8 @@ class NomodGateway extends PaymentGateway {
       if (customer.phone) body.customer.phone = customer.phone;
     }
 
+    console.log('[Nomod] apiKey prefix:', this.apiKey?.slice(0, 10), '| length:', this.apiKey?.length);
+
     const response = await fetch(`${this.baseUrl}/v1/checkout`, {
       method: 'POST',
       headers: {
