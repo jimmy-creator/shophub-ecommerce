@@ -457,7 +457,7 @@ class NomodGateway extends PaymentGateway {
       currency: currency.toUpperCase(),
       items,
       metadata: { order_number: receipt },
-      success_url: `${this.clientUrl}/order-success?orderNumber=${receipt}&nomod_checkout_id={id}`,
+      success_url: `${this.clientUrl}/order-success?orderNumber=${receipt}&gateway=nomod`,
       failure_url: `${this.clientUrl}/checkout?payment=failed`,
       cancelled_url: `${this.clientUrl}/checkout?cancelled=true`,
     };

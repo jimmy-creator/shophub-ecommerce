@@ -34,10 +34,12 @@ export default function OrderSuccess() {
       }).catch(() => {});
     }
 
-    if (nomodCheckoutId && orderNumber) {
+    // Nomod: verify by orderNumber — backend uses order.trackingNumber (saved at checkout creation)
+    const gateway = searchParams.get('gateway');
+    if ((gateway === 'nomod' || nomodCheckoutId) && orderNumber) {
       api.post('/payment/nomod-verify', {
         orderNumber,
-        nomodCheckoutId,
+        nomodCheckoutId: nomodCheckoutId || null,
         guestEmail: guestEmail || undefined,
       }).catch(() => {});
     }
