@@ -194,6 +194,7 @@ router.post('/create-order', optionalAuth, async (req, res) => {
           email: customerEmail,
           phone: customerPhone,
         },
+        items: orderItems,
       }
     );
 

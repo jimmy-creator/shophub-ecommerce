@@ -428,13 +428,25 @@ class NomodGateway extends PaymentGateway {
 
   async createOrder(amount, currency = 'AED', receipt, notes = {}) {
     const customer = notes.customer || {};
+    const orderItems = notes.items || [];
+
+    // Build items array — Nomod requires at least one item
+    const items = orderItems.length > 0
+      ? orderItems.map(item => ({
+          name: item.name,
+          amount: item.price.toFixed(2),
+          quantity: item.quantity,
+        }))
+      : [{ name: `Order ${receipt}`, amount: amount.toFixed(2), quantity: 1 }];
 
     const body = {
-      amount: parseFloat(amount.toFixed(2)),
-      currency: currency.toUpperCase(),
       reference_id: receipt,
+      amount: amount.toFixed(2),          // must be string decimal
+      currency: currency.toUpperCase(),
+      items,
       success_url: `${this.clientUrl}/order-success?orderNumber=${receipt}&nomod_checkout_id={id}`,
-      cancel_url: `${this.clientUrl}/checkout?cancelled=true`,
+      failure_url: `${this.clientUrl}/checkout?payment=failed`,
+      cancelled_url: `${this.clientUrl}/checkout?cancelled=true`,
     };
 
     if (customer.name || customer.email || customer.phone) {
