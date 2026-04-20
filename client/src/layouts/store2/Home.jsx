@@ -116,7 +116,7 @@ export default function Home() {
     <div className="s2-root">
       <SEO
         title="Zayara Mobiles"
-        description={`A luminous after-hours showroom. Carefully chosen objects lit by aurora light — shipped free over ${CURRENCY}500.`}
+        description={`Fujairah's trusted destination for smartphones, accessories & repairs. Shop the latest devices from top brands — fast delivery across the UAE.`}
       />
 
       {/* ── Banner carousel ────────────────────────────────── */}

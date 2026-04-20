@@ -53,7 +53,7 @@ export default function Products() {
     <div className="s2-root">
       <SEO
         title={search ? `Search: ${search}` : category || 'All Products'}
-        description={`Browse ${category || 'all'} products in the atrium.`}
+        description={`Shop ${category ? category + ' at' : 'all products at'} Zayara Mobiles — smartphones, accessories & more. Fast delivery across Fujairah and the UAE.`}
       />
 
       <div className="s2-page-head">

@@ -15,7 +15,7 @@ export default function Footer() {
         <div>
           <img src="/images/zayara-logo.png" alt="Zayara Mobiles" className="s2-footer-logo-img" />
           <p className="s2-footer-brand-tag">
-            An after-hours showroom for things made with intention. Shipped quietly, worn loudly.
+            Fujairah's trusted destination for smartphones, accessories &amp; repairs. Genuine products, expert service.
           </p>
         </div>
         <div className="s2-footer-col">
@@ -48,7 +48,7 @@ export default function Footer() {
       </div>
       <div className="s2-footer-bottom">
         <span>© {new Date().getFullYear()} Zayara Mobiles</span>
-        <span>Crafted after midnight</span>
+        <span>Fujairah, UAE</span>
       </div>
     </footer>
   );
