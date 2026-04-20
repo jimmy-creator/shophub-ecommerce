@@ -366,7 +366,7 @@ class StripeGateway extends PaymentGateway {
   async createOrder(amount, currency = 'AED', receipt, notes = {}) {
     const customer = notes.customer || {};
     const session = await (await getStripeInstance()).checkout.sessions.create({
-      payment_method_types: ['card'],
+      automatic_payment_methods: { enabled: true },
       mode: 'payment',
       line_items: [{
         price_data: {
