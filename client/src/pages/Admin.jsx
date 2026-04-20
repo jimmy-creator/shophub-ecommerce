@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX } from 'react-icons/hi';
+import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX, HiEye, HiEyeOff } from 'react-icons/hi';
 import ProductImage from '../components/ProductImage';
 import { useTheme } from '../context/ThemeContext';
 import { CURRENCY } from '../utils/currency';
@@ -665,7 +665,7 @@ export default function Admin() {
         setLowStockProducts(ls.data);
       }).catch(console.error);
     } else if (tab === 'products') {
-      api.get('/products?limit=100').then((res) => setProducts(res.data.products));
+      api.get('/products/admin/all').then((res) => setProducts(res.data.products));
       if (adminCategories.length === 0) api.get('/categories/all').then((res) => setAdminCategories(res.data));
     } else if (tab === 'orders') {
       api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
@@ -689,7 +689,7 @@ export default function Admin() {
     } else if (tab === 'reviews') {
       api.get('/reviews/all').then((res) => setReviews(res.data.reviews));
       if (products.length === 0) {
-        api.get('/products?limit=100').then((res) => setProducts(res.data.products));
+        api.get('/products/admin/all').then((res) => setProducts(res.data.products));
       }
     }
   }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter]);
@@ -718,7 +718,7 @@ export default function Admin() {
       setShowForm(false);
       setEditing(null);
       setForm(emptyProduct);
-      const res = await api.get('/products?limit=100');
+      const res = await api.get('/products/admin/all');
       setProducts(res.data.products);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed');
@@ -730,6 +730,16 @@ export default function Admin() {
     await api.delete(`/products/${id}`);
     setProducts(products.filter((p) => p.id !== id));
     toast.success('Deleted');
+  };
+
+  const handleToggleActive = async (id) => {
+    try {
+      const res = await api.patch(`/products/${id}/toggle-active`);
+      setProducts(products.map((p) => p.id === id ? { ...p, active: res.data.active } : p));
+      toast.success(res.data.active ? 'Product is now Active' : 'Product is now Unlisted');
+    } catch {
+      toast.error('Failed to update status');
+    }
   };
 
   const handleStatusChange = async (orderId, orderStatus) => {
@@ -966,7 +976,7 @@ export default function Admin() {
                       if (data.errors?.length > 0) {
                         data.errors.forEach((err) => toast.error(err));
                       }
-                      api.get('/products?limit=100').then((res) => setProducts(res.data.products));
+                      api.get('/products/admin/all').then((res) => setProducts(res.data.products));
                     } catch (error) {
                       toast.error(error.response?.data?.message || 'Import failed');
                     }
@@ -1099,6 +1109,7 @@ export default function Admin() {
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Featured</th>
+                    <th>Status</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -1116,6 +1127,23 @@ export default function Admin() {
                       <td>{p.stock}</td>
                       <td>{p.featured ? 'Yes' : 'No'}</td>
                       <td>
+                        <span style={{
+                          fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem',
+                          borderRadius: '100px',
+                          background: p.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)',
+                          color: p.active ? 'var(--success)' : 'var(--danger)',
+                        }}>
+                          {p.active ? 'Active' : 'Unlisted'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="icon-btn"
+                          title={p.active ? 'Unlist product' : 'Make active'}
+                          onClick={() => handleToggleActive(p.id)}
+                        >
+                          {p.active ? <HiEyeOff /> : <HiEye />}
+                        </button>
                         <button
                           className="icon-btn"
                           onClick={() => {

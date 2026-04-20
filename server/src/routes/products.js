@@ -12,6 +12,41 @@ import { protect, admin, requirePermission } from '../middleware/auth.js';
 const router = Router();
 
 router.get('/', getProducts);
+router.get('/admin/all', protect, admin, requirePermission('products'), async (req, res) => {
+  try {
+    const { Product } = await import('../models/index.js');
+    const { page = 1, limit = 200, search } = req.query;
+    const { Op } = await import('sequelize');
+    const where = {};
+    if (search) {
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { category: { [Op.like]: `%${search}%` } },
+      ];
+    }
+    const offset = (page - 1) * limit;
+    const { count, rows } = await Product.findAndCountAll({
+      where,
+      limit: parseInt(limit),
+      offset,
+      order: [['createdAt', 'DESC']],
+    });
+    res.json({ products: rows, total: count, totalPages: Math.ceil(count / limit), currentPage: parseInt(page) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+router.patch('/:id/toggle-active', protect, admin, requirePermission('products'), async (req, res) => {
+  try {
+    const { Product } = await import('../models/index.js');
+    const product = await Product.findByPk(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    await product.update({ active: !product.active });
+    res.json({ id: product.id, active: product.active });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 router.get('/categories', getCategories);
 router.get('/search-suggestions', async (req, res) => {
   try {
