@@ -2303,14 +2303,14 @@ h1, h2, h3 {
 .btn::after { display: none !important; }
 
 .btn-primary {
-  background: var(--s2-lavender) !important;
+  background: #111 !important;
   color: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 0 10px 30px -10px rgba(139, 26, 26, 0.35);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.35);
 }
 .btn-primary:hover {
-  background: var(--s2-lavender-deep) !important;
-  box-shadow: 0 14px 40px -10px rgba(139, 26, 26, 0.45);
+  background: #2a2a2a !important;
+  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.45);
 }
 
 .btn-secondary {
