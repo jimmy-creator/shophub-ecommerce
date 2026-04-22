@@ -183,14 +183,26 @@
 .s2-btn:active { transform: translateY(0); }
 
 .s2-btn-primary {
-  background: linear-gradient(135deg, rgba(186, 230, 253, 0.9), rgba(59, 130, 246, 0.85));
+  background: #111;
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 10px 30px -10px rgba(59, 130, 246, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
 }
 .s2-btn-primary:hover {
-  background: linear-gradient(135deg, rgba(186, 230, 253, 1), rgba(96, 165, 250, 0.95));
-  box-shadow: 0 14px 40px -10px rgba(59, 130, 246, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  background: #2a2a2a;
+  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Add to cart button in product detail — matches mobile red */
+.s2-add-to-cart .s2-btn-lg:not(.s2-btn-primary) {
+  background: var(--s2-lavender);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 30px -10px rgba(139, 26, 26, 0.4);
+}
+.s2-add-to-cart .s2-btn-lg:not(.s2-btn-primary):hover {
+  background: var(--s2-lavender-deep);
+  box-shadow: 0 14px 40px -10px rgba(139, 26, 26, 0.5);
 }
 
 .s2-btn-accent {
