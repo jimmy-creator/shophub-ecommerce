@@ -51,12 +51,23 @@ export default function Checkout() {
   const [shippingOptions, setShippingOptions] = useState(null);
   const [shippingMethod, setShippingMethod] = useState('standard');
 
+  const isStore2 = import.meta.env.VITE_LAYOUT === 'store2';
+  const UAE_EMIRATES = [
+    'Fujairah',
+    'Abu Dhabi',
+    'Dubai',
+    'Sharjah',
+    'Ajman',
+    'Umm Al-Quwain',
+    'Ras Al-Khaimah',
+  ];
+
   const [form, setForm] = useState({
     fullName: user?.name || '',
     email: user?.email || '',
     address: '',
     city: '',
-    state: '',
+    state: isStore2 ? 'Fujairah' : '',
     zipCode: '',
     phone: user?.phone || '',
     paymentMethod: 'cod',
@@ -483,8 +494,16 @@ export default function Checkout() {
                 <input name="city" value={form.city} onChange={handleChange} required />
               </div>
               <div className="form-group form-group-state">
-                <label className="label-state">State</label>
-                <input name="state" value={form.state} onChange={handleChange} required />
+                <label className="label-state">{isStore2 ? 'Emirate' : 'State'}</label>
+                {isStore2 ? (
+                  <select name="state" value={form.state} onChange={handleChange} required>
+                    {UAE_EMIRATES.map((e) => (
+                      <option key={e} value={e}>{e}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input name="state" value={form.state} onChange={handleChange} required />
+                )}
               </div>
               <div className="form-group form-group-zipcode">
                 <label>ZIP Code</label>
