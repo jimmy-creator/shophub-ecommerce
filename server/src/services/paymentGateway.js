@@ -464,9 +464,9 @@ class NomodGateway extends PaymentGateway {
     if (customer.name || customer.email || customer.phone) {
       body.customer = {};
       if (customer.name) {
-        const [first, ...rest] = customer.name.split(' ');
-        body.customer.first_name = first;
-        if (rest.length) body.customer.last_name = rest.join(' ');
+        const parts = customer.name.trim().split(/\s+/);
+        body.customer.first_name = parts[0];
+        body.customer.last_name = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
       }
       if (customer.email) body.customer.email = customer.email;
       if (customer.phone) body.customer.phone_number = customer.phone;
