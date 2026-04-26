@@ -10,7 +10,7 @@ const router = Router();
 // Validate/apply a coupon code (public — guests can use too)
 router.post('/apply', optionalAuth, async (req, res) => {
   try {
-    const { code, cartTotal, cartCategories } = req.body;
+    const { code, cartTotal, cartCategories, cartProductIds, paymentMethod } = req.body;
 
     if (!code) {
       return res.status(400).json({ message: 'Coupon code is required' });
@@ -67,6 +67,28 @@ router.post('/apply', optionalAuth, async (req, res) => {
       }
     }
 
+    // Check applicable products
+    if (coupon.applicableProducts && coupon.applicableProducts.length > 0 && cartProductIds) {
+      const hasApplicable = cartProductIds.some((id) =>
+        coupon.applicableProducts.includes(id)
+      );
+      if (!hasApplicable) {
+        return res.status(400).json({
+          message: 'This coupon is not valid for the items in your cart',
+        });
+      }
+    }
+
+    // Check applicable payment methods
+    if (coupon.applicablePaymentMethods && coupon.applicablePaymentMethods.length > 0 && paymentMethod) {
+      if (!coupon.applicablePaymentMethods.includes(paymentMethod)) {
+        const methodNames = coupon.applicablePaymentMethods.map((m) => m.toUpperCase()).join(', ');
+        return res.status(400).json({
+          message: `This coupon is only valid for: ${methodNames} payment`,
+        });
+      }
+    }
+
     // Calculate discount
     let discount = 0;
     if (coupon.type === 'percentage') {
@@ -110,7 +132,7 @@ router.get('/', protect, admin, async (req, res) => {
 // Create coupon
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { code, description, type, value, minOrderAmount, maxDiscount, usageLimit, perUserLimit, startDate, endDate, applicableCategories } = req.body;
+    const { code, description, type, value, minOrderAmount, maxDiscount, usageLimit, perUserLimit, startDate, endDate, applicableCategories, applicableProducts, applicablePaymentMethods } = req.body;
 
     if (!code || !type || !value) {
       return res.status(400).json({ message: 'Code, type, and value are required' });
@@ -133,6 +155,8 @@ router.post('/', protect, admin, async (req, res) => {
       startDate: startDate || null,
       endDate: endDate || null,
       applicableCategories: applicableCategories || null,
+      applicableProducts: applicableProducts || null,
+      applicablePaymentMethods: applicablePaymentMethods || null,
     });
 
     res.status(201).json(coupon);

@@ -129,6 +129,8 @@ export default function Checkout() {
         code: couponCode.trim(),
         cartTotal,
         cartCategories: [...new Set(cart.map((item) => item.category))],
+        cartProductIds: cart.map((item) => item.id),
+        paymentMethod: form.paymentMethod,
       });
       setCouponApplied(data);
       setCouponError('');

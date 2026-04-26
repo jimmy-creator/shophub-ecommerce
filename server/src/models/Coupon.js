@@ -66,6 +66,16 @@ const Coupon = sequelize.define('Coupon', {
     type: DataTypes.JSON,
     defaultValue: null,
   },
+  applicableProducts: {
+    // null = all products, or [1, 5, 12] (product IDs)
+    type: DataTypes.JSON,
+    defaultValue: null,
+  },
+  applicablePaymentMethods: {
+    // null = all methods, or ["cod", "stripe", "nomod"]
+    type: DataTypes.JSON,
+    defaultValue: null,
+  },
 });
 
 export default Coupon;

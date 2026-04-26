@@ -8,7 +8,7 @@ import { calculateTax, getIsSameState } from '../utils/tax.js';
 import { calculateShipping } from '../utils/shipping.js';
 
 // Reuse coupon logic
-async function applyCouponForPayment(couponCode, subtotal, userId) {
+async function applyCouponForPayment(couponCode, subtotal, userId, orderItems = [], paymentMethod = null) {
   if (!couponCode) return { discount: 0, code: null };
   const coupon = await Coupon.findOne({
     where: { code: couponCode.toUpperCase().trim(), active: true },
@@ -24,6 +24,27 @@ async function applyCouponForPayment(couponCode, subtotal, userId) {
     const used = await Order.count({ where: { userId, couponCode: coupon.code } });
     if (used >= coupon.perUserLimit) throw new Error('You have already used this coupon');
   }
+  // Check applicable categories
+  if (coupon.applicableCategories?.length && orderItems.length) {
+    const cartCategories = [...new Set(orderItems.map((i) => i.category).filter(Boolean))];
+    const hasMatch = cartCategories.some((cat) => coupon.applicableCategories.includes(cat));
+    if (!hasMatch) throw new Error(`This coupon is only valid for: ${coupon.applicableCategories.join(', ')}`);
+  }
+
+  // Check applicable products
+  if (coupon.applicableProducts?.length && orderItems.length) {
+    const cartProductIds = orderItems.map((i) => i.productId);
+    const hasMatch = cartProductIds.some((id) => coupon.applicableProducts.includes(id));
+    if (!hasMatch) throw new Error('This coupon is not valid for the items in your cart');
+  }
+
+  // Check applicable payment methods
+  if (coupon.applicablePaymentMethods?.length && paymentMethod) {
+    if (!coupon.applicablePaymentMethods.includes(paymentMethod)) {
+      throw new Error(`This coupon is not valid for ${paymentMethod.toUpperCase()} payment`);
+    }
+  }
+
   let discount = 0;
   if (coupon.type === 'percentage') {
     discount = (subtotal * parseFloat(coupon.value)) / 100;
@@ -127,6 +148,7 @@ router.post('/create-order', optionalAuth, async (req, res) => {
       return {
         productId: product.id,
         name: product.name,
+        category: product.category,
         price: parseFloat(product.price),
         quantity: item.quantity,
         image: product.images?.[0] || null,
@@ -138,7 +160,7 @@ router.post('/create-order', optionalAuth, async (req, res) => {
 
     // Apply coupon
     const { discount, code: appliedCode } = await applyCouponForPayment(
-      couponCode, totalAmount, isGuest ? null : req.user.id
+      couponCode, totalAmount, isGuest ? null : req.user.id, orderItems, gateway
     );
     const afterDiscount = Math.round((totalAmount - discount) * 100) / 100;
 

@@ -671,6 +671,9 @@ export default function Admin() {
       api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
     } else if (tab === 'coupons') {
       api.get('/coupons').then((res) => setCoupons(res.data));
+      if (products.length === 0) api.get('/products/admin/all').then((res) => setProducts(res.data.products));
+      if (adminCategories.length === 0) api.get('/categories/all').then((res) => setAdminCategories(res.data));
+      if (paymentMethods.length === 0) api.get('/payment/gateways').then((res) => setPaymentMethods(res.data));
     } else if (tab === 'categories') {
       api.get('/categories/all').then((res) => setAdminCategories(res.data));
     } else if (tab === 'customers') {
@@ -1574,7 +1577,7 @@ export default function Admin() {
           <div>
             <button
               className="btn btn-primary"
-              onClick={() => setCouponForm({ code: '', description: '', type: 'percentage', value: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', perUserLimit: '1', startDate: '', endDate: '', active: true, _editing: false })}
+              onClick={() => setCouponForm({ code: '', description: '', type: 'percentage', value: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', perUserLimit: '1', startDate: '', endDate: '', active: true, applicableCategories: null, applicableProducts: null, applicablePaymentMethods: null, _editing: false })}
               style={{ marginBottom: '1.5rem' }}
             >
               <HiPlus /> Create Coupon
@@ -1588,6 +1591,9 @@ export default function Admin() {
                     const payload = { ...couponForm };
                     delete payload._editing;
                     delete payload._id;
+                    if (payload.applicableCategories && payload.applicableCategories.length === 0) payload.applicableCategories = null;
+                    if (payload.applicableProducts && payload.applicableProducts.length === 0) payload.applicableProducts = null;
+                    if (payload.applicablePaymentMethods && payload.applicablePaymentMethods.length === 0) payload.applicablePaymentMethods = null;
                     if (couponForm._editing) {
                       await api.put(`/coupons/${couponForm._id}`, payload);
                       toast.success('Coupon updated');
@@ -1653,6 +1659,133 @@ export default function Admin() {
                       <input type="date" value={couponForm.endDate?.split('T')[0] || ''} onChange={(e) => setCouponForm({ ...couponForm, endDate: e.target.value || null })} />
                     </div>
                   </div>
+                  <div className="form-group">
+                    <label>Applies To</label>
+                    <select
+                      value={
+                        couponForm.applicableProducts?.length ? 'products' :
+                        couponForm.applicableCategories?.length ? 'categories' : 'all'
+                      }
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setCouponForm({
+                          ...couponForm,
+                          applicableCategories: v === 'categories' ? [] : null,
+                          applicableProducts: v === 'products' ? [] : null,
+                        });
+                      }}
+                    >
+                      <option value="all">All Products</option>
+                      <option value="categories">Specific Categories</option>
+                      <option value="products">Specific Products</option>
+                    </select>
+                  </div>
+
+                  {couponForm.applicableCategories !== null && Array.isArray(couponForm.applicableCategories) && (
+                    <div className="form-group">
+                      <label>Select Categories</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        {adminCategories.map((cat) => {
+                          const name = cat.name || cat;
+                          const selected = couponForm.applicableCategories.includes(name);
+                          return (
+                            <label key={name} className="checkbox-label" style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => {
+                                  const cats = selected
+                                    ? couponForm.applicableCategories.filter((c) => c !== name)
+                                    : [...couponForm.applicableCategories, name];
+                                  setCouponForm({ ...couponForm, applicableCategories: cats });
+                                }}
+                                style={{ display: 'none' }}
+                              />
+                              {name}
+                            </label>
+                          );
+                        })}
+                      </div>
+                      {couponForm.applicableCategories.length === 0 && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: '0.25rem' }}>Select at least one category</p>
+                      )}
+                    </div>
+                  )}
+
+                  {couponForm.applicableProducts !== null && Array.isArray(couponForm.applicableProducts) && (
+                    <div className="form-group">
+                      <label>Select Products</label>
+                      <select
+                        onChange={(e) => {
+                          const pid = parseInt(e.target.value);
+                          if (pid && !couponForm.applicableProducts.includes(pid)) {
+                            setCouponForm({ ...couponForm, applicableProducts: [...couponForm.applicableProducts, pid] });
+                          }
+                          e.target.value = '';
+                        }}
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Search and select a product...</option>
+                        {products.filter((p) => !couponForm.applicableProducts.includes(p.id)).map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                        {couponForm.applicableProducts.map((pid) => {
+                          const p = products.find((x) => x.id === pid);
+                          return (
+                            <span key={pid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', borderRadius: '100px', background: 'rgba(90,138,106,0.1)', fontSize: '0.82rem', fontWeight: 500 }}>
+                              {p ? p.name : `#${pid}`}
+                              <button type="button" onClick={() => setCouponForm({ ...couponForm, applicableProducts: couponForm.applicableProducts.filter((x) => x !== pid) })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1, color: 'var(--danger)' }}>&times;</button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {couponForm.applicableProducts.length === 0 && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: '0.25rem' }}>Select at least one product</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Payment Methods</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <label className="checkbox-label" style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: !couponForm.applicablePaymentMethods ? 'var(--success)' : 'var(--border)', background: !couponForm.applicablePaymentMethods ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}>
+                        <input
+                          type="radio"
+                          name="pmScope"
+                          checked={!couponForm.applicablePaymentMethods}
+                          onChange={() => setCouponForm({ ...couponForm, applicablePaymentMethods: null })}
+                          style={{ display: 'none' }}
+                        />
+                        All Methods
+                      </label>
+                      {paymentMethods.map((pm) => {
+                        const methods = couponForm.applicablePaymentMethods || [];
+                        const selected = methods.includes(pm.id);
+                        return (
+                          <label key={pm.id} className="checkbox-label" style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => {
+                                let updated;
+                                if (selected) {
+                                  updated = methods.filter((m) => m !== pm.id);
+                                } else {
+                                  updated = [...(couponForm.applicablePaymentMethods || []), pm.id];
+                                }
+                                setCouponForm({ ...couponForm, applicablePaymentMethods: updated.length ? updated : null });
+                              }}
+                              style={{ display: 'none' }}
+                            />
+                            {pm.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <label className="checkbox-label" style={{ paddingTop: '0.5rem' }}>
                     <input type="checkbox" checked={couponForm.active} onChange={(e) => setCouponForm({ ...couponForm, active: e.target.checked })} />
                     Active
@@ -1675,6 +1808,7 @@ export default function Admin() {
                     <th>Type</th>
                     <th>Value</th>
                     <th>Min Order</th>
+                    <th>Applies To</th>
                     <th>Used</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -1687,6 +1821,13 @@ export default function Admin() {
                       <td style={{ textTransform: 'capitalize' }}>{c.type}</td>
                       <td>{c.type === 'percentage' ? `${c.value}%` : `${CURRENCY}${parseFloat(c.value).toFixed(2)}`}{c.maxDiscount ? ` (max ${CURRENCY}${parseFloat(c.maxDiscount).toFixed(0)})` : ''}</td>
                       <td>{parseFloat(c.minOrderAmount) > 0 ? `${CURRENCY}${parseFloat(c.minOrderAmount).toFixed(0)}` : '-'}</td>
+                      <td style={{ fontSize: '0.8rem' }}>
+                        {c.applicableProducts?.length
+                          ? c.applicableProducts.map((pid) => { const p = products.find((x) => x.id === pid); return p ? p.name : `#${pid}`; }).join(', ')
+                          : c.applicableCategories?.length
+                            ? c.applicableCategories.join(', ')
+                            : 'All Products'}
+                      </td>
                       <td>{c.usedCount}{c.usageLimit ? `/${c.usageLimit}` : ''}</td>
                       <td>
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: c.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)', color: c.active ? 'var(--success)' : 'var(--danger)' }}>
@@ -1709,7 +1850,7 @@ export default function Admin() {
                     </tr>
                   ))}
                   {coupons.length === 0 && (
-                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No coupons yet</td></tr>
+                    <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No coupons yet</td></tr>
                   )}
                 </tbody>
               </table>
