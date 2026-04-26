@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { HiArrowRight, HiShieldCheck, HiTruck, HiRefresh } from 'react-icons/hi';
 import { Monitor, Shirt, Footprints, Watch, Briefcase, Dumbbell, Home as HomeIcon, Sparkles, LayoutGrid } from 'lucide-react';
@@ -28,8 +28,23 @@ export default function Home() {
   });
   const [heroImage, setHeroImage] = useState(() => localStorage.getItem('cached-hero-image') || null);
   const [heroReady, setHeroReady] = useState(!!heroImage);
+  const [banners, setBanners] = useState(() => {
+    const cached = localStorage.getItem('cached-banners');
+    return cached ? JSON.parse(cached) : [];
+  });
+  const [activeBanner, setActiveBanner] = useState(0);
 
   useEffect(() => {
+    api.get('/settings/banners')
+      .then((res) => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          setBanners(res.data);
+          localStorage.setItem('cached-banners', JSON.stringify(res.data));
+          res.data.forEach((b) => { if (b.image) { const img = new Image(); img.src = b.image; } });
+        }
+      })
+      .catch(() => {});
+
     api.get('/products?featured=true&limit=8')
       .then((res) => setFeatured(res.data.products))
       .catch(console.error)
@@ -40,7 +55,6 @@ export default function Home() {
         const url = res.data.value || '/images/hero-banner.jpeg';
         setHeroImage(url);
         localStorage.setItem('cached-hero-image', url);
-        // Preload the image
         const img = new Image();
         img.src = url;
       })
@@ -51,11 +65,40 @@ export default function Home() {
       .then((res) => {
         setCategories(res.data);
         localStorage.setItem('cached-categories', JSON.stringify(res.data));
-        // Preload category images
         res.data.forEach((c) => { if (c.image) { const img = new Image(); img.src = c.image; } });
       })
       .catch(() => setCategories([]));
   }, []);
+
+  const touchStart = useRef(null);
+  const touchDelta = useRef(0);
+  const autoplayRef = useRef(null);
+
+  const goTo = useCallback((index) => {
+    setActiveBanner(index);
+    clearInterval(autoplayRef.current);
+    autoplayRef.current = setInterval(() => {
+      setActiveBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+  }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    autoplayRef.current = setInterval(() => {
+      setActiveBanner((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(autoplayRef.current);
+  }, [banners.length]);
+
+  const handleTouchStart = (e) => { touchStart.current = e.touches[0].clientX; touchDelta.current = 0; };
+  const handleTouchMove = (e) => { if (touchStart.current === null) return; touchDelta.current = e.touches[0].clientX - touchStart.current; };
+  const handleTouchEnd = () => {
+    if (Math.abs(touchDelta.current) > 50) {
+      if (touchDelta.current < 0 && activeBanner < banners.length - 1) goTo(activeBanner + 1);
+      else if (touchDelta.current > 0 && activeBanner > 0) goTo(activeBanner - 1);
+    }
+    touchStart.current = null; touchDelta.current = 0;
+  };
 
   return (
     <div className="home">
@@ -67,19 +110,49 @@ export default function Home() {
         </div>
       </div>
 
-      <section className="hero">
-        {heroReady && heroImage && <img src={heroImage} alt="Leemount Collection" className="hero-banner" fetchPriority="high" />}
-        <div className="hero-overlay" />
-        <div className="container hero-content">
-          <h1>Curated for the<br />Modern Lifestyle</h1>
-          <p>{`Discover thoughtfully selected products at exceptional value. Free shipping on orders over ${CURRENCY}500.`}</p>
-          <div className="hero-actions">
-            <Link to="/products" className="btn btn-primary">
-              Explore Collection <HiArrowRight />
-            </Link>
+      {banners.length > 0 ? (
+        <section
+          className="banner-carousel"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="banner-track" style={{ transform: `translateX(-${activeBanner * 100}%)` }}>
+            {banners.map((banner, i) => (
+              <Link key={i} to={banner.link || '/products'} className="banner-slide">
+                <img src={banner.image} alt={banner.title || ''} className="banner-slide-img" fetchPriority={i === 0 ? 'high' : 'auto'} loading={i === 0 ? 'eager' : 'lazy'} />
+                <div className="banner-slide-overlay" />
+                <div className="banner-slide-content">
+                  {banner.subtitle && <p className="banner-subtitle">{banner.subtitle}</p>}
+                  {banner.title && <h2 className="banner-title">{banner.title}</h2>}
+                  <span className="btn btn-primary banner-cta">Shop Now <HiArrowRight /></span>
+                </div>
+              </Link>
+            ))}
           </div>
-        </div>
-      </section>
+          {banners.length > 1 && (
+            <div className="banner-dots">
+              {banners.map((_, i) => (
+                <button key={i} type="button" className={`banner-dot ${activeBanner === i ? 'active' : ''}`} onClick={() => goTo(i)} aria-label={`Banner ${i + 1}`} />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="hero">
+          {heroReady && heroImage && <img src={heroImage} alt="Leemount Collection" className="hero-banner" fetchPriority="high" />}
+          <div className="hero-overlay" />
+          <div className="container hero-content">
+            <h1>Curated for the<br />Modern Lifestyle</h1>
+            <p>{`Discover thoughtfully selected products at exceptional value. Free shipping on orders over ${CURRENCY}500.`}</p>
+            <div className="hero-actions">
+              <Link to="/products" className="btn btn-primary">
+                Explore Collection <HiArrowRight />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Category Icons Bar */}
       <section className="category-bar">

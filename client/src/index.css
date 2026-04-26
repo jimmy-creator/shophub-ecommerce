@@ -533,6 +533,113 @@ input, textarea, select { font-family: var(--font-body); }
   transform: translateY(-2px);
 }
 
+/* ===== BANNER CAROUSEL ===== */
+.banner-carousel {
+  position: relative;
+  overflow: hidden;
+  max-width: 1280px;
+  margin: 1rem auto 0;
+  border-radius: 12px;
+}
+.banner-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.banner-slide {
+  position: relative;
+  flex: 0 0 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 480px;
+  display: flex;
+  align-items: flex-end;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.banner-slide-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.banner-slide-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgba(26, 22, 20, 0.55) 100%);
+  pointer-events: none;
+}
+.banner-slide-content {
+  position: relative;
+  z-index: 2;
+  padding: 2.5rem 2.5rem;
+  width: 100%;
+}
+.banner-subtitle {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+.banner-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  color: #ffffff;
+  margin: 0 0 1.25rem;
+  max-width: 480px;
+}
+.banner-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--copper);
+  color: #fff;
+  padding: 0.85rem 2rem;
+  border-radius: 100px;
+  font-size: 0.82rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.banner-cta:hover {
+  background: var(--copper-light);
+  transform: translateY(-2px);
+}
+.banner-dots {
+  position: absolute;
+  bottom: 1.2rem;
+  right: 1.5rem;
+  display: flex;
+  gap: 0.45rem;
+  z-index: 3;
+}
+.banner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+.banner-dot.active {
+  background: #ffffff;
+  width: 24px;
+  border-radius: 4px;
+}
+@media (max-width: 768px) {
+  .banner-carousel { margin: 0.5rem 0.5rem 0; border-radius: 16px; }
+  .banner-slide-content { padding: 1.5rem; }
+  .banner-cta { padding: 0.7rem 1.5rem; font-size: 0.75rem; }
+}
+
 /* ===== FEATURES BAR ===== */
 .features {
   padding: 0; background: var(--bg-card);
