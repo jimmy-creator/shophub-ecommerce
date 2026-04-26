@@ -40,7 +40,7 @@ export default function Navbar() {
     <>
     <nav className="navbar" style={scrolled ? { boxShadow: '0 4px 20px rgba(26,22,20,0.06)' } : {}}>
       <div className="container navbar-content">
-        <Link to="/" className="logo">ShopHub</Link>
+        <Link to="/" className="logo">Leemount</Link>
 
         <SearchAutocomplete className="desktop-search" />
 

@@ -68,7 +68,7 @@ export default function Home() {
       </div>
 
       <section className="hero">
-        {heroReady && heroImage && <img src={heroImage} alt="ShopHub Collection" className="hero-banner" fetchPriority="high" />}
+        {heroReady && heroImage && <img src={heroImage} alt="Leemount Collection" className="hero-banner" fetchPriority="high" />}
         <div className="hero-overlay" />
         <div className="container hero-content">
           <h1>Curated for the<br />Modern Lifestyle</h1>

@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="footer">
       <div className="container footer-content">
         <div className="footer-section">
-          <h3>ShopHub</h3>
+          <h3>Leemount</h3>
           <p>Curated essentials for the modern lifestyle. Quality products, thoughtfully selected.</p>
         </div>
         <div className="footer-section">
@@ -29,7 +29,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="footer-bottom">
-        <p>&copy; {new Date().getFullYear()} ShopHub. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Leemount. All rights reserved.</p>
       </div>
     </footer>
   );
