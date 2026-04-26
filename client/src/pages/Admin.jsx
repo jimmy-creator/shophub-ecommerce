@@ -641,6 +641,7 @@ export default function Admin() {
   const [orderStatus, setOrderStatus] = useState({});
   const [recentOrders, setRecentOrders] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [availableGateways, setAvailableGateways] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [showForm, setShowForm] = useState(false);
@@ -673,7 +674,7 @@ export default function Admin() {
       api.get('/coupons').then((res) => setCoupons(res.data));
       if (products.length === 0) api.get('/products/admin/all').then((res) => setProducts(res.data.products));
       if (adminCategories.length === 0) api.get('/categories/all').then((res) => setAdminCategories(res.data));
-      if (paymentMethods.length === 0) api.get('/payment/gateways').then((res) => setPaymentMethods(res.data));
+      if (availableGateways.length === 0) api.get('/payment/gateways').then((res) => setAvailableGateways(res.data));
     } else if (tab === 'categories') {
       api.get('/categories/all').then((res) => setAdminCategories(res.data));
     } else if (tab === 'customers') {
@@ -1689,20 +1690,18 @@ export default function Admin() {
                           const name = cat.name || cat;
                           const selected = couponForm.applicableCategories.includes(name);
                           return (
-                            <label key={name} className="checkbox-label" style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}>
-                              <input
-                                type="checkbox"
-                                checked={selected}
-                                onChange={() => {
-                                  const cats = selected
-                                    ? couponForm.applicableCategories.filter((c) => c !== name)
-                                    : [...couponForm.applicableCategories, name];
-                                  setCouponForm({ ...couponForm, applicableCategories: cats });
-                                }}
-                                style={{ display: 'none' }}
-                              />
+                            <span
+                              key={name}
+                              onClick={() => {
+                                const cats = selected
+                                  ? couponForm.applicableCategories.filter((c) => c !== name)
+                                  : [...couponForm.applicableCategories, name];
+                                setCouponForm({ ...couponForm, applicableCategories: cats });
+                              }}
+                              style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500, userSelect: 'none' }}
+                            >
                               {name}
-                            </label>
+                            </span>
                           );
                         })}
                       </div>
@@ -1749,41 +1748,49 @@ export default function Admin() {
 
                   <div className="form-group">
                     <label>Payment Methods</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <label className="checkbox-label" style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: !couponForm.applicablePaymentMethods ? 'var(--success)' : 'var(--border)', background: !couponForm.applicablePaymentMethods ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}>
-                        <input
-                          type="radio"
-                          name="pmScope"
-                          checked={!couponForm.applicablePaymentMethods}
-                          onChange={() => setCouponForm({ ...couponForm, applicablePaymentMethods: null })}
-                          style={{ display: 'none' }}
-                        />
-                        All Methods
-                      </label>
-                      {paymentMethods.map((pm) => {
-                        const methods = couponForm.applicablePaymentMethods || [];
-                        const selected = methods.includes(pm.id);
-                        return (
-                          <label key={pm.id} className="checkbox-label" style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem' }}>
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => {
-                                let updated;
-                                if (selected) {
-                                  updated = methods.filter((m) => m !== pm.id);
-                                } else {
-                                  updated = [...(couponForm.applicablePaymentMethods || []), pm.id];
-                                }
-                                setCouponForm({ ...couponForm, applicablePaymentMethods: updated.length ? updated : null });
-                              }}
-                              style={{ display: 'none' }}
-                            />
-                            {pm.name}
-                          </label>
-                        );
-                      })}
-                    </div>
+                    <select
+                      value={couponForm.applicablePaymentMethods ? '__specific' : 'all'}
+                      onChange={(e) => {
+                        setCouponForm({ ...couponForm, applicablePaymentMethods: e.target.value === 'all' ? null : [] });
+                      }}
+                    >
+                      <option value="all">All Payment Methods</option>
+                      <option value="__specific">Specific Methods</option>
+                    </select>
+                    {couponForm.applicablePaymentMethods !== null && Array.isArray(couponForm.applicablePaymentMethods) && (
+                      <>
+                        <select
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            if (id && !couponForm.applicablePaymentMethods.includes(id)) {
+                              setCouponForm({ ...couponForm, applicablePaymentMethods: [...couponForm.applicablePaymentMethods, id] });
+                            }
+                            e.target.value = '';
+                          }}
+                          defaultValue=""
+                          style={{ marginTop: '0.5rem' }}
+                        >
+                          <option value="" disabled>Select a payment method...</option>
+                          {availableGateways.filter((pm) => !couponForm.applicablePaymentMethods.includes(pm.id)).map((pm) => (
+                            <option key={pm.id} value={pm.id}>{pm.name}</option>
+                          ))}
+                        </select>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                          {couponForm.applicablePaymentMethods.map((mid) => {
+                            const pm = availableGateways.find((x) => x.id === mid);
+                            return (
+                              <span key={mid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', borderRadius: '100px', background: 'rgba(90,138,106,0.1)', fontSize: '0.82rem', fontWeight: 500, color: 'var(--text)' }}>
+                                {pm ? pm.name : mid}
+                                <button type="button" onClick={() => setCouponForm({ ...couponForm, applicablePaymentMethods: couponForm.applicablePaymentMethods.filter((x) => x !== mid) || null })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1, color: 'var(--danger)' }}>&times;</button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                        {couponForm.applicablePaymentMethods.length === 0 && (
+                          <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: '0.25rem' }}>Select at least one payment method</p>
+                        )}
+                      </>
+                    )}
                   </div>
 
                   <label className="checkbox-label" style={{ paddingTop: '0.5rem' }}>

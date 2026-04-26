@@ -2377,8 +2377,17 @@ textarea::placeholder {
 }
 
 select option {
-  background: #ffffff;
-  color: #0f172a;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+.admin-form select,
+.admin-form-overlay select {
+  -webkit-appearance: menulist !important;
+  appearance: menulist !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }
 
 /* ── Cart page → glass (light) ────────────────────────────── */

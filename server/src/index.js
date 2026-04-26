@@ -129,7 +129,7 @@ const start = async () => {
   try {
     await sequelize.authenticate();
     console.log('Database connected');
-    await sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
+    await sequelize.sync({ alter: process.env.DB_SYNC_ALTER === 'true' });
     console.log('Models synced');
 
     app.listen(PORT, () => {
