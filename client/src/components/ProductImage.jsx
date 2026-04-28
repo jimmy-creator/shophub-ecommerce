@@ -83,7 +83,7 @@ const defaultGradient = ['#3e3632', '#4a423e', '#564e48'];
 
 import { useState } from 'react';
 
-export default function ProductImage({ product, size = 'normal' }) {
+export default function ProductImage({ product, size = 'normal', fit = 'cover' }) {
   const [imgError, setImgError] = useState(false);
 
   const cat = product.category || 'default';
@@ -103,12 +103,14 @@ export default function ProductImage({ product, size = 'normal' }) {
   const hasImage = imageUrl && !imgError;
 
   if (hasImage) {
+    const isContain = fit === 'contain';
     return (
       <div style={{
         width: s.width, height: s.height,
         position: 'relative', overflow: 'hidden',
         borderRadius: size === 'small' ? 'var(--radius)' : 0,
-        background: `linear-gradient(160deg, ${colors[0]}, ${colors[1]})`,
+        background: isContain ? '#ffffff' : `linear-gradient(160deg, ${colors[0]}, ${colors[1]})`,
+        padding: isContain ? 8 : 0,
       }}>
         <img
           src={imageUrl}
@@ -117,7 +119,7 @@ export default function ProductImage({ product, size = 'normal' }) {
           onError={() => setImgError(true)}
           style={{
             width: '100%', height: '100%',
-            objectFit: 'cover',
+            objectFit: fit,
             display: 'block',
           }}
         />

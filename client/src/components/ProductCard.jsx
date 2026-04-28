@@ -38,7 +38,7 @@ export default function ProductCard({ product }) {
   return (
     <Link to={`/product/${product.slug}`} className="product-card">
       <div className="product-image">
-        <ProductImage product={product} />
+        <ProductImage product={product} fit="contain" />
         {discount > 0 && <span className="discount-badge">-{discount}%</span>}
         <button className={`wishlist-btn ${wishlisted ? 'active' : ''}`} onClick={handleWishlist}>
           {wishlisted ? <HiHeart /> : <HiOutlineHeart />}
