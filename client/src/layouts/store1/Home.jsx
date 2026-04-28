@@ -125,7 +125,6 @@ export default function Home() {
                 <div className="banner-slide-content">
                   {banner.subtitle && <p className="banner-subtitle">{banner.subtitle}</p>}
                   {banner.title && <h2 className="banner-title">{banner.title}</h2>}
-                  <span className="btn btn-primary banner-cta">Shop Now <HiArrowRight /></span>
                 </div>
               </Link>
             ))}
