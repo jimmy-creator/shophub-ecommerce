@@ -8,7 +8,7 @@ import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
-import { Home, Navbar, Footer, Products, ProductDetail, ContactUs, AboutUs, PrivacyPolicy, RefundPolicy, ShippingPolicy, TermsOfService } from '@layout';
+import { Home, Navbar, Footer, Products, ProductDetail, ContactUs, AboutUs, PrivacyPolicy, RefundPolicy, ReturnPolicy, ShippingPolicy, TermsOfService } from '@layout';
 import Wishlist from './pages/Wishlist';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -21,7 +21,6 @@ import OrderSuccess from './pages/OrderSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ShippingInfo from './pages/ShippingInfo';
-import ReturnPolicy from './pages/ReturnPolicy';
 
 function ScrollToTop() {
   const { pathname } = useLocation();

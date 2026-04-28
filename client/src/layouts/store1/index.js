@@ -7,5 +7,6 @@ export { default as ContactUs } from '../../pages/ContactUs';
 export { default as AboutUs } from '../../pages/AboutUs';
 export { default as PrivacyPolicy } from '../../pages/PrivacyPolicy';
 export { default as RefundPolicy } from '../../pages/ReturnPolicy';
+export { default as ReturnPolicy } from '../../pages/ReturnPolicy';
 export { default as ShippingPolicy } from '../../pages/ShippingInfo';
 export { default as TermsOfService } from '../../pages/TermsOfService';

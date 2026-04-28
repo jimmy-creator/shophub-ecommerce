@@ -9,5 +9,6 @@ export { default as ContactUs } from './ContactUs';
 export { default as AboutUs } from './AboutUs';
 export { default as PrivacyPolicy } from './PrivacyPolicy';
 export { default as RefundPolicy } from './RefundPolicy';
+export { default as ReturnPolicy } from './ReturnPolicy';
 export { default as ShippingPolicy } from './ShippingPolicy';
 export { default as TermsOfService } from './TermsOfService';
