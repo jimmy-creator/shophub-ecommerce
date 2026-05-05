@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { HelmetProvider } from 'react-helmet-async';
@@ -33,6 +34,18 @@ function PageWrapper({ children }) {
   return <div key={pathname} className="page-transition">{children}</div>;
 }
 
+let didInitialStaffRedirect = false;
+
+function StaffGate({ children }) {
+  const { user } = useAuth();
+  const isStaff = user && (user.role === 'admin' || user.role === 'staff');
+  if (isStaff && !didInitialStaffRedirect) {
+    didInitialStaffRedirect = true;
+    return <Navigate to="/admin" replace />;
+  }
+  return children;
+}
+
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export default function App() {
@@ -51,12 +64,12 @@ export default function App() {
             <main className="main">
               <PageWrapper>
               <Routes>
-                <Route path="/" element={<Home />} />
+                <Route path="/" element={<StaffGate><Home /></StaffGate>} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
-                <Route path="/login" element={<Login />} />
+                <Route path="/login" element={<StaffGate><Login /></StaffGate>} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/profile" element={<Profile />} />
