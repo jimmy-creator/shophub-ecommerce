@@ -21,6 +21,7 @@ router.get('/export', protect, admin, async (req, res) => {
       header: [
         { id: 'id', title: 'ID' },
         { id: 'name', title: 'Name' },
+        { id: 'code', title: 'Code' },
         { id: 'description', title: 'Description' },
         { id: 'price', title: 'Price' },
         { id: 'comparePrice', title: 'Compare Price' },
@@ -61,6 +62,7 @@ router.get('/template', protect, admin, (req, res) => {
   const csvStringifier = createObjectCsvStringifier({
     header: [
       { id: 'name', title: 'Name' },
+      { id: 'code', title: 'Code' },
       { id: 'description', title: 'Description' },
       { id: 'price', title: 'Price' },
       { id: 'comparePrice', title: 'Compare Price' },
@@ -75,7 +77,7 @@ router.get('/template', protect, admin, (req, res) => {
   });
 
   const sample = csvStringifier.getHeaderString() + csvStringifier.stringifyRecords([
-    { name: 'Sample Product', description: 'A great product', price: '499.99', comparePrice: '699.99', category: 'Electronics', brand: 'BrandX', stock: '50', featured: 'No', taxable: 'Yes', taxRate: '18', hsnCode: '8471' },
+    { name: 'Sample Product', code: 'PROD-001', description: 'A great product', price: '499.99', comparePrice: '699.99', category: 'Electronics', brand: 'BrandX', stock: '50', featured: 'No', taxable: 'Yes', taxRate: '18', hsnCode: '8471' },
   ]);
 
   res.set({
@@ -140,6 +142,7 @@ router.post('/import', protect, admin, upload.single('file'), async (req, res) =
         const productData = {
           name,
           slug,
+          code: (row.Code || row.code || '').trim() || null,
           description: row.Description || row.description || '',
           price,
           comparePrice: parseFloat(row['Compare Price'] || row.comparePrice) || null,
