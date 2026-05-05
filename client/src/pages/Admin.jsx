@@ -610,6 +610,7 @@ export default function Admin() {
     return 'dashboard';
   });
   const [products, setProducts] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
   const [orders, setOrders] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [couponForm, setCouponForm] = useState(null);
@@ -997,6 +998,16 @@ export default function Admin() {
               </button>
             </div>
 
+            <div style={{ marginBottom: '1rem' }}>
+              <input
+                type="search"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder="Search by name, code, category, or brand"
+                style={{ width: '100%', maxWidth: 420, padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+              />
+            </div>
+
             {showForm && (
               <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
                 <form className="admin-form" onSubmit={handleProductSubmit}>
@@ -1122,7 +1133,18 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((p) => (
+                  {products
+                    .filter((p) => {
+                      const q = productSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        (p.name || '').toLowerCase().includes(q) ||
+                        (p.code || '').toLowerCase().includes(q) ||
+                        (p.category || '').toLowerCase().includes(q) ||
+                        (p.brand || '').toLowerCase().includes(q)
+                      );
+                    })
+                    .map((p) => (
                     <tr key={p.id}>
                       <td style={{ width: 56, padding: '0.5rem' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', overflow: 'hidden' }}>
