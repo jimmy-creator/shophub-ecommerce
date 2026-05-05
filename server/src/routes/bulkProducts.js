@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Product } from '../models/index.js';
+import { Product, Category } from '../models/index.js';
 import { protect, admin, requirePermission } from '../middleware/auth.js';
 import multer from 'multer';
 import csvParser from 'csv-parser';
@@ -113,6 +113,25 @@ router.post('/import', protect, admin, upload.single('file'), async (req, res) =
     let created = 0;
     let updated = 0;
     let skipped = 0;
+    let categoriesCreated = 0;
+
+    // Auto-create any new categories referenced in the CSV
+    const csvCategoryNames = [...new Set(
+      results
+        .map((row) => (row.Category || row.category || '').trim())
+        .filter(Boolean)
+    )];
+    if (csvCategoryNames.length > 0) {
+      const existing = await Category.findAll({ where: { name: csvCategoryNames }, attributes: ['name'] });
+      const existingNames = new Set(existing.map((c) => c.name));
+      const toCreate = csvCategoryNames
+        .filter((name) => !existingNames.has(name))
+        .map((name) => ({ name, active: true, sortOrder: 0 }));
+      if (toCreate.length > 0) {
+        await Category.bulkCreate(toCreate, { ignoreDuplicates: true });
+        categoriesCreated = toCreate.length;
+      }
+    }
 
     for (let i = 0; i < results.length; i++) {
       const row = results[i];
@@ -188,11 +207,13 @@ router.post('/import', protect, admin, upload.single('file'), async (req, res) =
       }
     }
 
+    const catMsg = categoriesCreated > 0 ? `, ${categoriesCreated} new categories` : '';
     res.json({
-      message: `Import complete: ${created} created, ${updated} updated, ${skipped} skipped`,
+      message: `Import complete: ${created} created, ${updated} updated, ${skipped} skipped${catMsg}`,
       created,
       updated,
       skipped,
+      categoriesCreated,
       total: results.length,
       errors: errors.slice(0, 10),
     });
