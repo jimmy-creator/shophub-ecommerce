@@ -8,7 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { CURRENCY } from '../utils/currency';
 
 const emptyProduct = {
-  name: '', description: '', price: '', comparePrice: '',
+  name: '', code: '', description: '', price: '', comparePrice: '',
   category: '', brand: '', stock: '', featured: false, images: [],
   variantOptions: null, variants: null,
 };
@@ -1047,6 +1047,10 @@ export default function Admin() {
                         <input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
                       </div>
                       <div className="form-group">
+                        <label>Product Code</label>
+                        <input value={form.code || ''} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="Internal code (optional)" />
+                      </div>
+                      <div className="form-group">
                         <label className="checkbox-label">
                           <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} />
                           Featured
@@ -1154,6 +1158,7 @@ export default function Admin() {
                             setForm({
                               ...p,
                               images: p.images || [],
+                              code: p.code || '',
                               taxable: !!p.taxable,
                               taxRate: parseFloat(p.taxRate) || 0,
                               hsnCode: p.hsnCode || '',

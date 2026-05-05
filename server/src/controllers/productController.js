@@ -87,7 +87,8 @@ export const createProduct = async (req, res) => {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
 
-    const product = await Product.create({ ...req.body, slug });
+    const code = req.body.code?.trim() || null;
+    const product = await Product.create({ ...req.body, slug, code });
     res.status(201).json(product);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -106,6 +107,10 @@ export const updateProduct = async (req, res) => {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
+    }
+
+    if ('code' in req.body) {
+      req.body.code = req.body.code?.trim() || null;
     }
 
     await product.update(req.body);

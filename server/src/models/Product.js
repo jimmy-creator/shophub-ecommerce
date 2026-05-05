@@ -16,6 +16,12 @@ const Product = sequelize.define('Product', {
     allowNull: false,
     unique: true,
   },
+  code: {
+    // Internal product code / SKU for admin/staff reference (not customer-facing)
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: 'product_code_unique',
+  },
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
