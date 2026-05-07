@@ -5,7 +5,7 @@ import api from '../api/axios';
 import ProductImage from './ProductImage';
 import { CURRENCY } from '../utils/currency';
 
-export default function SearchAutocomplete({ onSubmit, className = '' }) {
+export default function SearchAutocomplete({ onSubmit, className = '', placeholder = 'Search for products...' }) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -91,7 +91,7 @@ export default function SearchAutocomplete({ onSubmit, className = '' }) {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search for products..."
+          placeholder={placeholder}
         />
         <button type="submit" aria-label="Search"><Search size={16} strokeWidth={1.5} /></button>
       </form>
