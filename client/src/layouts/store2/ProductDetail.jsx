@@ -53,11 +53,16 @@ export default function ProductDetail() {
       <div className="s2-root">
         <div className="s2-detail">
           <div className="s2-detail-grid">
-            <div className="s2-gallery-main" style={{ opacity: 0.4 }} />
+            <div className="skeleton-detail-img skeleton-pulse" style={{ aspectRatio: '4/5' }} />
             <div className="s2-detail-info">
-              <div style={{ height: 20, width: 120, background: 'rgba(255,255,255,0.05)', borderRadius: 6, marginBottom: 20 }} />
-              <div style={{ height: 50, background: 'rgba(255,255,255,0.05)', borderRadius: 8, marginBottom: 20 }} />
-              <div style={{ height: 80, background: 'rgba(255,255,255,0.04)', borderRadius: 16 }} />
+              <div className="skeleton-line short skeleton-pulse" style={{ marginBottom: '1rem' }} />
+              <div className="skeleton-line skeleton-pulse" style={{ height: '2rem', marginBottom: '0.5rem' }} />
+              <div className="skeleton-line medium skeleton-pulse" style={{ marginBottom: '2rem' }} />
+              <div className="skeleton-line skeleton-pulse" style={{ height: '1.5rem', width: '30%', marginBottom: '1.5rem' }} />
+              <div className="skeleton-line skeleton-pulse" style={{ marginBottom: '0.5rem' }} />
+              <div className="skeleton-line skeleton-pulse" style={{ marginBottom: '0.5rem' }} />
+              <div className="skeleton-line medium skeleton-pulse" style={{ marginBottom: '2rem' }} />
+              <div className="skeleton-line skeleton-pulse" style={{ height: '3rem', width: '50%' }} />
             </div>
           </div>
         </div>

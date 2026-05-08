@@ -5,6 +5,7 @@ import api from '../../api/axios';
 import SEO from '../../components/SEO';
 import { CURRENCY } from '../../utils/currency';
 import ProductCard from './ProductCard';
+import { SkeletonGrid } from '../../components/Skeleton';
 
 const fallbackIcons = {
   Electronics: <Monitor size={20} strokeWidth={1.6} />,
@@ -187,11 +188,7 @@ export default function Home() {
           </Link>
         </div>
         {loading ? (
-          <div className="s2-grid">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="s2-product" style={{ aspectRatio: '0.72' }} />
-            ))}
-          </div>
+          <SkeletonGrid count={8} className="s2-grid" />
         ) : (
           <div className="s2-grid">
             {featured.map((p) => <ProductCard key={p.id} product={p} />)}

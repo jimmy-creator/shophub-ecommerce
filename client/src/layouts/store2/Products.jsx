@@ -4,6 +4,7 @@ import { Filter, X, LayoutGrid, Grid2x2, List } from 'lucide-react';
 import api from '../../api/axios';
 import SEO from '../../components/SEO';
 import ProductCard from './ProductCard';
+import { SkeletonGrid } from '../../components/Skeleton';
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -146,11 +147,7 @@ export default function Products() {
 
         <div>
           {loading ? (
-            <div className="s2-grid">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="s2-product" style={{ aspectRatio: '0.72' }} />
-              ))}
-            </div>
+            <SkeletonGrid count={12} className="s2-grid" />
           ) : products.length === 0 ? (
             <div className="s2-no-products">
               Nothing in this room tonight.
