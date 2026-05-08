@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import CartAddedPopup from '../components/CartAddedPopup';
 
 const CartContext = createContext();
 
@@ -24,11 +25,14 @@ export function CartProvider({ children }) {
     }));
   });
 
+  const [lastAdded, setLastAdded] = useState(null);
+
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
 
   const addToCart = (product, quantity = 1, selectedVariant = null) => {
+    setLastAdded({ product, quantity, selectedVariant, ts: Date.now() });
     setCart((prev) => {
       const key = makeCartKey(product.id, selectedVariant);
       const existing = prev.find((item) => item.cartKey === key);
@@ -84,6 +88,8 @@ export function CartProvider({ children }) {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const dismissLastAdded = () => setLastAdded(null);
+
   const value = {
     cart,
     addToCart,
@@ -92,7 +98,14 @@ export function CartProvider({ children }) {
     clearCart,
     cartTotal,
     cartCount,
+    lastAdded,
+    dismissLastAdded,
   };
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+      <CartAddedPopup />
+    </CartContext.Provider>
+  );
 }

@@ -20,7 +20,6 @@ export default function ProductCard({ product }) {
     e.preventDefault();
     e.stopPropagation();
     addToCart(product, 1, null);
-    showToast('Added to cart');
   };
 
   const handleWishlist = (e) => {

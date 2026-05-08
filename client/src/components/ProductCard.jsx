@@ -21,7 +21,6 @@ export default function ProductCard({ product }) {
       return;
     }
     addToCart(product);
-    showToast('Added to cart');
   };
 
   const handleWishlist = (e) => {

@@ -88,7 +88,6 @@ export default function ProductDetail() {
   const handleAddToCart = () => {
     const variant = hasVariants ? selectedOptions : null;
     addToCart(product, quantity, variant);
-    showToast('Added to cart');
   };
 
   const handleBuyNow = () => {

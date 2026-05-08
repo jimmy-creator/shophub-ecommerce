@@ -28,7 +28,6 @@ export default function Wishlist() {
       return;
     }
     addToCart(item);
-    showToast('Added to cart');
   };
 
   return (
