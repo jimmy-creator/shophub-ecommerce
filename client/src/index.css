@@ -2852,3 +2852,26 @@ input, textarea, select { font-family: var(--font-body); }
   .theme-grid { grid-template-columns: 1fr; }
   .wishlist-grid { grid-template-columns: 1fr; }
 }
+
+/* ── iOS Safari auto-zooms when a focused input is < 16px. ──────
+   Force every text-like form control to 16px on phones to keep the
+   page from zooming on focus. Doesn't affect checkboxes/radios/etc. */
+@media (max-width: 720px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"],
+  input:not([type]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

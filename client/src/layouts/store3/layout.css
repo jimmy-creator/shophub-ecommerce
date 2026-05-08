@@ -2956,7 +2956,7 @@ body:has(.admin-page) .s2-footer {
 .s2-mobile-search .search-ac-form input {
   background: transparent !important;
   color: #171311 !important;
-  font-size: 0.95rem;
+  font-size: 16px;   /* must be ≥16px to stop iOS Safari from zooming on focus */
 }
 .s2-nav-search .search-ac-form input::placeholder,
 .s2-mobile-search .search-ac-form input::placeholder {
@@ -2976,4 +2976,39 @@ body:has(.admin-page) .s2-footer {
 .s2-nav-search .search-ac-form button:hover,
 .s2-mobile-search .search-ac-form button:hover {
   color: #000000 !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   iOS Safari memory-pressure fixes for mobile.
+   backdrop-filter blur + filter blur on animated/sticky elements
+   blow past the per-tab memory budget when the user pinch-zooms,
+   producing "A problem repeatedly occurred". On mobile we swap blur
+   for solid colors and disable the aurora gradient + grain overlay.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .s2-glass,
+  .s2-glass-strong,
+  .s2-nav,
+  .s2-bottom-nav.s2-bottom-nav-always,
+  .s2-pricing,
+  .s2-banners,
+  .s2-banner-slide,
+  .s2-nav-search .search-ac-dropdown,
+  .s2-mobile-search .search-ac-dropdown {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .s2-glass,
+  .s2-nav,
+  .s2-bottom-nav.s2-bottom-nav-always {
+    background: #ffffff !important;
+  }
+  .s2-glass::before { display: none; }
+
+  /* Animated aurora blobs and SVG noise overlay — top GPU/memory cost. */
+  .s2-root::before,
+  .s2-root::after {
+    display: none !important;
+  }
+  .s2-root { animation: none; }
 }
