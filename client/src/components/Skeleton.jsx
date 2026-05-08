@@ -12,9 +12,9 @@ export function SkeletonCard() {
   );
 }
 
-export function SkeletonGrid({ count = 8 }) {
+export function SkeletonGrid({ count = 8, className = 'products-grid' }) {
   return (
-    <div className="products-grid">
+    <div className={className}>
       {Array.from({ length: count }, (_, i) => (
         <SkeletonCard key={i} />
       ))}
