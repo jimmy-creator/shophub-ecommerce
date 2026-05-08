@@ -77,4 +77,28 @@ router.put('/banners', protect, admin, async (req, res) => {
   }
 });
 
+// Mid-page banners (rendered below the best-sellers section)
+router.get('/mid-banners', async (req, res) => {
+  try {
+    const setting = await Setting.findByPk('mid-banners');
+    const banners = setting?.value ? JSON.parse(setting.value) : [];
+    res.json(banners);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+router.put('/mid-banners', protect, admin, async (req, res) => {
+  try {
+    const { banners } = req.body;
+    if (!Array.isArray(banners) || banners.length > 3) {
+      return res.status(400).json({ message: 'Provide an array of up to 3 mid-page banners' });
+    }
+    await Setting.upsert({ key: 'mid-banners', value: JSON.stringify(banners) });
+    res.json(banners);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

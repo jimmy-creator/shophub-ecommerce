@@ -29,6 +29,10 @@ export default function Home() {
     return cached ? JSON.parse(cached) : [];
   });
   const [activeBanner, setActiveBanner] = useState(0);
+  const [midBanners, setMidBanners] = useState(() => {
+    const cached = localStorage.getItem('cached-mid-banners');
+    return cached ? JSON.parse(cached) : [];
+  });
 
   useEffect(() => {
     api.get('/settings/banners')
@@ -36,6 +40,16 @@ export default function Home() {
         if (Array.isArray(res.data) && res.data.length > 0) {
           setBanners(res.data);
           localStorage.setItem('cached-banners', JSON.stringify(res.data));
+          res.data.forEach((b) => { if (b.image) { const img = new Image(); img.src = b.image; } });
+        }
+      })
+      .catch(() => {});
+
+    api.get('/settings/mid-banners')
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setMidBanners(res.data);
+          localStorage.setItem('cached-mid-banners', JSON.stringify(res.data));
           res.data.forEach((b) => { if (b.image) { const img = new Image(); img.src = b.image; } });
         }
       })
@@ -158,7 +172,7 @@ export default function Home() {
       <section className="s2-section">
         <div className="s2-section-head">
           <h2 className="s2-section-title">
-            Shop by <em>category</em>
+            Top <em>collections</em>
           </h2>
           <Link to="/products" className="s2-view-all">
             View all <ArrowRight size={14} strokeWidth={2} />
@@ -179,7 +193,7 @@ export default function Home() {
       <section className="s2-section">
         <div className="s2-section-head">
           <h2 className="s2-section-title">
-            Trending <em>now</em>
+            Best <em>Sellers</em>
           </h2>
           <Link to="/products" className="s2-view-all">
             See all <ArrowRight size={14} strokeWidth={2} />
@@ -197,6 +211,25 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* ── Mid-page promo banners ─────────────────────── */}
+      {midBanners.length > 0 && (
+        <section className="s2-section s2-mid-banners">
+          <div className={`s2-mid-banner-grid s2-mid-banner-grid-${midBanners.length}`}>
+            {midBanners.map((b, i) => (
+              <Link key={i} to={b.link || '/products'} className="s2-mid-banner">
+                <img src={b.image} alt={b.title || ''} className="s2-mid-banner-img" loading="lazy" />
+                {(b.title || b.subtitle) && (
+                  <div className="s2-mid-banner-overlay">
+                    {b.subtitle && <p className="s2-eyebrow">{b.subtitle}</p>}
+                    {b.title && <h3 className="s2-mid-banner-title">{b.title}</h3>}
+                  </div>
+                )}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Latest launches ─────────────────────────────── */}
       {latest.length > 0 && (

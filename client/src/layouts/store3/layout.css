@@ -2883,6 +2883,59 @@ body:has(.admin-page) .s2-footer {
   }
 }
 
+/* ── Store3: mid-page promo banners ──────────────────────── */
+.s2-mid-banner-grid {
+  display: grid;
+  gap: 1rem;
+}
+.s2-mid-banner-grid-1 { grid-template-columns: 1fr; }
+.s2-mid-banner-grid-2 { grid-template-columns: 1fr 1fr; }
+.s2-mid-banner-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 720px) {
+  .s2-mid-banner-grid-2,
+  .s2-mid-banner-grid-3 { grid-template-columns: 1fr; }
+}
+.s2-mid-banner {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--s2-radius-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  aspect-ratio: 16 / 7;
+}
+.s2-mid-banner-grid-2 .s2-mid-banner,
+.s2-mid-banner-grid-3 .s2-mid-banner { aspect-ratio: 4 / 3; }
+.s2-mid-banner:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--s2-shadow-lg);
+}
+.s2-mid-banner-img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  transition: transform 0.6s ease;
+}
+.s2-mid-banner:hover .s2-mid-banner-img { transform: scale(1.04); }
+.s2-mid-banner-overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.45) 100%);
+  color: #ffffff;
+}
+.s2-mid-banner-overlay .s2-eyebrow { color: rgba(255,255,255,0.85); }
+.s2-mid-banner-title {
+  font-family: var(--s2-font-display);
+  font-size: 1.6rem; line-height: 1.15;
+  margin: 0.3rem 0 0;
+  font-weight: 400;
+}
+@media (max-width: 720px) {
+  .s2-mid-banner-title { font-size: 1.25rem; }
+  .s2-mid-banner-overlay { padding: 1rem; }
+}
+
 /* ── Store3: warm cream search bar pill ──────────────────── */
 .s2-nav-search .search-ac-form,
 .s2-mobile-search .search-ac-form {

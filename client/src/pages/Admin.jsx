@@ -229,19 +229,24 @@ function VariantEditor({ variantOptions, variants, onChange, basePrice }) {
   );
 }
 
-function BannerEditor() {
+function BannerEditor({
+  endpoint = '/settings/banners',
+  title = 'Home Banners',
+  description = 'Add up to 5 banner slides for the home page carousel. Each banner needs an image, and optionally a title, subtitle, and link.',
+  maxBanners = 5,
+}) {
   const [banners, setBanners] = useState([]);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
-    api.get('/settings/banners').then((res) => {
+    api.get(endpoint).then((res) => {
       if (Array.isArray(res.data)) setBanners(res.data);
     }).catch(() => {});
-  }, []);
+  }, [endpoint]);
 
   const saveBanners = async (updated) => {
     try {
-      await api.put('/settings/banners', { banners: updated });
+      await api.put(endpoint, { banners: updated });
       setBanners(updated);
       toast.success('Banners saved');
     } catch (err) {
@@ -250,7 +255,7 @@ function BannerEditor() {
   };
 
   const handleUpload = async (file) => {
-    if (!file || banners.length >= 5) return;
+    if (!file || banners.length >= maxBanners) return;
     setUploading(true);
     try {
       const formData = new FormData();
@@ -289,10 +294,10 @@ function BannerEditor() {
   return (
     <div style={{ marginTop: '3rem' }}>
       <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1rem' }}>
-        Home Banners ({banners.length}/5)
+        {title} ({banners.length}/{maxBanners})
       </h3>
       <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-        Add up to 5 banner slides for the home page carousel. Each banner needs an image, and optionally a title, subtitle, and link.
+        {description}
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
@@ -359,7 +364,7 @@ function BannerEditor() {
         ))}
       </div>
 
-      {banners.length < 5 && (
+      {banners.length < maxBanners && (
         <label style={{
           display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
           padding: '0.7rem 1.5rem', border: '2px dashed var(--border)',
@@ -2316,6 +2321,14 @@ export default function Admin() {
 
             {/* Home Page Banners Carousel */}
             <BannerEditor />
+
+            {/* Mid-page Banner — rendered below the best-sellers section */}
+            <BannerEditor
+              endpoint="/settings/mid-banners"
+              title="Mid-page Banners"
+              description="Add up to 3 banners shown after the Best Sellers section on the home page. Useful for promotions, new arrivals, or seasonal campaigns."
+              maxBanners={3}
+            />
           </div>
         )}
 
