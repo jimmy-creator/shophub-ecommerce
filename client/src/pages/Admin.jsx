@@ -1127,6 +1127,7 @@ export default function Admin() {
               <table>
                 <thead>
                   <tr>
+                    <th style={{ width: 48 }}>#</th>
                     <th>Image</th>
                     <th>Name</th>
                     <th>Category</th>
@@ -1149,8 +1150,9 @@ export default function Admin() {
                         (p.brand || '').toLowerCase().includes(q)
                       );
                     })
-                    .map((p) => (
+                    .map((p, i) => (
                     <tr key={p.id}>
+                      <td style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</td>
                       <td style={{ width: 56, padding: '0.5rem' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', overflow: 'hidden' }}>
                           <ProductImage product={p} size="small" />
