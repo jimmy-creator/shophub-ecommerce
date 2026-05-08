@@ -672,13 +672,13 @@ export default function Admin() {
         setLowStockProducts(ls.data);
       }).catch(console.error);
     } else if (tab === 'products') {
-      api.get('/products/admin/all').then((res) => setProducts(res.data.products));
+      api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
       if (adminCategories.length === 0) api.get('/categories/all').then((res) => setAdminCategories(res.data));
     } else if (tab === 'orders') {
       api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
     } else if (tab === 'coupons') {
       api.get('/coupons').then((res) => setCoupons(res.data));
-      if (products.length === 0) api.get('/products/admin/all').then((res) => setProducts(res.data.products));
+      if (products.length === 0) api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
       if (adminCategories.length === 0) api.get('/categories/all').then((res) => setAdminCategories(res.data));
       if (availableGateways.length === 0) api.get('/payment/gateways').then((res) => setAvailableGateways(res.data));
     } else if (tab === 'categories') {
@@ -699,7 +699,7 @@ export default function Admin() {
     } else if (tab === 'reviews') {
       api.get('/reviews/all').then((res) => setReviews(res.data.reviews));
       if (products.length === 0) {
-        api.get('/products/admin/all').then((res) => setProducts(res.data.products));
+        api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
       }
     }
   }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter]);
@@ -728,7 +728,7 @@ export default function Admin() {
       setShowForm(false);
       setEditing(null);
       setForm(emptyProduct);
-      const res = await api.get('/products/admin/all');
+      const res = await api.get('/products/admin/all?limit=10000');
       setProducts(res.data.products);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed');
@@ -986,7 +986,7 @@ export default function Admin() {
                       if (data.errors?.length > 0) {
                         data.errors.forEach((err) => toast.error(err));
                       }
-                      api.get('/products/admin/all').then((res) => setProducts(res.data.products));
+                      api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
                     } catch (error) {
                       toast.error(error.response?.data?.message || 'Import failed');
                     }

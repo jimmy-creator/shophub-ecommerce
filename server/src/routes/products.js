@@ -15,7 +15,7 @@ router.get('/', getProducts);
 router.get('/admin/all', protect, admin, requirePermission('products'), async (req, res) => {
   try {
     const { Product } = await import('../models/index.js');
-    const { page = 1, limit = 200, search } = req.query;
+    const { page = 1, limit = 10000, search } = req.query;
     const { Op } = await import('sequelize');
     const where = {};
     if (search) {
