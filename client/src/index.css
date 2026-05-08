@@ -2863,7 +2863,7 @@ input, textarea, select { font-family: var(--font-body); }
   padding: 1rem 1.1rem;
   background: #ffffff;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: 18px;
   box-shadow: 0 14px 44px rgba(0, 0, 0, 0.14);
   animation: cart-added-in 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.1);
 }
@@ -2894,7 +2894,7 @@ input, textarea, select { font-family: var(--font-body); }
 .cart-added-img {
   width: 56px; height: 56px; flex-shrink: 0;
   object-fit: cover;
-  border-radius: var(--radius);
+  border-radius: 10px;
   background: var(--bg-warm);
 }
 .cart-added-info { min-width: 0; flex: 1; }
@@ -2909,8 +2909,8 @@ input, textarea, select { font-family: var(--font-body); }
 .cart-added-actions { display: flex; gap: 0.5rem; }
 .cart-added-btn {
   flex: 1;
-  padding: 0.55rem 0.85rem;
-  border-radius: var(--radius);
+  padding: 0.6rem 0.85rem;
+  border-radius: 12px;
   font-size: 0.78rem; font-weight: 600;
   border: 1.5px solid var(--border);
   background: transparent; color: var(--text);
