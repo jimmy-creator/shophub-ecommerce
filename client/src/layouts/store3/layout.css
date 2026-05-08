@@ -229,18 +229,20 @@
    ============================================================ */
 
 .s2-nav {
-  position: relative;
-  top: unset;
+  position: sticky;
+  top: 0;
   z-index: 50;
-  margin: 1rem 1.25rem 0;
-  padding: 0.85rem 1.25rem 0.85rem 1.4rem;
-  border-radius: var(--s2-radius-pill);
+  margin: 0;
+  padding: 0.85rem 2rem;
+  border-radius: 0;
+  border-top: none;
+  border-left: none;
+  border-right: none;
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  max-width: 1240px;
-  margin-left: auto;
-  margin-right: auto;
+  gap: 1.5rem;
+  max-width: none;
+  width: 100%;
   animation: s2-fade-down 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
 }
 @keyframes s2-fade-down {
@@ -498,12 +500,26 @@
 .s2-bottom-nav {
   display: none;
 }
-.s2-bottom-nav.s2-bottom-nav-always {
+/* Desktop: bottom nav hidden, icons live in the top nav instead */
+.s2-nav-actions-desktop {
   display: flex;
-  position: fixed;
-  left: 1rem;
-  right: 1rem;
-  bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+.s2-icon-btn.is-active { background: var(--s2-glass-bg-2); }
+.s2-bottom-nav.s2-bottom-nav-always {
+  display: none;
+}
+@media (max-width: 720px) {
+  /* Mobile: hide the desktop-only top-nav action icons, show the floating bottom nav */
+  .s2-nav-actions-desktop { display: none; }
+  .s2-bottom-nav.s2-bottom-nav-always {
+    display: flex;
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px));
   z-index: 55;
   padding: 0.65rem 0.5rem;
   border-radius: var(--s2-radius-pill);
@@ -513,6 +529,7 @@
   border: 1px solid rgba(0, 20, 60, 0.08);
   box-shadow: var(--s2-shadow-md);
   justify-content: space-around;
+  }
 }
 .s2-bottom-nav-item {
   display: flex;

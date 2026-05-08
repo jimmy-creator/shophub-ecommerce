@@ -29,6 +29,24 @@ export default function Navbar() {
           <Link to="/products" className="s2-nav-link">Shop</Link>
         </div>
 
+        <div className="s2-nav-actions s2-nav-actions-desktop">
+          <Link to="/wishlist" className="s2-icon-btn" aria-label="Wishlist">
+            <Heart size={18} strokeWidth={1.6} />
+            {wishlistCount > 0 && <span className="s2-badge">{wishlistCount}</span>}
+          </Link>
+          <Link to="/cart" className="s2-icon-btn" aria-label="Cart">
+            <ShoppingBag size={18} strokeWidth={1.6} />
+            {cartCount > 0 && <span className="s2-badge">{cartCount}</span>}
+          </Link>
+          <Link
+            to={user ? '/profile' : '/login'}
+            className={`s2-icon-btn ${isAccount ? 'is-active' : ''}`}
+            aria-label={user ? 'Account' : 'Sign in'}
+          >
+            <User size={18} strokeWidth={1.6} />
+          </Link>
+        </div>
+
         <Link to="/wishlist" className="s2-icon-btn s2-nav-wishlist-mobile" aria-label="Wishlist">
           <Heart size={18} strokeWidth={1.6} />
           {wishlistCount > 0 && <span className="s2-badge">{wishlistCount}</span>}
