@@ -2727,17 +2727,8 @@ tr:hover td {
   .s2-contact-form .s2-field div[style] { grid-template-columns: 1fr !important; }
 }
 
-/* ── Hide pincode/zipcode, rename State → Emirate (UAE) ──── */
-.pincode-checker { display: none !important; }
-.form-group-zipcode { display: none !important; }
-.label-state { font-size: 0; visibility: hidden; }
-.label-state::after {
-  content: 'Emirate';
-  font-size: 0.85rem;
-  visibility: visible;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
+/* (Store2 had UAE-specific overrides here that hid pincode and renamed
+   State → Emirate. Store3 uses real pincodes, so those rules are removed.) */
 
 /* ── Hide footer and bottom nav on admin page ─────────────── */
 .admin-page ~ .s2-footer,

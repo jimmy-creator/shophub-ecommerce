@@ -43,6 +43,8 @@ export default function Checkout() {
   const [couponApplied, setCouponApplied] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [showCoupons, setShowCoupons] = useState(false);
 
   // Tax state
   const [taxInfo, setTaxInfo] = useState({ totalTax: 0, breakdown: null });
@@ -52,6 +54,12 @@ export default function Checkout() {
   const [shippingMethod, setShippingMethod] = useState('standard');
 
   const isStore2 = import.meta.env.VITE_LAYOUT === 'store2';
+  const isStore3 = import.meta.env.VITE_LAYOUT === 'store3';
+
+  // Pincode check (store3 only)
+  const [pincodeCheck, setPincodeCheck] = useState(null);   // null | {available, message, city, state, deliveryDays, codAvailable}
+  const [pincodeChecking, setPincodeChecking] = useState(false);
+  const pincodeDebounce = useRef(null);
   const UAE_EMIRATES = [
     'Fujairah',
     'Abu Dhabi',
@@ -84,6 +92,42 @@ export default function Checkout() {
       }).catch(() => {});
     }
   }, [cart, user]);
+
+  useEffect(() => {
+    api.get('/coupons/available')
+      .then((res) => setAvailableCoupons(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setAvailableCoupons([]));
+  }, []);
+
+  // Live-check pincode for store3 (debounced)
+  useEffect(() => {
+    if (!isStore3) return;
+    const code = form.zipCode.trim();
+    if (code.length < 4) { setPincodeCheck(null); setPincodeChecking(false); return; }
+
+    clearTimeout(pincodeDebounce.current);
+    setPincodeChecking(true);
+    pincodeDebounce.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/pincodes/check/${encodeURIComponent(code)}`);
+        setPincodeCheck(data);
+        // Auto-fill city/state when blank
+        if (data.available) {
+          setForm((f) => ({
+            ...f,
+            city: f.city || data.city || f.city,
+            state: f.state || data.state || f.state,
+          }));
+        }
+      } catch {
+        setPincodeCheck({ available: false, message: 'Unable to check delivery' });
+      } finally {
+        setPincodeChecking(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(pincodeDebounce.current);
+  }, [form.zipCode, isStore3]);
 
   useEffect(() => {
     api.get('/payment/gateways')
@@ -120,20 +164,23 @@ export default function Checkout() {
     zipCode: form.zipCode, phone: form.phone,
   });
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) return;
+  const handleApplyCoupon = async (codeOverride) => {
+    const code = (codeOverride ?? couponCode).trim();
+    if (!code) return;
     setCouponLoading(true);
     setCouponError('');
     try {
       const { data } = await api.post('/coupons/apply', {
-        code: couponCode.trim(),
+        code,
         cartTotal,
         cartCategories: [...new Set(cart.map((item) => item.category))],
         cartProductIds: cart.map((item) => item.id),
         paymentMethod: form.paymentMethod,
       });
       setCouponApplied(data);
+      setCouponCode(code);
       setCouponError('');
+      setShowCoupons(false);
       toast.success(`Coupon applied: ${data.description}`, toastStyle);
     } catch (error) {
       setCouponError(error.response?.data?.message || 'Invalid coupon');
@@ -413,6 +460,22 @@ export default function Checkout() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (isStore3) {
+      if (!form.zipCode || form.zipCode.length < 4) {
+        toast.error('Please enter a valid pincode');
+        return;
+      }
+      if (pincodeChecking) {
+        toast.error('Verifying pincode, please wait…');
+        return;
+      }
+      if (pincodeCheck && !pincodeCheck.available) {
+        toast.error(pincodeCheck.message || 'Delivery not available to this pincode');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -508,8 +571,34 @@ export default function Checkout() {
                 )}
               </div>
               <div className="form-group form-group-zipcode">
-                <label>ZIP Code</label>
-                <input name="zipCode" value={form.zipCode} onChange={handleChange} />
+                <label>{isStore3 ? 'Pincode' : 'ZIP Code'}</label>
+                <input
+                  name="zipCode"
+                  value={form.zipCode}
+                  onChange={(e) => {
+                    const v = isStore3 ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value;
+                    setForm((f) => ({ ...f, zipCode: v }));
+                    if (isStore3) setPincodeCheck(null);
+                  }}
+                  inputMode={isStore3 ? 'numeric' : undefined}
+                  maxLength={isStore3 ? 6 : undefined}
+                  placeholder={isStore3 ? '6-digit pincode' : ''}
+                  required={isStore3}
+                />
+                {isStore3 && pincodeChecking && (
+                  <p className="pincode-feedback checking">Checking delivery…</p>
+                )}
+                {isStore3 && !pincodeChecking && pincodeCheck && (
+                  pincodeCheck.available ? (
+                    <p className="pincode-feedback available">
+                      ✓ {pincodeCheck.message}
+                      {pincodeCheck.city && ` · ${pincodeCheck.city}${pincodeCheck.state ? ', ' + pincodeCheck.state : ''}`}
+                      {pincodeCheck.codAvailable && ' · COD available'}
+                    </p>
+                  ) : (
+                    <p className="pincode-feedback unavailable">✗ {pincodeCheck.message}</p>
+                  )
+                )}
               </div>
             </div>
             <div className="form-group">
@@ -580,17 +669,61 @@ export default function Checkout() {
                   <button className="coupon-remove" onClick={handleRemoveCoupon}>&times;</button>
                 </div>
               ) : (
-                <div className="coupon-input">
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
-                    placeholder="Coupon code"
-                  />
-                  <button onClick={handleApplyCoupon} disabled={couponLoading}>
-                    {couponLoading ? '...' : 'Apply'}
-                  </button>
-                </div>
+                <>
+                  <div className="coupon-input">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
+                      placeholder="Coupon code"
+                    />
+                    <button onClick={() => handleApplyCoupon()} disabled={couponLoading}>
+                      {couponLoading ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                  {availableCoupons.length > 0 && (
+                    <button
+                      type="button"
+                      className="coupon-toggle"
+                      onClick={() => setShowCoupons((s) => !s)}
+                    >
+                      {showCoupons ? 'Hide' : 'View'} {availableCoupons.length} available coupon{availableCoupons.length !== 1 ? 's' : ''}
+                    </button>
+                  )}
+                  {showCoupons && (
+                    <ul className="coupon-list">
+                      {availableCoupons.map((c) => {
+                        const valueLabel = c.type === 'percentage'
+                          ? `${c.value}% off${c.maxDiscount ? ` (up to ${CURRENCY}${c.maxDiscount})` : ''}`
+                          : `${CURRENCY}${c.value} off`;
+                        const eligible = cartTotal >= c.minOrderAmount;
+                        return (
+                          <li key={c.code} className={`coupon-list-item ${!eligible ? 'is-locked' : ''}`}>
+                            <div className="coupon-list-info">
+                              <span className="coupon-tag">{c.code}</span>
+                              <span className="coupon-list-value">{valueLabel}</span>
+                              {c.description && <p className="coupon-list-desc">{c.description}</p>}
+                              {c.minOrderAmount > 0 && (
+                                <p className="coupon-list-meta">
+                                  Min. order {CURRENCY}{c.minOrderAmount.toFixed(2)}
+                                  {!eligible && ` · add ${CURRENCY}${(c.minOrderAmount - cartTotal).toFixed(2)} more`}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="coupon-list-apply"
+                              onClick={() => handleApplyCoupon(c.code)}
+                              disabled={couponLoading || !eligible}
+                            >
+                              Apply
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </>
               )}
               {couponError && <p className="coupon-error">{couponError}</p>}
             </div>

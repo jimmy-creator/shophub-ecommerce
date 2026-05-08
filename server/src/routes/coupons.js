@@ -7,6 +7,48 @@ const currencySymbol = process.env.CURRENCY_SYMBOL || '${currencySymbol}';
 
 const router = Router();
 
+// List currently-redeemable coupons (public — for the checkout discovery UI)
+router.get('/available', async (req, res) => {
+  try {
+    const now = new Date();
+    const coupons = await Coupon.findAll({
+      where: {
+        active: true,
+        [Op.and]: [
+          { [Op.or]: [{ startDate: null }, { startDate: { [Op.lte]: now } }] },
+          { [Op.or]: [{ endDate: null }, { endDate: { [Op.gt]: now } }] },
+        ],
+      },
+      attributes: [
+        'code', 'description', 'type', 'value',
+        'minOrderAmount', 'maxDiscount',
+        'applicableCategories', 'applicablePaymentMethods',
+        'endDate',
+        'usageLimit', 'usedCount',
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+
+    const visible = coupons
+      .filter((c) => !c.usageLimit || c.usedCount < c.usageLimit)
+      .map((c) => ({
+        code: c.code,
+        description: c.description,
+        type: c.type,
+        value: parseFloat(c.value),
+        minOrderAmount: parseFloat(c.minOrderAmount),
+        maxDiscount: c.maxDiscount != null ? parseFloat(c.maxDiscount) : null,
+        applicableCategories: c.applicableCategories,
+        applicablePaymentMethods: c.applicablePaymentMethods,
+        endDate: c.endDate,
+      }));
+
+    res.json(visible);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Validate/apply a coupon code (public — guests can use too)
 router.post('/apply', optionalAuth, async (req, res) => {
   try {

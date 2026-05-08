@@ -1312,6 +1312,49 @@ input, textarea, select { font-family: var(--font-body); }
 .coupon-error { font-size: 0.78rem; color: var(--danger); margin-top: 0.4rem; }
 .discount-row span { color: var(--success); font-weight: 500; }
 
+.coupon-toggle {
+  margin-top: 0.6rem;
+  background: none; border: none; padding: 0;
+  font-size: 0.78rem; font-weight: 600; color: var(--copper);
+  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+}
+.coupon-toggle:hover { color: var(--copper-dark); }
+.coupon-list {
+  list-style: none; margin: 0.6rem 0 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  max-height: 280px; overflow-y: auto;
+}
+.coupon-list-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px dashed var(--border); border-radius: var(--radius);
+  background: var(--bg-warm);
+}
+.coupon-list-item.is-locked { opacity: 0.65; }
+.coupon-list-info { flex: 1; min-width: 0; }
+.coupon-list-value { font-size: 0.82rem; font-weight: 600; color: var(--text); margin-left: 0.4rem; }
+.coupon-list-desc { font-size: 0.78rem; color: var(--text-secondary); margin: 0.3rem 0 0; }
+.coupon-list-meta { font-size: 0.72rem; color: var(--text-light); margin: 0.2rem 0 0; }
+.coupon-list-apply {
+  flex-shrink: 0;
+  padding: 0.45rem 0.95rem; border: 1.5px solid var(--bg-dark);
+  border-radius: var(--radius); background: var(--bg-dark);
+  color: var(--text-inverse); font-size: 0.75rem; font-weight: 600;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.2s var(--ease);
+}
+.coupon-list-apply:hover:not(:disabled) { background: var(--copper); border-color: var(--copper); }
+.coupon-list-apply:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.pincode-feedback {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem; font-weight: 500;
+  display: flex; align-items: center; gap: 0.25rem;
+}
+.pincode-feedback.checking { color: var(--text-light); }
+.pincode-feedback.available { color: var(--success); }
+.pincode-feedback.unavailable { color: var(--danger); }
+
 /* Shipping Options */
 .shipping-options { margin-bottom: 0.75rem; }
 .shipping-option {
