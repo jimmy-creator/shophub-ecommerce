@@ -258,12 +258,11 @@
 }
 .s2-nav-logo em { font-style: italic; color: var(--s2-lavender); }
 .s2-nav-logo-img {
-  height: 60px;
-  width: 160px;
+  height: 90px;
+  width: auto;
   display: block;
   object-fit: contain;
-  border-radius: 4px;
-  margin: -10px 0;
+  margin: -22px 0;
 }
 
 .s2-nav-search {
@@ -2087,7 +2086,7 @@
 }
 .s2-footer-brand em { font-style: italic; color: var(--s2-lavender); }
 .s2-footer-logo-img {
-  height: 56px;
+  height: 100px;
   width: auto;
   display: block;
   object-fit: contain;
