@@ -114,8 +114,8 @@ export default function Home() {
   return (
     <div className="s2-root">
       <SEO
-        title="Perfume Store"
-        description={`Discover signature scents, niche perfumes, and timeless fragrances. Authentic bottles, carefully curated.`}
+        title="Michelle Perfume"
+        description={`Michelle — discover signature scents, niche perfumes, and timeless fragrances. Authentic bottles, carefully curated.`}
       />
 
       {/* ── Banner carousel ────────────────────────────────── */}

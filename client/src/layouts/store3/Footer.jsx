@@ -13,9 +13,9 @@ export default function Footer() {
     <footer className="s2-footer">
       <div className="s2-footer-grid">
         <div>
-          <img src="/images/perfume-logo.png" alt="Perfume Store" className="s2-footer-logo-img" />
+          <img src="/images/perfume-logo.png" alt="Michelle Perfume" className="s2-footer-logo-img" />
           <p className="s2-footer-brand-tag">
-            Discover signature scents, niche perfumes, and timeless fragrances. Authentic bottles, carefully curated.
+            Michelle — signature scents, niche perfumes, and timeless fragrances. Authentic bottles, carefully curated.
           </p>
         </div>
         <div className="s2-footer-col">
@@ -47,7 +47,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="s2-footer-bottom">
-        <span>© {new Date().getFullYear()} Perfume Store</span>
+        <span>© {new Date().getFullYear()} Michelle Perfume</span>
         <span>Fragrance, curated</span>
       </div>
     </footer>
