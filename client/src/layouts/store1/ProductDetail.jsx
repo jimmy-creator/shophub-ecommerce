@@ -115,7 +115,13 @@ export default function ProductDetail() {
         description={product.description?.slice(0, 160) || `Buy ${product.name} at ${CURRENCY}${parseFloat(displayPrice).toFixed(2)}`}
         image={product.images?.[0] ? `${window.location.origin}${product.images[0]}` : undefined}
         type="product"
-        product={{ price: displayPrice, stock: displayStock }}
+        product={{ ...product, price: displayPrice, stock: displayStock }}
+        breadcrumbs={[
+          { name: 'Home', url: '/' },
+          { name: 'Products', url: '/products' },
+          ...(product.category ? [{ name: product.category, url: `/products?category=${encodeURIComponent(product.category)}` }] : []),
+          { name: product.name, url: `/product/${product.slug}` },
+        ]}
       />
       <div className="container">
         <Link to="/products" className="back-link">
