@@ -157,19 +157,44 @@ export default function Products() {
               <div className="s2-grid">
                 {products.map((p) => <ProductCard key={p.id} product={p} eager />)}
               </div>
-              {totalPages > 1 && (
-                <div className="s2-pagination">
-                  {Array.from({ length: totalPages }, (_, i) => (
+              {totalPages > 1 && (() => {
+                const WINDOW = 10;
+                const start = Math.min(
+                  Math.max(1, page - Math.floor(WINDOW / 2)),
+                  Math.max(1, totalPages - WINDOW + 1)
+                );
+                const end = Math.min(totalPages, start + WINDOW - 1);
+                const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+                return (
+                  <div className="s2-pagination">
                     <button
-                      key={i + 1}
-                      className={page === i + 1 ? 'active' : ''}
-                      onClick={() => updateFilter('page', String(i + 1))}
+                      type="button"
+                      onClick={() => updateFilter('page', String(page - 1))}
+                      disabled={page === 1}
+                      aria-label="Previous page"
                     >
-                      {i + 1}
+                      ‹
                     </button>
-                  ))}
-                </div>
-              )}
+                    {pages.map((n) => (
+                      <button
+                        key={n}
+                        className={page === n ? 'active' : ''}
+                        onClick={() => updateFilter('page', String(n))}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => updateFilter('page', String(page + 1))}
+                      disabled={page === totalPages}
+                      aria-label="Next page"
+                    >
+                      Next ›
+                    </button>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
