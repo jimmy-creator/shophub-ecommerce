@@ -1476,8 +1476,8 @@
 }
 .s2-wishlist-btn:hover { background: rgba(3, 15, 38, 0.75); }
 .s2-wishlist-btn.active {
-  color: var(--s2-rose-deep);
-  border-color: rgba(20, 184, 166, 0.5);
+  color: var(--s2-danger);
+  border-color: rgba(225, 29, 72, 0.5);
 }
 
 .s2-gallery-thumbs {
