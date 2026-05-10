@@ -38,6 +38,8 @@ export default function Products() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [page, category, search, sort, order]);
 
   const updateFilter = (key, value) => {
@@ -184,6 +186,7 @@ export default function Products() {
                         {n}
                       </button>
                     ))}
+                    <span className="s2-pagination-info">Page {page} of {totalPages}</span>
                     <button
                       type="button"
                       onClick={() => updateFilter('page', String(page + 1))}
