@@ -36,8 +36,6 @@ export default function ProductCard({ product, eager = false }) {
           <img
             src={img}
             alt={product.name}
-            width="400"
-            height="400"
             loading={eager ? 'eager' : 'lazy'}
             fetchpriority={eager ? 'high' : 'auto'}
           />
