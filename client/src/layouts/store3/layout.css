@@ -1336,6 +1336,12 @@
   border-color: transparent;
   box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.6);
 }
+@media (max-width: 720px) {
+  /* Mobile: drop the numbered page buttons and any disabled nav arrow.
+     Page 1 → only Next, page 2..N-1 → Prev + Next, last → only Prev. */
+  .s2-pagination button:not(:first-child):not(:last-child) { display: none; }
+  .s2-pagination button:disabled { display: none; }
+}
 
 /* ============================================================
    PRODUCT DETAIL
