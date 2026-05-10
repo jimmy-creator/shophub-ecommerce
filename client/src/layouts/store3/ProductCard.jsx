@@ -5,7 +5,7 @@ import { useWishlist } from '../../context/WishlistContext';
 import { showToast } from '../../utils/toast';
 import { CurrencySymbol } from '../../utils/currency';
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, eager = false }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const imgFull = product.images?.[0];
@@ -33,7 +33,14 @@ export default function ProductCard({ product }) {
     <article className="s2-product">
       <Link to={`/product/${product.slug}`} className="s2-product-img">
         {img ? (
-          <img src={img} alt={product.name} loading="lazy" />
+          <img
+            src={img}
+            alt={product.name}
+            width="400"
+            height="400"
+            loading={eager ? 'eager' : 'lazy'}
+            fetchpriority={eager ? 'high' : 'auto'}
+          />
         ) : (
           <div className="s2-product-placeholder">
             {product.name?.[0] || '·'}

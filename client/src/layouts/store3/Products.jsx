@@ -155,7 +155,7 @@ export default function Products() {
           ) : (
             <>
               <div className="s2-grid">
-                {products.map((p) => <ProductCard key={p.id} product={p} />)}
+                {products.map((p, i) => <ProductCard key={p.id} product={p} eager={i < 4} />)}
               </div>
               {totalPages > 1 && (
                 <div className="s2-pagination">
