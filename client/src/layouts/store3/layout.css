@@ -2159,7 +2159,7 @@
   /* Explicit height so percentage-height children always resolve on mobile */
   .s2-gallery-main { height: calc(100vw - 2rem); }
   .s2-detail-info { padding: 1rem 0 0; max-height: none; overflow-y: visible; padding-right: 0; }
-  .s2-products-layout { grid-template-columns: 1fr; }
+  .s2-products-layout { grid-template-columns: minmax(0, 1fr); }
   .s2-filters {
     position: fixed;
     inset: auto 0 0 0;
