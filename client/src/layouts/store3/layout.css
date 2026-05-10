@@ -911,6 +911,7 @@
 }
 
 .s2-product {
+  min-width: 0;     /* allow the article to shrink below the img's intrinsic 400px min-content so it actually fits its grid track */
   position: relative;
   border-radius: var(--s2-radius);
   background: var(--s2-glass-bg);
