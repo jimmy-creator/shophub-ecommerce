@@ -39,6 +39,8 @@ export default function Products() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [page, category, search, sort, order]);
 
   const updateFilter = (key, value) => {
@@ -151,19 +153,45 @@ export default function Products() {
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
-                {totalPages > 1 && (
-                  <div className="pagination">
-                    {Array.from({ length: totalPages }, (_, i) => (
+                {totalPages > 1 && (() => {
+                  const WINDOW = 10;
+                  const start = Math.min(
+                    Math.max(1, page - Math.floor(WINDOW / 2)),
+                    Math.max(1, totalPages - WINDOW + 1)
+                  );
+                  const end = Math.min(totalPages, start + WINDOW - 1);
+                  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+                  return (
+                    <div className="pagination">
                       <button
-                        key={i + 1}
-                        className={page === i + 1 ? 'active' : ''}
-                        onClick={() => updateFilter('page', String(i + 1))}
+                        type="button"
+                        onClick={() => updateFilter('page', String(page - 1))}
+                        disabled={page === 1}
+                        aria-label="Previous page"
                       >
-                        {i + 1}
+                        ‹
                       </button>
-                    ))}
-                  </div>
-                )}
+                      {pages.map((n) => (
+                        <button
+                          key={n}
+                          className={page === n ? 'active' : ''}
+                          onClick={() => updateFilter('page', String(n))}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                      <span className="pagination-info">Page {page} of {totalPages}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateFilter('page', String(page + 1))}
+                        disabled={page === totalPages}
+                        aria-label="Next page"
+                      >
+                        Next ›
+                      </button>
+                    </div>
+                  );
+                })()}
               </>
             )}
           </div>

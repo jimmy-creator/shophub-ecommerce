@@ -891,6 +891,18 @@ input, textarea, select { font-family: var(--font-body); }
   background: var(--bg-dark); color: var(--text-inverse);
   border-color: var(--bg-dark);
 }
+.pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
+.pagination-info { display: none; }
+@media (max-width: 720px) {
+  .pagination button:not(:first-child):not(:last-child) { display: none; }
+  .pagination button:disabled { display: none; }
+  .pagination-info {
+    display: inline-flex; align-items: center;
+    padding: 0 0.75rem;
+    font-size: 0.85rem; font-weight: 500;
+    color: var(--text-secondary);
+  }
+}
 
 /* ===== PRODUCT DETAIL ===== */
 .product-detail { padding: 3rem 0 5rem; }
