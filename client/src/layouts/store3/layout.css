@@ -27,10 +27,10 @@
   --s2-lavender-deep:  #000000;
   --s2-cyan:           #06b6d4;
   --s2-cyan-deep:      #0891b2;
-  --s2-rose:           #14b8a6;
-  --s2-rose-deep:      #0d9488;
+  --s2-rose:           #5142a3;
+  --s2-rose-deep:      #3B277E;
 
-  --s2-success:        #16a34a;
+  --s2-success:        #3B277E;
   --s2-danger:         #e11d48;
   --s2-warn:           #f59e0b;
 
@@ -260,11 +260,10 @@
 }
 .s2-nav-logo em { font-style: italic; color: var(--s2-lavender); }
 .s2-nav-logo-img {
-  height: 90px;
+  height: 38px;
   width: auto;
   display: block;
   object-fit: contain;
-  margin: -22px 0;
 }
 
 .s2-nav-search {
@@ -3029,4 +3028,738 @@ body:has(.admin-page) .s2-footer {
     display: none !important;
   }
   .s2-root { animation: none; }
+}
+
+/* ── Product cards (Farmley-style) ────────────────────────────
+   Override the earlier glass .s2-product look with a flat white
+   image area + dark navy info footer. Scoped to store3 only. */
+.s2-product {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+.s2-product::before { display: none; }
+.s2-product:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+}
+
+.s2-product-img {
+  position: relative;
+  aspect-ratio: 1;
+  background: #ffffff;
+  display: block;
+  overflow: hidden;
+}
+.s2-product-img img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 10px;
+  transition: transform 0.5s ease;
+}
+.s2-product:hover .s2-product-img img { transform: scale(1.04); }
+
+/* Top-left quick-view glyph (decorative — Link wraps the whole image) */
+.s2-product-quickview {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  border-radius: 6px;
+  color: #1a1f3a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Top-right badge — discount or SOLDOUT */
+.s2-product-badge {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  padding: 0.3rem 0.6rem;
+  background: #1a1f3a;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  z-index: 2;
+}
+.s2-product-badge-soldout { background: #1a1f3a; }
+
+/* Dark navy footer — name, price, cart button */
+.s2-product-body {
+  background: #1a1f3a;
+  color: #ffffff;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  flex: 1;
+}
+.s2-product-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: #ffffff !important;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  min-height: 2.4em;
+}
+.s2-product-name:hover { color: #f5d34a !important; }
+.s2-product-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: auto;
+}
+.s2-product-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.s2-product-price .now {
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+.s2-product-price .was {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+/* Cart icon button (replaces the floating + in image area) */
+.s2-product-cart-btn {
+  position: static !important;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: #1a1f3a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 1 !important;
+  transform: none !important;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.s2-product-cart-btn:hover:not(:disabled) {
+  background: #f5d34a;
+  color: #1a1f3a;
+}
+.s2-product-cart-btn:disabled {
+  background: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+}
+
+/* ── Category cards (Farmley-style coloured tiles) ───────────── */
+.s2-cat-cards-section {
+  max-width: 1240px;
+  margin: 2.5rem auto;
+  padding: 0 1.5rem;
+}
+.s2-cat-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.s2-cat-card-tile {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-radius: 18px;
+  overflow: hidden;
+  text-decoration: none;
+  color: #ffffff;
+  min-height: 240px;
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.1), box-shadow 0.4s ease;
+}
+.s2-cat-card-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+.s2-cat-card-text {
+  flex: 1;
+  padding: 2rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  z-index: 1;
+}
+.s2-cat-card-title {
+  margin: 0 0 1.2rem;
+  font-family: var(--s2-font-display);
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.s2-cat-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  transition: gap 0.25s ease;
+}
+.s2-cat-card-tile:hover .s2-cat-card-cta { gap: 0.6rem; }
+.s2-cat-card-img {
+  flex: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.s2-cat-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  transition: transform 0.6s ease;
+}
+.s2-cat-card-tile:hover .s2-cat-card-img img { transform: scale(1.04); }
+
+@media (max-width: 720px) {
+  /* Mobile: horizontal scroll, no padding on the section so the rail
+     bleeds to the screen edges like the reference */
+  .s2-cat-cards-section { padding: 0; margin: 1.5rem 0; max-width: none; }
+  .s2-cat-cards-grid {
+    display: flex;
+    grid-template-columns: none;
+    gap: 0.85rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    padding: 0.5rem 1rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .s2-cat-cards-grid::-webkit-scrollbar { display: none; }
+  .s2-cat-card-tile {
+    flex: 0 0 84%;
+    min-height: 180px;
+    scroll-snap-align: start;
+  }
+  .s2-cat-card-text { padding: 1.25rem 1rem; }
+  .s2-cat-card-title { margin-bottom: 0.8rem; }
+}
+
+/* ── Announcement bar ─────────────────────────────────────────── */
+.s2-announcement-bar {
+  width: 100%;
+  background: #f5d34a;
+  color: #1a1f3a;
+  overflow: hidden;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.01em;
+  border-bottom: 4px solid #1a1f3a;
+}
+.s2-announcement-track {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 0.55rem 0;
+  animation: s2-marquee 38s linear infinite;
+  will-change: transform;
+}
+.s2-announcement-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0 1.5rem;
+}
+.s2-announcement-text { display: inline-block; }
+.s2-announcement-sep {
+  color: #1a1f3a;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+@keyframes s2-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── New top navbar (Farmley-style) ──────────────────────────── */
+.s2-nav {
+  /* Override the earlier sticky/glass nav for the new vertical look. */
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.75rem;
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid rgba(23, 19, 17, 0.08);
+  border-radius: 0;
+  animation: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.s2-nav-hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid rgba(23, 19, 17, 0.1);
+  color: #171311;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.s2-nav-hamburger:hover { background: #f4f0ea; }
+
+.s2-nav-searchwrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid rgba(23, 19, 17, 0.12);
+  border-radius: 14px;
+  overflow: visible;
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto;
+  transition: border-color 0.2s ease;
+}
+.s2-nav-searchwrap:focus-within { border-color: rgba(23, 19, 17, 0.3); }
+
+.s2-nav-cat {
+  position: relative;
+  border-right: 1px solid rgba(23, 19, 17, 0.12);
+}
+.s2-nav-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #171311;
+  font-size: 0.88rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.s2-nav-cat-label { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.s2-nav-cat-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  background: #ffffff;
+  border: 1px solid rgba(23, 19, 17, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  margin: 0;
+  padding: 0.4rem 0;
+  min-width: 220px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.s2-nav-cat-list button {
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 1rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #171311;
+}
+.s2-nav-cat-list button:hover { background: #f4f0ea; }
+
+.s2-nav-searchinput {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: #171311;
+  min-width: 0;
+}
+.s2-nav-searchinput::placeholder { color: rgba(23, 19, 17, 0.45); }
+
+.s2-nav-searchbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 52px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(23, 19, 17, 0.12);
+  cursor: pointer;
+  color: #171311;
+  align-self: stretch;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.s2-nav-searchbtn svg { display: block; }
+.s2-nav-searchbtn:hover { background: #f4f0ea; color: #000000; }
+
+/* ── Mobile drawer ────────────────────────────────────────────── */
+.s2-mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  animation: s2-drawer-fade 0.22s ease;
+}
+@keyframes s2-drawer-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.s2-mobile-drawer {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: min(82vw, 340px);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1rem 2rem;
+  overflow-y: auto;
+  animation: s2-drawer-slide 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+@keyframes s2-drawer-slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.s2-mobile-drawer-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+.s2-mobile-drawer-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
+  color: rgba(23, 19, 17, 0.5);
+}
+.s2-mobile-drawer-head button {
+  background: transparent; border: none; cursor: pointer; padding: 0.4rem;
+  display: inline-flex; align-items: center; color: #171311;
+}
+.s2-mobile-drawer-nav { display: flex; flex-direction: column; gap: 0.2rem; }
+.s2-mobile-drawer-nav a {
+  display: inline-flex; align-items: center; gap: 0.7rem;
+  padding: 0.85rem 0.85rem;
+  text-decoration: none; color: #171311;
+  font-weight: 500; font-size: 0.95rem;
+  border-radius: 10px;
+}
+.s2-mobile-drawer-nav a:hover { background: #f4f0ea; }
+.s2-mobile-drawer-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  background: #171311; color: #ffffff;
+  padding: 0.1rem 0.45rem; border-radius: 999px;
+}
+.s2-mobile-drawer-section-title {
+  margin: 1.5rem 0 0.5rem;
+  padding: 0 0.85rem;
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px;
+  color: rgba(23, 19, 17, 0.5);
+}
+.s2-mobile-drawer-cats { display: flex; flex-direction: column; }
+.s2-mobile-drawer-cats a {
+  padding: 0.6rem 0.85rem;
+  font-size: 0.88rem;
+  color: #171311; text-decoration: none;
+  border-radius: 10px;
+}
+.s2-mobile-drawer-cats a:hover { background: #f4f0ea; }
+
+/* ── Hero block (solid color placeholder until artwork lands) ── */
+.s2-hero-block {
+  width: 100%;
+  background: #f5e8c4;
+  margin: 0;
+  border-bottom: 1px solid rgba(23, 19, 17, 0.06);
+}
+.s2-hero-block-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  min-height: 480px;
+  padding: 2rem 1.75rem;
+}
+@media (max-width: 720px) {
+  .s2-hero-block-inner { min-height: 320px; padding: 1.25rem 1rem; }
+}
+
+/* ── Responsive: navbar + drawer behavior ─────────────────────── */
+@media (min-width: 961px) {
+  /* Hide hamburger on desktop — full nav + dropdown is visible */
+  .s2-nav-hamburger { display: none; }
+}
+@media (max-width: 720px) {
+  /* Mobile: drop the search into its own row beneath the icons */
+  .s2-nav {
+    padding: 0.65rem 0.85rem 0.8rem;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    row-gap: 0.6rem;
+  }
+  .s2-nav-logo-img { height: 30px; margin: 0; }
+  .s2-nav-actions-desktop { display: inline-flex !important; margin-left: auto; }
+  .s2-nav-searchwrap {
+    flex-basis: 100%;
+    order: 10;          /* push to the bottom of the flex line */
+    max-width: none;
+    margin: 0;
+  }
+  .s2-nav-cat { border-right: 1px solid rgba(23, 19, 17, 0.12); }
+  .s2-nav-cat-btn { padding: 0.6rem 0.7rem; font-size: 0.8rem; }
+  .s2-nav-cat-label { max-width: 60px; }
+  .s2-nav-searchinput { font-size: 16px; padding: 0.6rem 0.75rem; }
+  .s2-nav-searchbtn { width: 46px; }
+  .s2-announcement-bar { font-size: 0.78rem; }
+
+  /* Banner becomes a tall portrait poster on mobile (matches reference) */
+  .s2-banners {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    max-width: none;
+  }
+  .s2-banner-slide {
+    aspect-ratio: 5 / 7;
+    max-height: none;
+  }
+}
+
+/* ── Social share row on product detail ──────────────────────── */
+.s2-detail-share {
+  display: flex;
+  gap: 0.6rem;
+  margin: 1.25rem 0 1.5rem;
+  flex-wrap: wrap;
+}
+.s2-detail-share-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  text-decoration: none;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.s2-detail-share-btn svg { width: 16px; height: 16px; }
+.s2-detail-share-btn:hover { transform: translateY(-2px); opacity: 0.92; }
+
+/* ── Bulleted description ─────────────────────────────────────── */
+.s2-description-list {
+  list-style: disc;
+  padding-left: 1.2rem;
+  margin: 1rem 0 1.5rem;
+  color: var(--s2-text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.s2-description-list li { margin-bottom: 0.7rem; }
+.s2-description-list li::marker { color: var(--s2-text-dim); }
+
+/* ── Scroll-to-top floating button ────────────────────────────── */
+.s2-scroll-top {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 90;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #1a1f3a;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(26, 31, 58, 0.25);
+  animation: s2-scroll-top-in 0.25s ease;
+  transition: background 0.2s ease;
+}
+.s2-scroll-top:hover { background: #3B277E; }
+@keyframes s2-scroll-top-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 720px) {
+  .s2-scroll-top { right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ── Product detail (Farmley-style) ───────────────────────────── */
+.s2-detail-taxes {
+  font-size: 0.85rem;
+  color: var(--s2-text-dim);
+  margin: 0.4rem 0 1.25rem;
+}
+.s2-detail-taxes a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.s2-qty-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1a1f3a;
+  margin-right: 0.6rem;
+}
+.s2-btn-soldout {
+  width: 100%;
+  background: #94a3b8 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 0.95rem 1.5rem !important;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 720px) {
+  /* Mobile product detail: simpler, Farmley-style layout */
+
+  /* Top of info column — keep just title + price + taxes */
+  .s2-detail-cat { display: none; }
+  .s2-detail-brand { display: none; }
+  .s2-rating { display: none; }
+
+  /* Pricing: flat dark navy, no glass / no border / no padding */
+  .s2-pricing {
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    margin: 0 0 0.25rem !important;
+    gap: 0.55rem !important;
+  }
+  .s2-pricing .now {
+    color: #1a1f3a !important;
+    font-family: inherit !important;
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    background: none !important;
+    -webkit-text-fill-color: #1a1f3a !important;
+  }
+  .s2-pricing .was { font-size: 0.95rem !important; }
+  .s2-pricing .save { display: none; }
+
+  /* Add-to-cart block: 2-col grid auto-flows label/stepper on row 1
+     and the two buttons (Add to cart + Buy It Now) side-by-side on row 2 */
+  .s2-add-to-cart {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "label stepper"
+      "btn1 btn2";
+    align-items: center;
+    gap: 0.75rem 1rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid rgba(23, 19, 17, 0.08);
+    margin-top: 1rem;
+  }
+  .s2-qty-label {
+    grid-area: label;
+    display: inline-block !important;
+    font-size: 0.95rem; font-weight: 600; color: #1a1f3a;
+    margin: 0 !important;
+  }
+  .s2-qty {
+    grid-area: stepper;
+    justify-self: end;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0;
+    border: 1px solid rgba(23, 19, 17, 0.15);
+    border-radius: 6px;
+    overflow: hidden;
+    width: fit-content;
+  }
+  .s2-qty button {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    background: transparent;
+    border: none;
+    color: #1a1f3a;
+    cursor: pointer;
+  }
+  .s2-qty button:hover { background: #f4f0ea; }
+  .s2-qty span {
+    min-width: 36px;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1a1f3a;
+  }
+
+  /* Each button fills its grid cell; rounded pill */
+  .s2-add-to-cart .s2-btn-lg {
+    width: 100%;
+    border-radius: 999px !important;
+    padding: 0.9rem 1rem !important;
+    font-size: 0.92rem !important;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .s2-add-to-cart .s2-btn-lg:not(.s2-btn-primary) { grid-area: btn1; }
+  .s2-add-to-cart .s2-btn-primary {
+    grid-area: btn2;
+    display: inline-flex !important;
+    background: #f5e8c4 !important;
+    color: #1a1f3a !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
+  .s2-add-to-cart .s2-btn-primary:hover {
+    background: #efddae !important;
+    box-shadow: none !important;
+  }
+  /* Hide button icons on mobile — Farmley reference is text-only */
+  .s2-add-to-cart .s2-btn-lg svg { display: none; }
+
+  /* Drop the floating bottom buy bar (we use the inline buttons now) */
+  .s2-mobile-buy-bar { display: none !important; }
+
+  /* Don't bottom-pad the page for a bar that no longer exists */
+  .s2-detail { padding-bottom: 2rem !important; }
 }

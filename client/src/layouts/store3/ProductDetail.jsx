@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Star, Minus, Plus, ArrowLeft, Zap, Heart, ShoppingBag } from 'lucide-react';
+import { FaFacebookF, FaXTwitter, FaPinterestP, FaTelegram, FaWhatsapp, FaEnvelope } from 'react-icons/fa6';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -174,6 +175,10 @@ export default function ProductDetail() {
               {discount > 0 && <span className="save">Save {discount}%</span>}
             </div>
 
+            <p className="s2-detail-taxes">
+              Taxes included. <a href="/shipping-policy">Shipping</a> calculated at checkout.
+            </p>
+
             {hasVariants && product.variantOptions && (
               <div className="s2-variants">
                 {Object.entries(product.variantOptions).map(([type, values]) => (
@@ -214,7 +219,16 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <p className="s2-description">{product.description}</p>
+            {(() => {
+              const lines = (product.description || '').split('\n').map((l) => l.trim()).filter(Boolean);
+              return lines.length > 1 ? (
+                <ul className="s2-description-list">
+                  {lines.map((line, i) => <li key={i}>{line}</li>)}
+                </ul>
+              ) : (
+                <p className="s2-description">{product.description}</p>
+              );
+            })()}
 
             <div className={`s2-stock ${displayStock > 0 ? 'in' : 'out'}`}>
               {displayStock > 0
@@ -224,8 +238,9 @@ export default function ProductDetail() {
 
             <PincodeChecker />
 
-            {displayStock > 0 && (
+            {displayStock > 0 ? (
               <div className="s2-add-to-cart">
+                <label className="s2-qty-label">Quantity:</label>
                 <div className="s2-qty">
                   <button type="button" onClick={() => setQuantity(Math.max(1, quantity - 1))} aria-label="Decrease">
                     <Minus size={14} strokeWidth={2} />
@@ -242,7 +257,47 @@ export default function ProductDetail() {
                   <Zap size={16} strokeWidth={1.8} /> Buy now
                 </button>
               </div>
+            ) : (
+              <button type="button" className="s2-btn s2-btn-lg s2-btn-soldout" disabled>
+                Sold out
+              </button>
             )}
+
+            {(() => {
+              const url = typeof window !== 'undefined' ? window.location.href : '';
+              const title = product.name || '';
+              const img = product.images?.[0]
+                ? (window.location.origin + product.images[0])
+                : '';
+              const u = encodeURIComponent(url);
+              const t = encodeURIComponent(title);
+              const i = encodeURIComponent(img);
+              const shares = [
+                { name: 'Facebook',  href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, color: '#1877F2', icon: <FaFacebookF /> },
+                { name: 'X',         href: `https://twitter.com/intent/tweet?url=${u}&text=${t}`, color: '#000000', icon: <FaXTwitter /> },
+                { name: 'Pinterest', href: `https://pinterest.com/pin/create/button/?url=${u}&media=${i}&description=${t}`, color: '#E60023', icon: <FaPinterestP /> },
+                { name: 'Telegram',  href: `https://t.me/share/url?url=${u}&text=${t}`, color: '#229ED9', icon: <FaTelegram /> },
+                { name: 'WhatsApp',  href: `https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}`, color: '#25D366', icon: <FaWhatsapp /> },
+                { name: 'Email',     href: `mailto:?subject=${t}&body=${u}`, color: '#EA4335', icon: <FaEnvelope /> },
+              ];
+              return (
+                <div className="s2-detail-share">
+                  {shares.map((s) => (
+                    <a
+                      key={s.name}
+                      href={s.href}
+                      target={s.name === 'Email' ? undefined : '_blank'}
+                      rel={s.name === 'Email' ? undefined : 'noopener noreferrer'}
+                      className="s2-detail-share-btn"
+                      style={{ background: s.color }}
+                      aria-label={`Share on ${s.name}`}
+                    >
+                      {s.icon}
+                    </a>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         </div>
 

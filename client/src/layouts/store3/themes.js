@@ -26,7 +26,7 @@ const store3Themes = {
       '--text-inverse': '#ffffff',
       '--border':       'rgba(23, 19, 17, 0.08)',
       '--border-light': 'rgba(23, 19, 17, 0.04)',
-      '--success':      '#16a34a',
+      '--success':      '#3B277E',
       '--danger':       '#e11d48',
       '--shadow-sm':    '0 2px 8px rgba(23, 19, 17, 0.05)',
       '--shadow':       '0 4px 16px rgba(23, 19, 17, 0.07)',

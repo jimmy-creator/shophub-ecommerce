@@ -263,13 +263,28 @@ function BannerEditor({
       const { data } = await api.post('/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      const newBanner = { image: data.url, title: '', subtitle: '', link: '/products' };
+      const newBanner = { image: data.url, mobileImage: '', title: '', subtitle: '', link: '/products' };
       const updated = [...banners, newBanner];
       await saveBanners(updated);
     } catch (err) {
       toast.error('Upload failed');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUploadField = async (index, field, file) => {
+    if (!file) return;
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const { data } = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const updated = banners.map((b, i) => i === index ? { ...b, [field]: data.url } : b);
+      await saveBanners(updated);
+    } catch {
+      toast.error('Upload failed');
     }
   };
 
@@ -304,7 +319,7 @@ function BannerEditor({
         {banners.map((banner, i) => (
           <div key={i} style={{
             display: 'grid',
-            gridTemplateColumns: '140px 1fr auto',
+            gridTemplateColumns: '160px 90px 1fr auto',
             gap: '1rem',
             padding: '1rem',
             border: '1px solid var(--border)',
@@ -312,9 +327,27 @@ function BannerEditor({
             background: 'var(--bg-card)',
             alignItems: 'start',
           }}>
-            <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '16/10' }}>
-              <img src={banner.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-            </div>
+            {/* Desktop image */}
+            <label style={{ cursor: 'pointer', display: 'block' }} title="Desktop image (click to replace)">
+              <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '16/10', background: 'var(--bg-warm)' }}>
+                <img src={banner.image} alt="Desktop banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </div>
+              <span style={{ display: 'block', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Desktop</span>
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleUploadField(i, 'image', e.target.files[0])} />
+            </label>
+
+            {/* Mobile image (portrait) */}
+            <label style={{ cursor: 'pointer', display: 'block' }} title="Mobile image (click to upload/replace)">
+              <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '5/7', background: 'var(--bg-warm)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: banner.mobileImage ? 'none' : '1.5px dashed var(--border)' }}>
+                {banner.mobileImage ? (
+                  <img src={banner.mobileImage} alt="Mobile banner" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                ) : (
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-light)', textAlign: 'center', padding: '0 0.4rem' }}>+ Add</span>
+                )}
+              </div>
+              <span style={{ display: 'block', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mobile</span>
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleUploadField(i, 'mobileImage', e.target.files[0])} />
+            </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <input
                 value={banner.title || ''}
@@ -383,6 +416,209 @@ function BannerEditor({
           />
         </label>
       )}
+    </div>
+  );
+}
+
+function CategoryCardsEditor() {
+  const [cards, setCards] = useState([]);
+
+  useEffect(() => {
+    api.get('/settings/category-cards')
+      .then((res) => setCards(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
+  }, []);
+
+  const save = async (next) => {
+    try {
+      await api.put('/settings/category-cards', { cards: next });
+      setCards(next);
+      toast.success('Category cards saved');
+    } catch {
+      toast.error('Failed to save category cards');
+    }
+  };
+
+  const update = (i, field, value) => {
+    setCards(cards.map((c, j) => j === i ? { ...c, [field]: value } : c));
+  };
+
+  const uploadField = async (i, field, file) => {
+    if (!file) return;
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const { data } = await api.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      save(cards.map((c, j) => j === i ? { ...c, [field]: data.url } : c));
+    } catch {
+      toast.error('Upload failed');
+    }
+  };
+
+  const addCard = () => {
+    if (cards.length >= 8) return;
+    save([...cards, { title: '', bgColor: '#2c5f7d', image: '', mobileImage: '', link: '/products' }]);
+  };
+
+  const remove = (i) => save(cards.filter((_, j) => j !== i));
+
+  const move = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= cards.length) return;
+    const next = [...cards];
+    [next[i], next[j]] = [next[j], next[i]];
+    save(next);
+  };
+
+  return (
+    <div style={{ marginTop: '3rem' }}>
+      <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1rem' }}>
+        Category Cards ({cards.length}/8)
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+        Large coloured promo tiles shown on the home page in a 2×2 grid (desktop) or horizontal scroll (mobile). Each card has a background colour, a title, a product photo, and a link.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+        {cards.map((c, i) => (
+          <div key={i} style={{
+            display: 'grid',
+            gridTemplateColumns: '160px 90px 80px 1fr auto',
+            gap: '1rem',
+            padding: '1rem',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'var(--bg-card)',
+            alignItems: 'start',
+          }}>
+            <label style={{ cursor: 'pointer' }} title="Desktop product photo">
+              <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '16/10', background: c.bgColor || 'var(--bg-warm)' }}>
+                {c.image && <img src={c.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />}
+              </div>
+              <span style={{ display: 'block', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Desktop image</span>
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => uploadField(i, 'image', e.target.files[0])} />
+            </label>
+
+            <label style={{ cursor: 'pointer' }} title="Mobile photo (optional)">
+              <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', aspectRatio: '5/7', background: c.bgColor || 'var(--bg-warm)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: c.mobileImage ? 'none' : '1.5px dashed var(--border)' }}>
+                {c.mobileImage
+                  ? <img src={c.mobileImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                  : <span style={{ fontSize: '0.7rem', color: 'var(--text-light)' }}>+ Add</span>}
+              </div>
+              <span style={{ display: 'block', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mobile</span>
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => uploadField(i, 'mobileImage', e.target.files[0])} />
+            </label>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.35rem' }} title="Background colour">
+              <input
+                type="color"
+                value={c.bgColor || '#2c5f7d'}
+                onChange={(e) => update(i, 'bgColor', e.target.value)}
+                onBlur={() => save(cards)}
+                style={{ width: 60, height: 60, border: '1px solid var(--border)', borderRadius: 'var(--radius)', cursor: 'pointer', padding: 0, background: 'transparent' }}
+              />
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Color</span>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <input
+                value={c.title || ''}
+                onChange={(e) => update(i, 'title', e.target.value)}
+                onBlur={() => save(cards)}
+                placeholder="Card title (e.g. Date Bites)"
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.88rem', background: 'var(--bg-warm)' }}
+              />
+              <input
+                value={c.link || ''}
+                onChange={(e) => update(i, 'link', e.target.value)}
+                onBlur={() => save(cards)}
+                placeholder="Link (e.g. /products?category=Snacks)"
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.82rem', background: 'var(--bg-warm)' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <button onClick={() => move(i, -1)} disabled={i === 0} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-warm)', cursor: i === 0 ? 'default' : 'pointer', opacity: i === 0 ? 0.3 : 1, fontSize: '0.75rem' }}>▲</button>
+              <button onClick={() => move(i, 1)} disabled={i === cards.length - 1} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-warm)', cursor: i === cards.length - 1 ? 'default' : 'pointer', opacity: i === cards.length - 1 ? 0.3 : 1, fontSize: '0.75rem' }}>▼</button>
+              <button onClick={() => remove(i)} style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--danger)', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.75rem' }}><HiTrash /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {cards.length < 8 && (
+        <button type="button" className="btn btn-secondary" onClick={addCard}>
+          <HiPlus /> Add Category Card
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AnnouncementEditor() {
+  const [items, setItems] = useState([]);
+  const [draft, setDraft] = useState('');
+
+  useEffect(() => {
+    api.get('/settings/announcements')
+      .then((res) => setItems(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
+  }, []);
+
+  const save = async (next) => {
+    try {
+      await api.put('/settings/announcements', { items: next });
+      setItems(next);
+      toast.success('Announcements saved');
+    } catch {
+      toast.error('Failed to save announcements');
+    }
+  };
+
+  const add = () => {
+    const v = draft.trim();
+    if (!v || items.length >= 10) return;
+    save([...items, v]);
+    setDraft('');
+  };
+
+  return (
+    <div style={{ marginTop: '3rem' }}>
+      <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1rem' }}>
+        Announcement Bar ({items.length}/10)
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+        Short promo strings that scroll across the top of every page (above the navbar). Up to 10 messages.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.25rem' }}>
+        {items.map((s, i) => (
+          <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.6rem 0.85rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-warm)' }}>
+            <span style={{ flex: 1, fontSize: '0.88rem' }}>{s}</span>
+            <button
+              type="button"
+              onClick={() => save(items.filter((_, j) => j !== i))}
+              style={{ padding: '0.3rem 0.6rem', border: '1px solid var(--danger)', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.75rem' }}
+            >
+              <HiTrash />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          placeholder='e.g. "Free shipping on orders over 500"'
+          disabled={items.length >= 10}
+          style={{ flex: 1, padding: '0.6rem 0.85rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.88rem', background: 'var(--bg-warm)' }}
+        />
+        <button type="button" onClick={add} disabled={!draft.trim() || items.length >= 10} className="btn btn-secondary">
+          <HiPlus /> Add
+        </button>
+      </div>
     </div>
   );
 }
@@ -2331,6 +2567,12 @@ export default function Admin() {
               description="Add up to 3 banners shown after the Best Sellers section on the home page. Useful for promotions, new arrivals, or seasonal campaigns."
               maxBanners={3}
             />
+
+            {/* Category Cards — large coloured tiles on the home page */}
+            <CategoryCardsEditor />
+
+            {/* Announcement bar — rotating promo strings shown above the navbar */}
+            <AnnouncementEditor />
           </div>
         )}
 

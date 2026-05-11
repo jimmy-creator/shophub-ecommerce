@@ -101,4 +101,53 @@ router.put('/mid-banners', protect, admin, async (req, res) => {
   }
 });
 
+// Category cards (large coloured promo tiles on the home page)
+router.get('/category-cards', async (req, res) => {
+  try {
+    const setting = await Setting.findByPk('category-cards');
+    const items = setting?.value ? JSON.parse(setting.value) : [];
+    res.json(items);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+router.put('/category-cards', protect, admin, async (req, res) => {
+  try {
+    const { cards } = req.body;
+    if (!Array.isArray(cards) || cards.length > 8) {
+      return res.status(400).json({ message: 'Provide an array of up to 8 category cards' });
+    }
+    await Setting.upsert({ key: 'category-cards', value: JSON.stringify(cards) });
+    res.json(cards);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Announcement bar (rotating promo strings shown above the navbar)
+router.get('/announcements', async (req, res) => {
+  try {
+    const setting = await Setting.findByPk('announcements');
+    const items = setting?.value ? JSON.parse(setting.value) : [];
+    res.json(items);
+  } catch (error) {
+    res.json([]);
+  }
+});
+
+router.put('/announcements', protect, admin, async (req, res) => {
+  try {
+    const { items } = req.body;
+    if (!Array.isArray(items) || items.length > 10) {
+      return res.status(400).json({ message: 'Provide an array of up to 10 announcement strings' });
+    }
+    const clean = items.map((s) => String(s || '').trim()).filter(Boolean);
+    await Setting.upsert({ key: 'announcements', value: JSON.stringify(clean) });
+    res.json(clean);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

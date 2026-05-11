@@ -34,6 +34,10 @@ export default function Home() {
     const cached = localStorage.getItem('cached-mid-banners');
     return cached ? JSON.parse(cached) : [];
   });
+  const [categoryCards, setCategoryCards] = useState(() => {
+    const cached = localStorage.getItem('cached-category-cards');
+    return cached ? JSON.parse(cached) : [];
+  });
 
   useEffect(() => {
     api.get('/settings/banners')
@@ -52,6 +56,16 @@ export default function Home() {
           setMidBanners(res.data);
           localStorage.setItem('cached-mid-banners', JSON.stringify(res.data));
           res.data.forEach((b) => { if (b.image) { const img = new Image(); img.src = b.image; } });
+        }
+      })
+      .catch(() => {});
+
+    api.get('/settings/category-cards')
+      .then((res) => {
+        if (Array.isArray(res.data)) {
+          setCategoryCards(res.data);
+          localStorage.setItem('cached-category-cards', JSON.stringify(res.data));
+          res.data.forEach((c) => { if (c.image) { const img = new Image(); img.src = c.image; } });
         }
       })
       .catch(() => {});
@@ -129,12 +143,12 @@ export default function Home() {
   return (
     <div className="s2-root">
       <SEO
-        title="Michelle Perfume"
-        description={`Michelle — discover signature scents, niche perfumes, and timeless fragrances. Authentic bottles, carefully curated.`}
+        title="Kalif"
+        description="Kalif — quality goods, carefully curated."
       />
 
-      {/* ── Banner carousel ────────────────────────────────── */}
-      {banners.length > 0 && (
+      {/* ── Banner carousel (with desktop + mobile variants) ─── */}
+      {banners.length > 0 ? (
         <section
           className="s2-banners"
           onTouchStart={handleTouchStart}
@@ -144,7 +158,18 @@ export default function Home() {
           <div className="s2-banner-track" style={{ transform: `translateX(-${activeBanner * 100}%)` }}>
             {banners.map((banner, i) => (
               <Link key={i} to={banner.link || '/products'} className="s2-banner-slide">
-                <img src={banner.image} alt={banner.title || ''} className="s2-banner-img" fetchPriority={i === 0 ? 'high' : 'auto'} loading={i === 0 ? 'eager' : 'lazy'} />
+                <picture>
+                  {banner.mobileImage && (
+                    <source media="(max-width: 720px)" srcSet={banner.mobileImage} />
+                  )}
+                  <img
+                    src={banner.image}
+                    alt={banner.title || ''}
+                    className="s2-banner-img"
+                    fetchPriority={i === 0 ? 'high' : 'auto'}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                  />
+                </picture>
                 <div className="s2-banner-overlay" />
                 <div className="s2-banner-content">
                   {banner.subtitle && <p className="s2-eyebrow">{banner.subtitle}</p>}
@@ -167,28 +192,39 @@ export default function Home() {
             </div>
           )}
         </section>
+      ) : (
+        /* Placeholder hero block — visible only when no banners configured */
+        <section className="s2-hero-block" aria-label="Hero">
+          <div className="s2-hero-block-inner" />
+        </section>
       )}
 
-      {/* ── Categories rail ──────────────────────────────── */}
-      <section className="s2-section">
-        <div className="s2-section-head">
-          <h2 className="s2-section-title">
-            Top <em>collections</em>
-          </h2>
-          <Link to="/products" className="s2-view-all">
-            View all <ArrowRight size={14} strokeWidth={2} />
-          </Link>
-        </div>
-        <div className="s2-category-rail">
-          {categoryList.map((c) => (
-            <Link key={c.name} to={`/products?category=${c.name}`} className="s2-cat-card">
-              {c.image && <img src={c.image.replace(/\/uploads\/(.+?)\.webp$/, '/api/upload/thumb/$1.webp') || c.image} alt="" className="s2-cat-img" loading="lazy" />}
-              <span className="s2-cat-icon">{fallbackIcons[c.name] || <LayoutGrid size={20} strokeWidth={1.6} />}</span>
-              <span className="s2-cat-label">{c.name}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* ── Category cards (coloured promo tiles) ─────────── */}
+      {categoryCards.length > 0 && (
+        <section className="s2-cat-cards-section">
+          <div className="s2-cat-cards-grid">
+            {categoryCards.map((c, i) => (
+              <Link
+                key={i}
+                to={c.link || '/products'}
+                className="s2-cat-card-tile"
+                style={{ background: c.bgColor || '#2c5f7d' }}
+              >
+                <div className="s2-cat-card-text">
+                  <h3 className="s2-cat-card-title">{c.title}</h3>
+                  <span className="s2-cat-card-cta">
+                    Shop Now <ArrowRight size={14} strokeWidth={2.4} />
+                  </span>
+                </div>
+                <picture className="s2-cat-card-img">
+                  {c.mobileImage && <source media="(max-width: 720px)" srcSet={c.mobileImage} />}
+                  {c.image && <img src={c.image} alt={c.title || ''} loading="lazy" />}
+                </picture>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ── Featured grid ────────────────────────────────── */}
       <section className="s2-section">

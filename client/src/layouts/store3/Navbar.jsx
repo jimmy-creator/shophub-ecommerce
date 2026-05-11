@@ -1,93 +1,174 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Home, LayoutGrid, User, Heart, ShoppingBag } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, Search, User, ShoppingBag, ChevronDown, X, Home, LayoutGrid, Heart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
-import SearchAutocomplete from '../../components/SearchAutocomplete';
+import api from '../../api/axios';
+import AnnouncementBar from '../../components/AnnouncementBar';
+import ScrollToTopButton from '../../components/ScrollToTopButton';
 
 export default function Navbar() {
   const { user } = useAuth();
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const [categories, setCategories] = useState([]);
+  const [activeCat, setActiveCat] = useState('All Categories');
+  const [showCatList, setShowCatList] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [query, setQuery] = useState('');
+  const catWrapRef = useRef(null);
+
+  useEffect(() => {
+    api.get('/categories').then((res) => setCategories(Array.isArray(res.data) ? res.data : [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const onClick = (e) => {
+      if (catWrapRef.current && !catWrapRef.current.contains(e.target)) setShowCatList(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
 
   const isAccount = ['/profile', '/login', '/orders', '/admin'].includes(location.pathname);
 
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (query.trim()) params.set('search', query.trim());
+    if (activeCat && activeCat !== 'All Categories') params.set('category', activeCat);
+    navigate(`/products?${params.toString()}`);
+    setShowMobileMenu(false);
+  };
+
+  const pickCategory = (name) => {
+    setActiveCat(name);
+    setShowCatList(false);
+  };
+
   return (
     <>
-      <nav className="s2-nav s2-glass">
+      <ScrollToTopButton />
+      <AnnouncementBar />
+
+      <nav className="s2-nav">
+        <button
+          type="button"
+          className="s2-nav-hamburger"
+          onClick={() => setShowMobileMenu(true)}
+          aria-label="Open menu"
+        >
+          <Menu size={22} strokeWidth={2} />
+        </button>
+
         <Link to="/" className="s2-nav-logo">
-          <img src="/images/perfume-logo.png" alt="Michelle Perfume" className="s2-nav-logo-img" />
+          <img src="/images/kalif-logo.png" alt="Kalif" className="s2-nav-logo-img" />
         </Link>
 
-        <div className="s2-nav-search s2-nav-search-desktop">
-          <SearchAutocomplete placeholder="Search for perfumes, brands..." />
-        </div>
-
-        <div className="s2-nav-links">
-          <Link to="/" className="s2-nav-link">Home</Link>
-          <Link to="/products" className="s2-nav-link">Shop</Link>
-        </div>
+        <form className="s2-nav-searchwrap" onSubmit={handleSearch}>
+          <div className="s2-nav-cat" ref={catWrapRef}>
+            <button
+              type="button"
+              className="s2-nav-cat-btn"
+              onClick={() => setShowCatList((s) => !s)}
+              aria-haspopup="listbox"
+              aria-expanded={showCatList}
+            >
+              <LayoutGrid size={16} strokeWidth={2} />
+              <span className="s2-nav-cat-label">{activeCat}</span>
+              <ChevronDown size={14} strokeWidth={2} />
+            </button>
+            {showCatList && (
+              <ul className="s2-nav-cat-list" role="listbox">
+                <li>
+                  <button type="button" onClick={() => pickCategory('All Categories')}>
+                    All Categories
+                  </button>
+                </li>
+                {categories.map((c) => (
+                  <li key={c.id || c.name}>
+                    <button type="button" onClick={() => pickCategory(c.name)}>
+                      {c.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="What are you looking for?"
+            className="s2-nav-searchinput"
+          />
+          <button type="submit" className="s2-nav-searchbtn" aria-label="Search">
+            <Search size={20} strokeWidth={2} />
+          </button>
+        </form>
 
         <div className="s2-nav-actions s2-nav-actions-desktop">
-          <Link to="/wishlist" className="s2-icon-btn" aria-label="Wishlist">
-            <Heart size={18} strokeWidth={1.6} />
-            {wishlistCount > 0 && <span className="s2-badge">{wishlistCount}</span>}
-          </Link>
-          <Link to="/cart" className="s2-icon-btn" aria-label="Cart">
-            <ShoppingBag size={18} strokeWidth={1.6} />
-            {cartCount > 0 && <span className="s2-badge">{cartCount}</span>}
-          </Link>
           <Link
             to={user ? '/profile' : '/login'}
             className={`s2-icon-btn ${isAccount ? 'is-active' : ''}`}
             aria-label={user ? 'Account' : 'Sign in'}
           >
-            <User size={18} strokeWidth={1.6} />
+            <User size={20} strokeWidth={1.8} />
+          </Link>
+          <Link to="/cart" className="s2-icon-btn" aria-label="Cart">
+            <ShoppingBag size={20} strokeWidth={1.8} />
+            {cartCount > 0 && <span className="s2-badge">{cartCount}</span>}
           </Link>
         </div>
-
-        <Link to="/wishlist" className="s2-icon-btn s2-nav-wishlist-mobile" aria-label="Wishlist">
-          <Heart size={18} strokeWidth={1.6} />
-          {wishlistCount > 0 && <span className="s2-badge">{wishlistCount}</span>}
-        </Link>
       </nav>
 
-      <div className="s2-mobile-search">
-        <SearchAutocomplete placeholder="Search for perfumes, brands..." />
-      </div>
-
-      <nav className="s2-bottom-nav s2-bottom-nav-always">
-        <Link to="/" className={`s2-bottom-nav-item ${location.pathname === '/' ? 'active' : ''}`}>
-          <Home size={20} strokeWidth={location.pathname === '/' ? 2.4 : 1.6} />
-          <span>Home</span>
-        </Link>
-        <Link to="/products" className={`s2-bottom-nav-item ${location.pathname === '/products' ? 'active' : ''}`}>
-          <LayoutGrid size={20} strokeWidth={location.pathname === '/products' ? 2.4 : 1.6} />
-          <span>Shop</span>
-        </Link>
-        <Link to="/wishlist" className={`s2-bottom-nav-item s2-bottom-wishlist ${location.pathname === '/wishlist' ? 'active' : ''}`}>
-          <span className="s2-bottom-nav-icon-wrap">
-            <Heart size={20} strokeWidth={location.pathname === '/wishlist' ? 2.4 : 1.6} />
-            {wishlistCount > 0 && <span className="s2-bottom-nav-badge">{wishlistCount}</span>}
-          </span>
-          <span>Wishlist</span>
-        </Link>
-        <Link to="/cart" className={`s2-bottom-nav-item ${location.pathname === '/cart' ? 'active' : ''}`}>
-          <span className="s2-bottom-nav-icon-wrap">
-            <ShoppingBag size={20} strokeWidth={location.pathname === '/cart' ? 2.4 : 1.6} />
-            {cartCount > 0 && <span className="s2-bottom-nav-badge">{cartCount}</span>}
-          </span>
-          <span>Cart</span>
-        </Link>
-        <Link
-          to={user ? '/profile' : '/login'}
-          className={`s2-bottom-nav-item ${isAccount ? 'active' : ''}`}
-        >
-          <User size={20} strokeWidth={isAccount ? 2.4 : 1.6} />
-          <span>{user ? 'Me' : 'Sign in'}</span>
-        </Link>
-      </nav>
+      {/* Mobile slide-in menu */}
+      {showMobileMenu && (
+        <div className="s2-mobile-drawer-overlay" onClick={() => setShowMobileMenu(false)}>
+          <aside className="s2-mobile-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="s2-mobile-drawer-head">
+              <span className="s2-mobile-drawer-title">Menu</span>
+              <button type="button" onClick={() => setShowMobileMenu(false)} aria-label="Close menu">
+                <X size={20} strokeWidth={2} />
+              </button>
+            </div>
+            <nav className="s2-mobile-drawer-nav">
+              <Link to="/" onClick={() => setShowMobileMenu(false)}><Home size={18} /> Home</Link>
+              <Link to="/products" onClick={() => setShowMobileMenu(false)}><LayoutGrid size={18} /> Shop</Link>
+              <Link to="/wishlist" onClick={() => setShowMobileMenu(false)}>
+                <Heart size={18} /> Wishlist {wishlistCount > 0 && <span className="s2-mobile-drawer-count">{wishlistCount}</span>}
+              </Link>
+              <Link to="/cart" onClick={() => setShowMobileMenu(false)}>
+                <ShoppingBag size={18} /> Cart {cartCount > 0 && <span className="s2-mobile-drawer-count">{cartCount}</span>}
+              </Link>
+              <Link to={user ? '/profile' : '/login'} onClick={() => setShowMobileMenu(false)}>
+                <User size={18} /> {user ? 'Account' : 'Sign in'}
+              </Link>
+            </nav>
+            {categories.length > 0 && (
+              <>
+                <div className="s2-mobile-drawer-section-title">Browse</div>
+                <nav className="s2-mobile-drawer-cats">
+                  <Link to="/products" onClick={() => setShowMobileMenu(false)}>All Categories</Link>
+                  {categories.map((c) => (
+                    <Link
+                      key={c.id || c.name}
+                      to={`/products?category=${encodeURIComponent(c.name)}`}
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      {c.name}
+                    </Link>
+                  ))}
+                </nav>
+              </>
+            )}
+          </aside>
+        </div>
+      )}
     </>
   );
 }
