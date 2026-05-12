@@ -7,6 +7,8 @@ import { useWishlist } from '../../context/WishlistContext';
 import api from '../../api/axios';
 import AnnouncementBar from '../../components/AnnouncementBar';
 import ScrollToTopButton from '../../components/ScrollToTopButton';
+import ProductImage from '../../components/ProductImage';
+import { CURRENCY } from '../../utils/currency';
 
 export default function Navbar() {
   const { user } = useAuth();
@@ -20,7 +22,12 @@ export default function Navbar() {
   const [showCatList, setShowCatList] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const catWrapRef = useRef(null);
+  const searchWrapRef = useRef(null);
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     api.get('/categories').then((res) => setCategories(Array.isArray(res.data) ? res.data : [])).catch(() => {});
@@ -29,10 +36,55 @@ export default function Navbar() {
   useEffect(() => {
     const onClick = (e) => {
       if (catWrapRef.current && !catWrapRef.current.contains(e.target)) setShowCatList(false);
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) setShowSuggestions(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
+
+  // Search autocomplete (debounced)
+  useEffect(() => {
+    if (query.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await api.get(`/products/search-suggestions?q=${encodeURIComponent(query)}`);
+        setSuggestions(data);
+        setShowSuggestions(data.length > 0);
+        setActiveIndex(-1);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 250);
+    return () => clearTimeout(debounceRef.current);
+  }, [query]);
+
+  const pickSuggestion = (product) => {
+    setShowSuggestions(false);
+    setQuery('');
+    navigate(`/product/${product.slug}`);
+    setShowMobileMenu(false);
+  };
+
+  const onSearchKeyDown = (e) => {
+    if (!showSuggestions) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => Math.min(prev + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => Math.max(prev - 1, -1));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      pickSuggestion(suggestions[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
 
   const isAccount = ['/profile', '/login', '/orders', '/admin'].includes(location.pathname);
 
@@ -69,7 +121,7 @@ export default function Navbar() {
           <img src="/images/kalif-logo.png" alt="Kalif" className="s2-nav-logo-img" />
         </Link>
 
-        <form className="s2-nav-searchwrap" onSubmit={handleSearch}>
+        <form className="s2-nav-searchwrap" onSubmit={handleSearch} ref={searchWrapRef}>
           <div className="s2-nav-cat" ref={catWrapRef}>
             <button
               type="button"
@@ -103,12 +155,41 @@ export default function Navbar() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+            onKeyDown={onSearchKeyDown}
             placeholder="What are you looking for?"
             className="s2-nav-searchinput"
           />
           <button type="submit" className="s2-nav-searchbtn" aria-label="Search">
             <Search size={20} strokeWidth={2} />
           </button>
+
+          {showSuggestions && (
+            <div className="s2-nav-suggestions">
+              {suggestions.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`s2-nav-suggest ${activeIndex === i ? 'active' : ''}`}
+                  onClick={() => pickSuggestion(p)}
+                  onMouseEnter={() => setActiveIndex(i)}
+                >
+                  <div className="s2-nav-suggest-img">
+                    <ProductImage product={p} size="small" />
+                  </div>
+                  <div className="s2-nav-suggest-info">
+                    <span className="s2-nav-suggest-name">{p.name}</span>
+                    <span className="s2-nav-suggest-meta">
+                      {p.category} · {CURRENCY}{parseFloat(p.price).toFixed(2)}
+                    </span>
+                  </div>
+                </button>
+              ))}
+              <button type="button" className="s2-nav-suggest-viewall" onClick={handleSearch}>
+                View all results for "{query}"
+              </button>
+            </div>
+          )}
         </form>
 
         <div className="s2-nav-actions s2-nav-actions-desktop">
