@@ -40,8 +40,8 @@ export default function ShippingPolicy() {
       <section className="s2-static-section">
         <h2>3. Shipping Charges</h2>
         <ul>
-          <li><strong>Free shipping</strong> on orders above AED 200.</li>
-          <li>A flat shipping fee of <strong>AED 15–25</strong> applies to orders below AED 200 depending on location.</li>
+          <li><strong>Free shipping</strong> on orders above ₹500.</li>
+          <li>A flat shipping fee of <strong>₹40–100</strong> applies to orders below ₹500 depending on location.</li>
           <li>Exact shipping cost is shown at checkout before payment.</li>
         </ul>
       </section>

@@ -3830,3 +3830,58 @@ body:has(.admin-page) .s2-footer {
   /* Don't bottom-pad the page for a bar that no longer exists */
   .s2-detail { padding-bottom: 2rem !important; }
 }
+
+/* ── Kalif flat aesthetic — override store2's glass cart / checkout /
+   auth / orders / profile / wishlist / admin styles with solid white
+   cards + purple accent. These overrides come last so they win. ── */
+.cart-item,
+.cart-summary,
+.order-summary,
+.checkout-section,
+.order-card,
+.profile-link-card,
+.wishlist-item,
+.auth-container,
+.auth-card,
+.admin-card,
+.admin-section,
+.admin-stat,
+.payment-option {
+  background: #ffffff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(23, 19, 17, 0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(23, 19, 17, 0.04) !important;
+}
+.cart-item:hover,
+.order-card:hover {
+  border-color: rgba(23, 19, 17, 0.18) !important;
+}
+
+/* Quantity stepper buttons */
+.cart-item-quantity button {
+  background: #ffffff !important;
+  border-color: rgba(23, 19, 17, 0.12) !important;
+  color: #1a1f3a !important;
+}
+.cart-item-quantity button:hover {
+  background: #f4f0ea !important;
+  color: #000000 !important;
+}
+
+/* Replace sky-blue (#0ea5e9) accent with Kalif purple */
+.payment-option.selected,
+.payment-option:hover {
+  border-color: #3B277E !important;
+  background: rgba(59, 39, 126, 0.05) !important;
+}
+.auth-link,
+.auth-container a,
+.profile-link-card:hover {
+  color: #3B277E !important;
+  border-color: #3B277E !important;
+}
+.profile-link-card svg {
+  color: #3B277E !important;
+}

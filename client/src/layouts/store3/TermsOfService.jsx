@@ -21,7 +21,7 @@ export default function TermsOfService() {
       <section className="s2-static-section">
         <h2>3. Products & Pricing</h2>
         <ul>
-          <li>All prices are listed in UAE Dirhams (AED) and include VAT where applicable.</li>
+          <li>All prices are listed in Indian Rupees (INR) and include GST where applicable.</li>
           <li>We reserve the right to change prices at any time without prior notice.</li>
           <li>Product images are for illustrative purposes; actual products may vary slightly.</li>
           <li>We make every effort to display accurate stock availability, but errors may occasionally occur.</li>
