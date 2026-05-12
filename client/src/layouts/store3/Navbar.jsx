@@ -100,6 +100,11 @@ export default function Navbar() {
   const pickCategory = (name) => {
     setActiveCat(name);
     setShowCatList(false);
+    if (name === 'All Categories') {
+      navigate('/products');
+    } else {
+      navigate(`/products?category=${encodeURIComponent(name)}`);
+    }
   };
 
   return (
