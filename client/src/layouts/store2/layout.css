@@ -2897,3 +2897,54 @@ body:has(.admin-page) .s2-footer {
     padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
+
+/* ── View toggle: grid / two-col / list ───────────────────────── */
+.s2-grid.s2-grid-two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+@media (max-width: 720px) {
+  .s2-grid.s2-grid-two-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+.s2-grid.s2-grid-list {
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+}
+.s2-grid-list .s2-product {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  min-height: 140px;
+}
+.s2-grid-list .s2-product-img {
+  flex: 0 0 160px;
+  aspect-ratio: auto;
+  width: 160px;
+  height: 100%;
+}
+.s2-grid-list .s2-product-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+.s2-grid-list .s2-product-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 1rem;
+  -webkit-line-clamp: 2;
+  margin: 0;
+}
+.s2-grid-list .s2-product-price {
+  flex: 0 0 auto;
+}
+@media (max-width: 720px) {
+  .s2-grid-list .s2-product { min-height: 110px; }
+  .s2-grid-list .s2-product-img { flex-basis: 110px; width: 110px; }
+  .s2-grid-list .s2-product-body { padding: 0.75rem 0.85rem; flex-wrap: wrap; }
+  .s2-grid-list .s2-product-name { -webkit-line-clamp: 2; font-size: 0.9rem; }
+}

@@ -156,7 +156,7 @@ export default function Products() {
             </div>
           ) : (
             <>
-              <div className="s2-grid">
+              <div className={`s2-grid s2-grid-${viewMode}`}>
                 {products.map((p) => <ProductCard key={p.id} product={p} eager />)}
               </div>
               {totalPages > 1 && (() => {
