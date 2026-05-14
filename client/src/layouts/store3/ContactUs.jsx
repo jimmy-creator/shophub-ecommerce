@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Mail, Phone, MapPin, Send, MessageCircle } from 'lucide-react';
+import { Mail, MapPin, Send, Phone, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import SEO from '../../components/SEO';
@@ -24,7 +24,7 @@ export default function ContactUs() {
 
   return (
     <div className="s2-root s2-contact-page">
-      <SEO title="Contact Us — Zayara Mobiles" description="Get in touch with Zayara Mobiles, Fujairah. Questions about orders, products, or anything else — we're here to help." />
+      <SEO title="Contact Us — Kalif" description="Get in touch with Kalif Dates & Nuts. Questions about products, gifting, bulk orders or retail — we're here to help." />
 
       <div className="s2-container" style={{ padding: '3rem 1.5rem 6rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
@@ -47,28 +47,28 @@ export default function ContactUs() {
         <div className="s2-contact-grid">
           {/* Contact cards */}
           <div className="s2-contact-cards">
-            <a href="tel:+971506397752" className="s2-contact-card">
+            <a href="tel:+917510762657" className="s2-contact-card">
               <div className="s2-contact-icon">
                 <Phone size={20} strokeWidth={1.6} />
               </div>
               <div>
                 <h4>Call us</h4>
-                <p>+971 50 639 7752</p>
+                <p>+91 75107 62657</p>
               </div>
             </a>
 
-            <a href="mailto:zayaraelectronics@gmail.com" className="s2-contact-card">
+            <a href="mailto:mail@kalif.co" className="s2-contact-card">
               <div className="s2-contact-icon">
                 <Mail size={20} strokeWidth={1.6} />
               </div>
               <div>
                 <h4>Email us</h4>
-                <p>zayaraelectronics@gmail.com</p>
+                <p>mail@kalif.co</p>
               </div>
             </a>
 
             <a
-              href="https://wa.me/971506397752"
+              href="https://wa.me/917510762657"
               target="_blank"
               rel="noopener noreferrer"
               className="s2-contact-card"
@@ -82,15 +82,20 @@ export default function ContactUs() {
               </div>
             </a>
 
-            <div className="s2-contact-card">
+            <a
+              href="https://maps.google.com/?q=6/559+Neerad+Kondotty+Kerala+673638"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="s2-contact-card"
+            >
               <div className="s2-contact-icon">
                 <MapPin size={20} strokeWidth={1.6} />
               </div>
               <div>
                 <h4>Visit us</h4>
-                <p>Murbah St, Fujairah<br />Fujairah, UAE</p>
+                <p>Kalif Dates &amp; Nuts<br />Tamar International<br />6/559 Neerad, Kondotty<br />Kerala 673638, India</p>
               </div>
-            </div>
+            </a>
           </div>
 
           {/* Contact form */}

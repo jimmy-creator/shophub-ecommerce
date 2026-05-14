@@ -15,7 +15,7 @@ export default function Footer() {
         <div>
           <img src="/images/kalif-logo.png" alt="Kalif" className="s2-footer-logo-img" />
           <p className="s2-footer-brand-tag">
-            Kalif — signature scents, niche perfumes, and timeless fragrances. Authentic bottles, carefully curated.
+            Kalif — premium dates and dry fruits from the Middle East. Naturally good, beautifully boxed, and made for every day.
           </p>
         </div>
         <div className="s2-footer-col">
@@ -48,7 +48,7 @@ export default function Footer() {
       </div>
       <div className="s2-footer-bottom">
         <span>© {new Date().getFullYear()} Kalif</span>
-        <span>Fragrance, curated</span>
+        <span>Dates & dry fruits, naturally</span>
       </div>
     </footer>
   );

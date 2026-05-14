@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Sparkles, Flower2, Droplet, Gem, Gift, Wind, LayoutGrid } from 'lucide-react';
+import { ArrowRight, Sparkles, Leaf, Cookie, Gem, Gift, Star } from 'lucide-react';
 import api from '../../api/axios';
 import SEO from '../../components/SEO';
 import { CURRENCY } from '../../utils/currency';
@@ -8,12 +8,12 @@ import ProductCard from './ProductCard';
 import { SkeletonGrid } from '../../components/Skeleton';
 
 const fallbackIcons = {
-  'Eau de Parfum': <Droplet size={20} strokeWidth={1.6} />,
-  'Eau de Toilette': <Wind size={20} strokeWidth={1.6} />,
-  'Perfume Oils': <Gem size={20} strokeWidth={1.6} />,
-  'Niche': <Sparkles size={20} strokeWidth={1.6} />,
-  'Floral': <Flower2 size={20} strokeWidth={1.6} />,
-  'Gift Sets': <Gift size={20} strokeWidth={1.6} />,
+  'Dates': <Sparkles size={20} strokeWidth={1.6} />,
+  'Stuffed Dates': <Gem size={20} strokeWidth={1.6} />,
+  'Dry Fruits': <Leaf size={20} strokeWidth={1.6} />,
+  'Nuts': <Cookie size={20} strokeWidth={1.6} />,
+  'Gift Hampers': <Gift size={20} strokeWidth={1.6} />,
+  'Date Specialties': <Star size={20} strokeWidth={1.6} />,
 };
 
 export default function Home() {
@@ -136,15 +136,15 @@ export default function Home() {
   };
 
   const categoryList = (categories === null ? [] : categories.length > 0 ? categories : [
-    { name: 'Eau de Parfum' }, { name: 'Eau de Toilette' }, { name: 'Perfume Oils' },
-    { name: 'Niche' }, { name: 'Floral' }, { name: 'Gift Sets' },
+    { name: 'Dates' }, { name: 'Stuffed Dates' }, { name: 'Dry Fruits' },
+    { name: 'Nuts' }, { name: 'Gift Hampers' }, { name: 'Date Specialties' },
   ]);
 
   return (
     <div className="s2-root">
       <SEO
         title="Kalif"
-        description="Kalif — quality goods, carefully curated."
+        description="Kalif — premium dates, dry fruits and gift hampers from the Middle East. Naturally good, beautifully boxed."
       />
 
       {/* ── Banner carousel (with desktop + mobile variants) ─── */}
