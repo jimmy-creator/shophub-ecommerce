@@ -655,6 +655,9 @@
   overflow: hidden;
   background: var(--s2-glass-bg);
   border: 1px solid var(--s2-glass-border);
+  /* Same browser-gesture pin as the product gallery: native vertical scroll,
+     JS owns horizontal swipe. Prevents shake when classification is ambiguous. */
+  touch-action: pan-y;
   box-shadow: var(--s2-shadow-md);
   max-width: 1240px;
   margin-left: auto;
