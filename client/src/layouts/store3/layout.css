@@ -1436,6 +1436,10 @@
   background: #ffffff;
   border: 1px solid var(--s2-glass-border-hi);
   box-shadow: var(--s2-shadow-lg), 0 0 120px -30px rgba(59, 130, 246, 0.4);
+  /* Tell the browser: vertical pan is yours, horizontal is for JS. Without
+     this the browser briefly tries to start a horizontal scroll on touchmove
+     before our touchend kicks in, which manifests as a shake. */
+  touch-action: pan-y;
 }
 .s2-gallery-main::after {
   content: '';
