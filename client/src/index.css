@@ -48,6 +48,13 @@ body {
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Lock horizontal page panning — body { overflow-x: clip } in the layout
+     CSS isn't enough on older iOS Safari, and a stray finger drag on
+     /checkout can still pull the page sideways. Pan-y keeps vertical
+     scroll; pinch-zoom kept for accessibility. Children with native
+     horizontal scroll (.s2-scroll-row) or JS swipe (gallery, banner) keep
+     working because touch-action applies per element, not inherited. */
+  touch-action: pan-y pinch-zoom;
 }
 
 a { text-decoration: none; color: inherit; }
