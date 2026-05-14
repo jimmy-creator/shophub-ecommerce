@@ -32,6 +32,7 @@ import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
 import sitemapRoutes from './routes/sitemap.js';
 import { sanitizeInput, preventInjection, forceHttps } from './middleware/security.js';
+import htmlInject from './middleware/htmlInject.js';
 
 dotenv.config();
 
@@ -106,8 +107,12 @@ app.use('/api/abandoned-cart', abandonedCartRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/', sitemapRoutes);
 
-// Frontend is served by Nginx in production
-// In development, Vite dev server handles it
+// Per-URL HTML meta injection — replaces nginx's static index.html serve.
+// Only fires for HTML GETs that fall through the API routes above; in dev
+// this middleware sees nothing because Vite serves HTML on :5173 and only
+// /api/ requests reach Express. In prod, nginx must proxy non-asset routes
+// to Express for this to take effect.
+app.use(htmlInject);
 
 // Error handler — never leak stack traces in production
 app.use((err, req, res, next) => {
