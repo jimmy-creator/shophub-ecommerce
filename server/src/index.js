@@ -29,6 +29,8 @@ import pincodeRoutes from './routes/pincodes.js';
 import abandonedCartRoutes from './routes/abandonedCart.js';
 import contactRoutes from './routes/contact.js';
 import b2bRoutes from './routes/b2b.js';
+import shiprocketRoutes from './routes/shiprocket.js';
+import { registerShiprocketHooks } from './services/shiprocketSync.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
 import sitemapRoutes from './routes/sitemap.js';
@@ -107,6 +109,7 @@ app.use('/api/pincodes', pincodeRoutes);
 app.use('/api/abandoned-cart', abandonedCartRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/b2b', b2bRoutes);
+app.use('/api/shiprocket', shiprocketRoutes);
 app.use('/', sitemapRoutes);
 
 // Per-URL HTML meta injection — replaces nginx's static index.html serve.
@@ -143,6 +146,7 @@ const start = async () => {
       console.log(`Server running on port ${PORT}`);
       startAbandonedCartJob();
       startLowStockJob();
+      registerShiprocketHooks();
     });
   } catch (error) {
     console.error('Failed to start server:', error);

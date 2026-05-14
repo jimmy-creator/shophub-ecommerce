@@ -26,8 +26,10 @@ import Wholesale from './pages/Wholesale';
 import WholesaleRequest from './pages/WholesaleRequest';
 import WholesaleQuotes from './pages/WholesaleQuotes';
 import WholesaleQuoteDetail from './pages/WholesaleQuoteDetail';
+import ShiprocketCheckout from './pages/ShiprocketCheckout';
 
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
+const SHIPROCKET_CHECKOUT = import.meta.env.VITE_FEATURE_SHIPROCKET_CHECKOUT === 'true';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -74,7 +76,7 @@ export default function App() {
                 <Route path="/products" element={<Products />} />
                 <Route path="/product/:slug" element={<ProductDetail />} />
                 <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/checkout" element={SHIPROCKET_CHECKOUT ? <ShiprocketCheckout /> : <Checkout />} />
                 <Route path="/login" element={<StaffGate><Login /></StaffGate>} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/orders" element={<Orders />} />

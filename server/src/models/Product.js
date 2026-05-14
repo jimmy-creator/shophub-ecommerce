@@ -80,6 +80,12 @@ const Product = sequelize.define('Product', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  weight: {
+    // Net weight per unit in kilograms. Used by Shiprocket Checkout for
+    // shipping rate calculation. Falls back to 0.1 (100g) if null.
+    type: DataTypes.DECIMAL(8, 3),
+    allowNull: true,
+  },
   variantOptions: {
     // e.g. { "Size": ["S","M","L"], "Color": ["Red","Blue"] }
     type: DataTypes.JSON,
