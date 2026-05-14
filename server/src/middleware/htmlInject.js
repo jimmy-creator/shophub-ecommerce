@@ -184,8 +184,13 @@ const STATIC_TITLES = {
 
 export default async function htmlInject(req, res, next) {
   if (req.method !== 'GET') return next();
+  // Skip only if caller explicitly asked for non-HTML (e.g. an XHR doing
+  // Accept: application/json on a non-API path). Default curl + most
+  // crawlers send `*/*` which we should treat as "fine, serve HTML".
   const accept = req.get('Accept') || '';
-  if (!accept.includes('text/html')) return next();
+  if (accept && !accept.includes('text/html') && !accept.includes('*/*') && !accept.includes('text/*')) {
+    return next();
+  }
 
   // Skip API and asset paths defensively (nginx should already not proxy these here)
   if (
