@@ -237,9 +237,9 @@ export default function Home() {
           </Link>
         </div>
         {loading ? (
-          <SkeletonGrid count={8} className="s2-grid" />
+          <SkeletonGrid count={6} className="s2-scroll-row" />
         ) : (
-          <div className="s2-grid">
+          <div className="s2-scroll-row">
             {featured.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         )}
@@ -275,7 +275,7 @@ export default function Home() {
               See all <ArrowRight size={14} strokeWidth={2} />
             </Link>
           </div>
-          <div className="s2-grid">
+          <div className="s2-scroll-row">
             {latest.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
         </section>
