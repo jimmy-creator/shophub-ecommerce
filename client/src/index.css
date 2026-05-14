@@ -1226,6 +1226,22 @@ input, textarea, select { font-family: var(--font-body); }
   background: var(--bg-card); color: var(--text);
   font-weight: 400;
 }
+
+/* iOS Safari auto-zooms into any focused input under 16px — bump form
+   inputs on mobile so the viewport stays put when a field is tapped.
+   Covers .form-group / .s2-field wrappers, raw inputs with explicit
+   text-like types, and untyped <input> (which defaults to type=text but
+   doesn't match input[type="text"] as a CSS selector). */
+@media (max-width: 720px) {
+  .form-group input, .form-group textarea, .form-group select,
+  .s2-field input, .s2-field textarea, .s2-field select,
+  input:not([type]),
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="tel"], input[type="search"],
+  input[type="url"], textarea, select {
+    font-size: 16px !important;   /* beat per-store desktop rules without !important */
+  }
+}
 .form-group input:focus, .form-group textarea:focus {
   outline: none; border-color: var(--copper);
   box-shadow: 0 0 0 3px rgba(196,120,74,0.08);
