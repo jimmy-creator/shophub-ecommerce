@@ -929,7 +929,8 @@
 }
 .s2-scroll-row::-webkit-scrollbar { display: none; }   /* Chrome/Safari */
 
-.s2-scroll-row .s2-product {
+.s2-scroll-row .s2-product,
+.s2-scroll-row .skeleton-card {
   flex: 0 0 auto;
   width: 300px;
   scroll-snap-align: start;
@@ -937,7 +938,8 @@
 
 /* Tablet: slightly larger cards, fewer visible */
 @media (max-width: 1023px) {
-  .s2-scroll-row .s2-product { width: 340px; }
+  .s2-scroll-row .s2-product,
+  .s2-scroll-row .skeleton-card { width: 340px; }
 }
 
 /* Mobile: ~85% viewport so the next card peeks past the right edge */
@@ -947,7 +949,15 @@
     padding: 0.5rem 1rem 1rem;
     scroll-padding-left: 1rem;
   }
-  .s2-scroll-row .s2-product { width: 84vw; }
+  .s2-scroll-row .s2-product,
+  .s2-scroll-row .skeleton-card { width: 84vw; }
+}
+
+/* Real product cards are 1:1 squares — keep skeletons matching so there is
+   no layout jump when the products land. Default .skeleton-img is 4:5. */
+.s2-grid .skeleton-img,
+.s2-scroll-row .skeleton-img {
+  aspect-ratio: 1;
 }
 
 .s2-product {

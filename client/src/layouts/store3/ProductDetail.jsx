@@ -13,6 +13,7 @@ import api from '../../api/axios';
 import { showToast } from '../../utils/toast';
 import { CURRENCY, CurrencySymbol } from '../../utils/currency';
 import ProductCard from './ProductCard';
+import { SkeletonGrid } from '../../components/Skeleton';
 
 export default function ProductDetail() {
   const { slug } = useParams();
@@ -54,7 +55,7 @@ export default function ProductDetail() {
       <div className="s2-root">
         <div className="s2-detail">
           <div className="s2-detail-grid">
-            <div className="skeleton-detail-img skeleton-pulse" style={{ aspectRatio: '4/5' }} />
+            <div className="skeleton-detail-img skeleton-pulse" style={{ aspectRatio: '1' }} />
             <div className="s2-detail-info">
               <div className="skeleton-line short skeleton-pulse" style={{ marginBottom: '1rem' }} />
               <div className="skeleton-line skeleton-pulse" style={{ height: '2rem', marginBottom: '0.5rem' }} />
@@ -65,6 +66,14 @@ export default function ProductDetail() {
               <div className="skeleton-line medium skeleton-pulse" style={{ marginBottom: '2rem' }} />
               <div className="skeleton-line skeleton-pulse" style={{ height: '3rem', width: '50%' }} />
             </div>
+          </div>
+
+          {/* Related products placeholder — matches the real .s2-related .s2-grid layout below */}
+          <div className="s2-related">
+            <div className="s2-section-head" style={{ padding: 0 }}>
+              <div className="skeleton-line medium skeleton-pulse" style={{ height: '1.6rem', width: '40%' }} />
+            </div>
+            <SkeletonGrid count={4} className="s2-grid" />
           </div>
         </div>
       </div>
