@@ -555,6 +555,50 @@ function CategoryCardsEditor() {
   );
 }
 
+function B2BBankDetailsEditor() {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/settings/b2b-bank-details')
+      .then((res) => setValue(res.data.value || ''))
+      .catch(() => {});
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put('/settings/b2b-bank-details', { value });
+      toast.success('Bank details saved');
+    } catch {
+      toast.error('Failed to save bank details');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '3rem' }}>
+      <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1rem' }}>
+        B2B Bank Transfer Details
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+        Shown in the quote email when you pick the <strong>Bank Transfer</strong> payment method. Free-form text — account name, number, IFSC, branch, UPI ID, anything you want the customer to see.
+      </p>
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        rows={8}
+        placeholder={'Account Name: Kalif Dates & Nuts (Tamar International)\nA/c No: XXXXXXXXXXXX\nIFSC: XXXX0000000\nBank: Example Bank, Kondotty Branch\nUPI: kalif@upi'}
+        style={{ width: '100%', padding: '0.85rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.88rem', fontFamily: 'inherit', background: 'var(--bg-warm)', resize: 'vertical' }}
+      />
+      <button type="button" onClick={save} disabled={saving} className="btn btn-primary" style={{ marginTop: '0.75rem' }}>
+        {saving ? 'Saving…' : 'Save bank details'}
+      </button>
+    </div>
+  );
+}
+
 function AnnouncementEditor() {
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState('');
@@ -884,6 +928,9 @@ export default function Admin() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [availableGateways, setAvailableGateways] = useState([]);
+  const [b2bQuotes, setB2bQuotes] = useState([]);
+  const [b2bQuoteForm, setB2bQuoteForm] = useState(null);
+  const [b2bStatusFilter, setB2bStatusFilter] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [showForm, setShowForm] = useState(false);
@@ -937,8 +984,11 @@ export default function Admin() {
       if (products.length === 0) {
         api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
       }
+    } else if (tab === 'b2bquotes') {
+      const qs = b2bStatusFilter ? `?status=${b2bStatusFilter}` : '';
+      api.get(`/b2b/requests${qs}`).then((res) => setB2bQuotes(res.data)).catch(() => {});
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -1007,6 +1057,7 @@ export default function Admin() {
           {hasAccess('coupons') && <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>Coupons</button>}
           {hasAccess('reviews') && <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>Reviews</button>}
           {hasAccess('orders') && <button className={tab === 'abandoned' ? 'active' : ''} onClick={() => setTab('abandoned')}>Abandoned</button>}
+          {hasAccess('orders') && <button className={tab === 'b2bquotes' ? 'active' : ''} onClick={() => setTab('b2bquotes')}>B2B Quotes</button>}
           {hasAccess('settings') && <button className={tab === 'pincodes' ? 'active' : ''} onClick={() => setTab('pincodes')}>Pincodes</button>}
           {hasAccess('settings') && <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Theme</button>}
           {isAdmin && <button className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>Staff</button>}
@@ -1522,6 +1573,311 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {tab === 'b2bquotes' && (
+          <div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Status:</label>
+              <select
+                value={b2bStatusFilter}
+                onChange={(e) => setB2bStatusFilter(e.target.value)}
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.85rem', background: 'var(--bg-warm)' }}
+              >
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="quoted">Quoted</option>
+                <option value="paid">Paid</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="expired">Expired</option>
+              </select>
+              <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-light)' }}>{b2bQuotes.length} request{b2bQuotes.length === 1 ? '' : 's'}</span>
+            </div>
+
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Request #</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Company</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Open</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {b2bQuotes.length === 0 && (
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No requests</td></tr>
+                  )}
+                  {b2bQuotes.map((q) => (
+                    <tr key={q.id}>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>{q.requestNumber}</td>
+                      <td>{new Date(q.createdAt).toLocaleDateString()}</td>
+                      <td>{q.User?.name || '—'}<br /><span style={{ fontSize: '0.72rem', color: 'var(--text-light)' }}>{q.User?.email}</span></td>
+                      <td>{q.companyName}</td>
+                      <td>{Array.isArray(q.items) ? q.items.length : 0}</td>
+                      <td>{q.quotedTotal ? `${CURRENCY}${parseFloat(q.quotedTotal).toFixed(2)}` : '—'}</td>
+                      <td><span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: q.status === 'paid' ? 'rgba(34,197,94,0.15)' : q.status === 'quoted' ? 'rgba(59,130,246,0.15)' : q.status === 'pending' ? 'rgba(250,204,21,0.18)' : 'rgba(148,163,184,0.15)', color: q.status === 'paid' ? '#15803d' : q.status === 'quoted' ? '#1d4ed8' : q.status === 'pending' ? '#a16207' : '#475569' }}>{q.status}</span></td>
+                      <td>
+                        <button className="invoice-btn" onClick={() => {
+                          // Prefill form with items priced from request; if a row has no unitPrice yet, leave it blank
+                          const items = (q.items || []).map((it) => ({
+                            productId: it.productId || null,
+                            name: it.name,
+                            quantity: parseInt(it.quantity, 10) || 1,
+                            unitPrice: it.unitPrice != null ? it.unitPrice : '',
+                            image: it.image || null,
+                            category: it.category || null,
+                          }));
+                          setB2bQuoteForm({
+                            ...q,
+                            items,
+                            quotedTotal: q.quotedTotal || '',
+                            quotedValidUntil: q.quotedValidUntil ? q.quotedValidUntil.slice(0, 10) : '',
+                            adminNote: q.adminNote || '',
+                            internalNote: q.internalNote || '',
+                            paymentMethod: q.paymentMethod || 'online',
+                          });
+                        }}>Open</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {b2bQuoteForm && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setB2bQuoteForm(null); }}>
+                <div className="admin-form" style={{ maxWidth: 760 }}>
+                  <h3 style={{ marginBottom: '0.5rem' }}>Quote {b2bQuoteForm.requestNumber}</h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                    <strong>{b2bQuoteForm.User?.name}</strong> ({b2bQuoteForm.User?.email})
+                    {b2bQuoteForm.contactPhone && <> · {b2bQuoteForm.contactPhone}</>}
+                    <br />
+                    {b2bQuoteForm.companyName}
+                    <br />
+                    {[
+                      b2bQuoteForm.contactAddress?.line1,
+                      b2bQuoteForm.contactAddress?.line2,
+                      b2bQuoteForm.contactAddress?.city,
+                      b2bQuoteForm.contactAddress?.state,
+                      b2bQuoteForm.contactAddress?.postalCode,
+                    ].filter(Boolean).join(', ')}
+                  </p>
+
+                  {b2bQuoteForm.customerNote && (
+                    <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-warm)', borderRadius: 'var(--radius)', marginBottom: '1rem', fontSize: '0.85rem', borderLeft: '3px solid var(--copper)' }}>
+                      <strong style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Customer note:</strong>
+                      <div style={{ whiteSpace: 'pre-wrap', marginTop: '0.25rem' }}>{b2bQuoteForm.customerNote}</div>
+                    </div>
+                  )}
+
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ textAlign: 'left', padding: '0.5rem' }}>Item</th>
+                        <th style={{ width: 80, padding: '0.5rem' }}>Qty</th>
+                        <th style={{ width: 130, padding: '0.5rem' }}>Unit price</th>
+                        <th style={{ width: 110, padding: '0.5rem', textAlign: 'right' }}>Line total</th>
+                        <th style={{ width: 30 }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {b2bQuoteForm.items.map((it, idx) => {
+                        const lineTotal = (parseFloat(it.unitPrice) || 0) * (parseInt(it.quantity, 10) || 0);
+                        return (
+                          <tr key={idx} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                            <td style={{ padding: '0.5rem' }}>
+                              <input
+                                value={it.name}
+                                onChange={(e) => {
+                                  const items = [...b2bQuoteForm.items];
+                                  items[idx] = { ...items[idx], name: e.target.value };
+                                  setB2bQuoteForm({ ...b2bQuoteForm, items });
+                                }}
+                                style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.85rem', background: 'var(--bg-warm)' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <input
+                                type="number"
+                                value={it.quantity}
+                                min={1}
+                                onChange={(e) => {
+                                  const items = [...b2bQuoteForm.items];
+                                  items[idx] = { ...items[idx], quantity: e.target.value };
+                                  setB2bQuoteForm({ ...b2bQuoteForm, items });
+                                }}
+                                style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.85rem', background: 'var(--bg-warm)' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem' }}>
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={it.unitPrice}
+                                placeholder="0.00"
+                                onChange={(e) => {
+                                  const items = [...b2bQuoteForm.items];
+                                  items[idx] = { ...items[idx], unitPrice: e.target.value };
+                                  setB2bQuoteForm({ ...b2bQuoteForm, items });
+                                }}
+                                style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.85rem', background: 'var(--bg-warm)' }}
+                              />
+                            </td>
+                            <td style={{ padding: '0.5rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{CURRENCY}{lineTotal.toFixed(2)}</td>
+                            <td>
+                              <button type="button" onClick={() => setB2bQuoteForm({ ...b2bQuoteForm, items: b2bQuoteForm.items.filter((_, j) => j !== idx) })}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>
+                                <HiX />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  <button type="button" onClick={() => setB2bQuoteForm({ ...b2bQuoteForm, items: [...b2bQuoteForm.items, { productId: null, name: '', quantity: 1, unitPrice: '' }] })}
+                    className="btn btn-secondary" style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+                    <HiPlus /> Add item
+                  </button>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Quoted total</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={b2bQuoteForm.quotedTotal}
+                        onChange={(e) => setB2bQuoteForm({ ...b2bQuoteForm, quotedTotal: e.target.value })}
+                        placeholder={
+                          b2bQuoteForm.items.reduce((s, i) => s + ((parseFloat(i.unitPrice) || 0) * (parseInt(i.quantity, 10) || 0)), 0).toFixed(2)
+                        }
+                      />
+                      <small style={{ color: 'var(--text-light)' }}>Override the auto-sum if needed (eg discount baked in).</small>
+                    </div>
+                    <div className="form-group">
+                      <label>Valid until</label>
+                      <input
+                        type="date"
+                        value={b2bQuoteForm.quotedValidUntil}
+                        onChange={(e) => setB2bQuoteForm({ ...b2bQuoteForm, quotedValidUntil: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Payment method</label>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                        <input type="radio" name="paymentMethod" value="online" checked={b2bQuoteForm.paymentMethod === 'online'}
+                          onChange={() => setB2bQuoteForm({ ...b2bQuoteForm, paymentMethod: 'online' })} />
+                        Online (payment gateway)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                        <input type="radio" name="paymentMethod" value="bank_transfer" checked={b2bQuoteForm.paymentMethod === 'bank_transfer'}
+                          onChange={() => setB2bQuoteForm({ ...b2bQuoteForm, paymentMethod: 'bank_transfer' })} />
+                        Bank transfer
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Note to customer (shown in quote email)</label>
+                    <textarea rows={3} value={b2bQuoteForm.adminNote} onChange={(e) => setB2bQuoteForm({ ...b2bQuoteForm, adminNote: e.target.value })} />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Internal note (admin-only)</label>
+                    <textarea rows={2} value={b2bQuoteForm.internalNote} onChange={(e) => setB2bQuoteForm({ ...b2bQuoteForm, internalNote: e.target.value })} />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select
+                      value={b2bQuoteForm.status}
+                      onChange={async (e) => {
+                        const next = e.target.value;
+                        if (next === 'paid' && b2bQuoteForm.status !== 'paid') {
+                          toast.error('Use "Mark Paid" to record payment.');
+                          return;
+                        }
+                        try {
+                          await api.patch(`/b2b/requests/${b2bQuoteForm.id}/status`, { status: next });
+                          setB2bQuoteForm({ ...b2bQuoteForm, status: next });
+                          const qs = b2bStatusFilter ? `?status=${b2bStatusFilter}` : '';
+                          api.get(`/b2b/requests${qs}`).then((res) => setB2bQuotes(res.data));
+                          toast.success('Status updated');
+                        } catch (err) {
+                          toast.error(err.response?.data?.message || 'Failed');
+                        }
+                      }}
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="quoted">Quoted</option>
+                      <option value="paid" disabled={b2bQuoteForm.status !== 'paid'}>Paid</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="expired">Expired</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+                    <button type="button" className="btn btn-primary"
+                      onClick={async () => {
+                        try {
+                          const payload = {
+                            items: b2bQuoteForm.items.map((i) => ({
+                              productId: i.productId || null,
+                              name: i.name,
+                              quantity: parseInt(i.quantity, 10),
+                              unitPrice: parseFloat(i.unitPrice) || 0,
+                              lineTotal: (parseFloat(i.unitPrice) || 0) * (parseInt(i.quantity, 10) || 0),
+                              image: i.image || null,
+                              category: i.category || null,
+                            })),
+                            quotedTotal: parseFloat(b2bQuoteForm.quotedTotal) || b2bQuoteForm.items.reduce((s, i) => s + ((parseFloat(i.unitPrice) || 0) * (parseInt(i.quantity, 10) || 0)), 0),
+                            quotedValidUntil: b2bQuoteForm.quotedValidUntil || null,
+                            adminNote: b2bQuoteForm.adminNote,
+                            internalNote: b2bQuoteForm.internalNote,
+                            paymentMethod: b2bQuoteForm.paymentMethod,
+                            sendEmail: true,
+                          };
+                          await api.patch(`/b2b/requests/${b2bQuoteForm.id}/quote`, payload);
+                          toast.success('Quote sent');
+                          setB2bQuoteForm(null);
+                          const qs = b2bStatusFilter ? `?status=${b2bStatusFilter}` : '';
+                          api.get(`/b2b/requests${qs}`).then((res) => setB2bQuotes(res.data));
+                        } catch (err) {
+                          toast.error(err.response?.data?.message || 'Failed');
+                        }
+                      }}>Send Quote</button>
+
+                    {b2bQuoteForm.paymentMethod === 'bank_transfer' && b2bQuoteForm.status === 'quoted' && (
+                      <button type="button" className="btn btn-secondary"
+                        onClick={async () => {
+                          if (!confirm('Mark this bank transfer as paid? This creates the order.')) return;
+                          try {
+                            await api.patch(`/b2b/requests/${b2bQuoteForm.id}/mark-paid`);
+                            toast.success('Marked as paid — order created');
+                            setB2bQuoteForm(null);
+                            const qs = b2bStatusFilter ? `?status=${b2bStatusFilter}` : '';
+                            api.get(`/b2b/requests${qs}`).then((res) => setB2bQuotes(res.data));
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || 'Failed');
+                          }
+                        }}>Mark Paid</button>
+                    )}
+
+                    <button type="button" className="btn btn-secondary" onClick={() => setB2bQuoteForm(null)} style={{ marginLeft: 'auto' }}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2573,6 +2929,9 @@ export default function Admin() {
 
             {/* Announcement bar — rotating promo strings shown above the navbar */}
             <AnnouncementEditor />
+
+            {/* B2B bank transfer details — included in quote emails on bank_transfer */}
+            <B2BBankDetailsEditor />
           </div>
         )}
 

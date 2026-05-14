@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 
+const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
+
 export default function Footer() {
   const [categories, setCategories] = useState([]);
 
@@ -36,6 +38,7 @@ export default function Footer() {
           <h4>Company</h4>
           <Link to="/about">About Us</Link>
           <Link to="/contact">Contact</Link>
+          {B2B_ENABLED && <Link to="/wholesale">Wholesale</Link>}
           <Link to="/privacy-policy">Privacy Policy</Link>
           <Link to="/terms">Terms of Service</Link>
         </div>

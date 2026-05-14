@@ -22,6 +22,12 @@ import OrderSuccess from './pages/OrderSuccess';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ShippingInfo from './pages/ShippingInfo';
+import Wholesale from './pages/Wholesale';
+import WholesaleRequest from './pages/WholesaleRequest';
+import WholesaleQuotes from './pages/WholesaleQuotes';
+import WholesaleQuoteDetail from './pages/WholesaleQuoteDetail';
+
+const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -86,6 +92,10 @@ export default function App() {
                 <Route path="/refund-policy" element={<RefundPolicy />} />
                 <Route path="/shipping-policy" element={<ShippingPolicy />} />
                 <Route path="/terms" element={<TermsOfService />} />
+                {B2B_ENABLED && <Route path="/wholesale" element={<Wholesale />} />}
+                {B2B_ENABLED && <Route path="/wholesale/request" element={<WholesaleRequest />} />}
+                {B2B_ENABLED && <Route path="/wholesale/my-quotes" element={<WholesaleQuotes />} />}
+                {B2B_ENABLED && <Route path="/wholesale/my-quotes/:id" element={<WholesaleQuoteDetail />} />}
               </Routes>
               </PageWrapper>
             </main>

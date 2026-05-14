@@ -441,4 +441,87 @@ export async function sendNewOrderNotification(order) {
   );
 }
 
-export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation, sendPasswordResetEmail, sendAbandonedCartEmail, sendNewOrderNotification };
+// ============================================
+// B2B QUOTE EMAIL
+// ============================================
+export async function sendQuoteEmail({ to, customerName, request, bankDetails }) {
+  const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+  const quoteUrl = `${clientUrl}/wholesale/my-quotes/${request.id}`;
+  const currency = request.quotedCurrency || process.env.CURRENCY_CODE || 'INR';
+  const symbol = currency === 'INR' ? '₹' : (currency === 'USD' ? '$' : (currency === 'AED' ? 'AED ' : `${currency} `));
+  const fmt = (n) => `${symbol}${parseFloat(n || 0).toFixed(2)}`;
+
+  const validUntil = request.quotedValidUntil
+    ? new Date(request.quotedValidUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+
+  const itemsRows = (request.items || []).map((it) => `
+    <tr>
+      <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textMain};">${it.name}</td>
+      <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textDim};text-align:center;">${it.quantity}</td>
+      <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textDim};text-align:right;">${fmt(it.unitPrice)}</td>
+      <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textMain};text-align:right;font-weight:600;">${fmt(it.lineTotal)}</td>
+    </tr>
+  `).join('');
+
+  const onlineBlock = request.paymentMethod === 'online' ? `
+    <div style="margin:24px 0;text-align:center;">
+      <a href="${quoteUrl}" style="display:inline-block;background:${brandColor};color:#fff;text-decoration:none;padding:14px 28px;border-radius:8px;font-size:15px;font-weight:600;">Pay online</a>
+      <p style="margin:12px 0 0;font-size:12px;color:${textDim};">Opens a secure checkout in your browser.</p>
+    </div>
+  ` : '';
+
+  const bankBlock = request.paymentMethod === 'bank_transfer' && bankDetails ? `
+    <div style="margin:24px 0;padding:16px;background:${brandLight};border:1px solid ${brandBorder};border-radius:8px;">
+      <h3 style="margin:0 0 12px;font-size:14px;font-weight:600;color:${textMain};">Bank transfer details</h3>
+      <pre style="margin:0;font-family:'SF Mono',Menlo,monospace;font-size:13px;color:${textMain};white-space:pre-wrap;">${String(bankDetails).replace(/</g, '&lt;')}</pre>
+      <p style="margin:12px 0 0;font-size:12px;color:${textDim};">Once paid, please reply to this email with the transaction reference. We'll confirm and dispatch.</p>
+    </div>
+  ` : '';
+
+  const noteBlock = request.adminNote ? `
+    <div style="margin:16px 0;padding:14px 16px;background:${brandLight};border-left:3px solid ${brandColor};border-radius:4px;">
+      <p style="margin:0;font-size:14px;color:${textMain};line-height:1.6;">${String(request.adminNote).replace(/</g, '&lt;').replace(/\n/g, '<br>')}</p>
+    </div>
+  ` : '';
+
+  const html = baseTemplate(`
+    <h2 style="margin:0 0 8px;font-size:20px;color:${textMain};font-weight:600;">Your quote is ready</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:${textDim};line-height:1.6;">
+      Hi ${customerName || 'there'}, here is the pricing for request <strong>${request.requestNumber}</strong>.
+    </p>
+
+    ${noteBlock}
+
+    <table style="width:100%;border-collapse:collapse;margin:16px 0;border:1px solid ${brandBorder};border-radius:8px;overflow:hidden;">
+      <thead>
+        <tr style="background:${brandLight};">
+          <th style="padding:10px 16px;text-align:left;font-size:12px;font-weight:600;color:${textDim};text-transform:uppercase;letter-spacing:0.04em;">Item</th>
+          <th style="padding:10px 16px;text-align:center;font-size:12px;font-weight:600;color:${textDim};text-transform:uppercase;letter-spacing:0.04em;">Qty</th>
+          <th style="padding:10px 16px;text-align:right;font-size:12px;font-weight:600;color:${textDim};text-transform:uppercase;letter-spacing:0.04em;">Unit</th>
+          <th style="padding:10px 16px;text-align:right;font-size:12px;font-weight:600;color:${textDim};text-transform:uppercase;letter-spacing:0.04em;">Total</th>
+        </tr>
+      </thead>
+      <tbody>${itemsRows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" style="padding:14px 16px;text-align:right;font-size:14px;color:${textDim};">Total</td>
+          <td style="padding:14px 16px;text-align:right;font-size:16px;font-weight:700;color:${textMain};">${fmt(request.quotedTotal)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    ${validUntil ? `<p style="margin:0 0 16px;font-size:13px;color:${textDim};">Quote valid until <strong style="color:${textMain};">${validUntil}</strong>.</p>` : ''}
+
+    ${onlineBlock}
+    ${bankBlock}
+
+    <p style="margin:24px 0 0;font-size:13px;color:${textDim};line-height:1.6;">
+      You can also view this quote anytime at <a href="${quoteUrl}" style="color:${brandColor};">${quoteUrl}</a>.
+    </p>
+  `);
+
+  return sendEmail(to, `Your quote ${request.requestNumber} — ${fmt(request.quotedTotal)}`, html);
+}
+
+export default { sendOrderConfirmation, sendOrderStatusUpdate, sendPaymentConfirmation, sendPasswordResetEmail, sendAbandonedCartEmail, sendNewOrderNotification, sendQuoteEmail };

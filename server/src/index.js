@@ -28,6 +28,7 @@ import googleAuthRoutes from './routes/googleAuth.js';
 import pincodeRoutes from './routes/pincodes.js';
 import abandonedCartRoutes from './routes/abandonedCart.js';
 import contactRoutes from './routes/contact.js';
+import b2bRoutes from './routes/b2b.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
 import sitemapRoutes from './routes/sitemap.js';
@@ -105,6 +106,7 @@ app.use('/api/auth', googleAuthRoutes);
 app.use('/api/pincodes', pincodeRoutes);
 app.use('/api/abandoned-cart', abandonedCartRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/b2b', b2bRoutes);
 app.use('/', sitemapRoutes);
 
 // Per-URL HTML meta injection — replaces nginx's static index.html serve.

@@ -150,4 +150,25 @@ router.put('/announcements', protect, admin, async (req, res) => {
   }
 });
 
+// B2B bank-transfer details — free-form text included in the quote email when
+// the admin picks the bank-transfer payment method.
+router.get('/b2b-bank-details', protect, admin, async (req, res) => {
+  try {
+    const setting = await Setting.findByPk('b2b_bank_details');
+    res.json({ value: setting?.value || '' });
+  } catch (error) {
+    res.json({ value: '' });
+  }
+});
+
+router.put('/b2b-bank-details', protect, admin, async (req, res) => {
+  try {
+    const value = String(req.body.value || '').trim();
+    await Setting.upsert({ key: 'b2b_bank_details', value });
+    res.json({ value });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
