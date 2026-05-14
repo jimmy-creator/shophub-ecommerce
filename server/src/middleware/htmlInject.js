@@ -254,3 +254,6 @@ export function invalidateCache(urlOrAll) {
     cache.delete(urlOrAll);
   }
 }
+
+// Eager-load at module import so config issues surface at startup, not on first request.
+loadTemplate();
