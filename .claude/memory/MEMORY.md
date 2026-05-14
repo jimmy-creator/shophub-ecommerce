@@ -1,0 +1,4 @@
+- [VPS deployment topology](project_deployment.md) — multi-store layout: /var/www/storeN, shared PM2 ecosystem, per-store nginx + MySQL user
+- [Per-store .env gotchas](feedback_env_files.md) — CRLF + JWT_EXPIRE variable name pitfalls when adding a new store
+- [Storefront UX patterns](feedback_storefront_ux.md) — cart popup vs toasts, 16px mobile inputs, hardcoded popup radii, no backdrop-filter on iOS, --s2-lavender accent, admin ?limit=10000
+- [SEO audit + deferred prerender](project_seo_prerender.md) — 2026-05-08 audit on store2; meta tags + JSON-LD shipped, per-URL static HTML deferred (Express-side meta injection planned, start with store3)
