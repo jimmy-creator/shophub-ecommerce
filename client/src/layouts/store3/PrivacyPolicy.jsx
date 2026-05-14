@@ -4,65 +4,91 @@ export default function PrivacyPolicy() {
   return (
     <StaticPage
       title="Privacy Policy"
-      description="Privacy Policy of Zayara Mobile Phones LLC. How we collect, use, and protect your personal information."
+      description="Privacy Policy for Kalif Dates & Nuts (Tamar International). How we collect, use, and protect your personal information."
     >
-      <p className="s2-static-date">Last updated: April 2025</p>
+      <p className="s2-static-date">Last updated: May 2026</p>
 
       <section className="s2-static-section">
-        <h2>1. Information We Collect</h2>
-        <p>When you shop with Zayara, we collect the following types of information:</p>
+        <h2>1. Who We Are</h2>
+        <p>
+          This Privacy Policy is issued by <strong>Tamar International</strong>, operating the brand <strong>Kalif Dates & Nuts</strong>, with its registered office at 6/559 Neerad, Kondotty, Kerala 673638, India ("Kalif", "we", "us"). It explains how we collect and handle personal information when you visit our website or place an order with us.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>2. Information We Collect</h2>
         <ul>
-          <li><strong>Personal Information:</strong> Name, email address, phone number, and delivery address provided during checkout or account registration.</li>
-          <li><strong>Payment Information:</strong> Payment details are processed securely through our payment partners (Stripe). We do not store your card details.</li>
-          <li><strong>Device & Usage Data:</strong> Browser type, IP address, pages visited, and time spent on our site — collected automatically to improve your experience.</li>
-          <li><strong>Communication Data:</strong> Messages you send us via the contact form or email.</li>
+          <li><strong>Account & contact details:</strong> Name, email address, phone number, and shipping address you provide at checkout, signup, or when raising a wholesale request.</li>
+          <li><strong>Order information:</strong> Items purchased, order amount, delivery address, GSTIN if you supply one for B2B invoicing.</li>
+          <li><strong>Payment data:</strong> Processed by our payment gateway partners (such as Razorpay). We do not see or store your full card or UPI credentials.</li>
+          <li><strong>Device & usage data:</strong> Browser type, IP address, pages visited, and basic analytics — collected automatically to keep the site working and improve it.</li>
+          <li><strong>Communications:</strong> Messages you send via our contact form, WhatsApp, or email.</li>
         </ul>
       </section>
 
       <section className="s2-static-section">
-        <h2>2. How We Use Your Information</h2>
+        <h2>3. How We Use Your Information</h2>
         <ul>
-          <li>To process and fulfil your orders.</li>
-          <li>To send order confirmations, shipping updates, and invoices.</li>
+          <li>To process and fulfil your orders and B2B/wholesale quotes.</li>
+          <li>To send order confirmations, shipping updates, invoices, and quote emails.</li>
           <li>To respond to your enquiries and provide customer support.</li>
-          <li>To send promotional emails (only if you have opted in).</li>
-          <li>To improve our website, products, and services.</li>
-          <li>To comply with legal obligations.</li>
+          <li>To send promotional emails only where you have opted in.</li>
+          <li>To improve our website, packaging, and product range.</li>
+          <li>To comply with applicable Indian laws and respond to lawful requests.</li>
         </ul>
       </section>
 
       <section className="s2-static-section">
-        <h2>3. Data Sharing</h2>
-        <p>We do not sell or rent your personal data. We may share your information with:</p>
+        <h2>4. Data Sharing</h2>
+        <p>We do not sell or rent your personal data. We share it only with:</p>
         <ul>
-          <li><strong>Payment Processors:</strong> Stripe, for secure payment handling.</li>
-          <li><strong>Delivery Partners:</strong> Courier and logistics providers to fulfil your orders.</li>
-          <li><strong>Legal Authorities:</strong> When required by UAE law or court order.</li>
+          <li><strong>Payment processors:</strong> Razorpay (and any other gateways we enable) for secure payment handling.</li>
+          <li><strong>Logistics partners:</strong> Courier and shipping providers that deliver your order.</li>
+          <li><strong>Service providers:</strong> Email, hosting, and analytics vendors operating on our behalf under appropriate confidentiality terms.</li>
+          <li><strong>Legal authorities:</strong> When required by Indian law, court order, or to protect our rights.</li>
         </ul>
       </section>
 
       <section className="s2-static-section">
-        <h2>4. Data Retention</h2>
-        <p>We retain your personal data for as long as necessary to provide our services and comply with UAE legal requirements. You may request deletion of your account and associated data at any time by contacting us.</p>
+        <h2>5. Data Retention</h2>
+        <p>
+          We retain your personal data only for as long as needed to provide our services, comply with tax and accounting obligations under Indian law, and resolve disputes. You may request deletion of your account and associated data at any time by emailing us at <a href="mailto:mail@kalif.co">mail@kalif.co</a>.
+        </p>
       </section>
 
       <section className="s2-static-section">
-        <h2>5. Cookies</h2>
-        <p>Our website uses cookies to maintain your session, remember your cart, and analyse site traffic. You can disable cookies in your browser settings, though this may affect some features of the website.</p>
+        <h2>6. Cookies</h2>
+        <p>Our website uses cookies and similar technologies to keep you signed in, remember your cart, and measure basic site traffic. You can disable cookies in your browser settings, but some features (cart, checkout, account) may stop working.</p>
       </section>
 
       <section className="s2-static-section">
-        <h2>6. Your Rights</h2>
-        <p>You have the right to access, correct, or delete the personal data we hold about you. To exercise these rights, contact us at <a href="mailto:zayaraelectronics@gmail.com">zayaraelectronics@gmail.com</a>.</p>
+        <h2>7. Your Rights</h2>
+        <p>
+          Subject to Indian law (including the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023 as applicable), you have the right to access, correct, or delete the personal data we hold about you, and to withdraw consent at any time. To exercise these rights, write to <a href="mailto:mail@kalif.co">mail@kalif.co</a>.
+        </p>
       </section>
 
       <section className="s2-static-section">
-        <h2>7. Contact</h2>
-        <p>For privacy-related questions, please contact:</p>
-        <p><strong>Zayara Mobile Phones LLC</strong><br />
-        Murbah St, Fujairah, UAE<br />
-        Email: <a href="mailto:zayaraelectronics@gmail.com">zayaraelectronics@gmail.com</a><br />
-        Phone: +971 50 639 7752</p>
+        <h2>8. Children</h2>
+        <p>Our website is not directed at children under 18. We do not knowingly collect personal data from minors.</p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>9. Changes to This Policy</h2>
+        <p>We may update this policy from time to time. Material changes will be highlighted on this page and dated above. Continued use of our website after changes constitutes acceptance.</p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>10. Contact / Grievance Officer</h2>
+        <p>For any privacy-related questions or to raise a grievance:</p>
+        <p>
+          <strong>Kalif Dates &amp; Nuts</strong> (Tamar International)<br />
+          6/559 Neerad, Kondotty<br />
+          Kerala 673638, India<br />
+          Email: <a href="mailto:mail@kalif.co">mail@kalif.co</a><br />
+          Phone / WhatsApp: <a href="tel:+917510762657">+91 75107 62657</a>
+        </p>
+        <p>We will acknowledge complaints within 24 hours and aim to resolve them within 15 days, in line with applicable Indian rules.</p>
       </section>
     </StaticPage>
   );

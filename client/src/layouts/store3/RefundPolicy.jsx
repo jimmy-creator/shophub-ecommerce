@@ -4,66 +4,77 @@ export default function RefundPolicy() {
   return (
     <StaticPage
       title="Refund Policy"
-      description="Zayara Mobile Phones LLC refund and return policy. Easy returns within 7 days of purchase."
+      description="Kalif Dates & Nuts refund policy. Because we sell food, refunds are limited to damaged, wrong, or defective items reported within 48 hours."
     >
-      <p className="s2-static-date">Last updated: April 2025</p>
+      <p className="s2-static-date">Last updated: May 2026</p>
 
       <section className="s2-static-section">
-        <h2>Our Commitment</h2>
-        <p>At Zayara, your satisfaction is our priority. If you are not completely satisfied with your purchase, we offer a straightforward return and refund process.</p>
+        <h2>Our Position</h2>
+        <p>
+          Kalif sells fresh and lightly-processed food — dates, dry fruits, nuts and date-based products. For reasons of <strong>food safety, hygiene and perishability</strong>, we do not accept change-of-mind returns and do not refund orders that have been opened, consumed, or stored away from the conditions printed on the pack.
+        </p>
+        <p>
+          Refunds are available only in the limited situations described below, and only if you report the issue within <strong>48 hours of delivery</strong> with supporting photos.
+        </p>
       </section>
 
       <section className="s2-static-section">
-        <h2>1. Return Window</h2>
-        <p>You may return eligible items within <strong>7 days</strong> of the purchase or delivery date. Items must be:</p>
+        <h2>1. When You Are Eligible for a Refund</h2>
+        <p>We will refund you, send a replacement, or issue store credit (your choice) if any of these apply:</p>
         <ul>
-          <li>In their original, unused condition.</li>
-          <li>In original packaging with all accessories, manuals, and warranty cards included.</li>
-          <li>Accompanied by proof of purchase (order number or receipt).</li>
+          <li><strong>Damaged in transit</strong> — outer carton or inner pack arrived broken, crushed, or leaking.</li>
+          <li><strong>Wrong item shipped</strong> — what you received does not match what was ordered.</li>
+          <li><strong>Defective on arrival</strong> — a sealed pack contains a clear quality defect (e.g. visible mould, foreign matter, off smell at first opening).</li>
+          <li><strong>Order not delivered / lost in transit</strong> — confirmed by the courier as undelivered or lost.</li>
         </ul>
       </section>
 
       <section className="s2-static-section">
-        <h2>2. Non-Returnable Items</h2>
-        <p>The following items cannot be returned or refunded:</p>
+        <h2>2. When You Are Not Eligible for a Refund</h2>
         <ul>
-          <li>Opened earphones, headphones, or any in-ear audio products (for hygiene reasons).</li>
-          <li>Devices with physical damage caused after purchase.</li>
-          <li>Products with broken or tampered warranty seals.</li>
-          <li>Digital products or software licences.</li>
-          <li>Items purchased during clearance or final sale promotions.</li>
+          <li>Change of mind after the order has been dispatched.</li>
+          <li>Packs that have been opened, partly consumed, or stored away from the recommended conditions.</li>
+          <li>Issues reported more than 48 hours after delivery.</li>
+          <li>Differences in taste, sweetness, texture, colour or moisture that fall within the natural variation of agricultural produce.</li>
+          <li>Refused or returned-to-sender deliveries where the address was correct and the parcel was undamaged.</li>
+          <li>Custom or bulk orders prepared specifically for a B2B request, once dispatched.</li>
         </ul>
       </section>
 
       <section className="s2-static-section">
-        <h2>3. Defective or Damaged Items</h2>
-        <p>If you receive a defective or damaged product, please contact us within <strong>48 hours</strong> of delivery with photos of the item. We will arrange a replacement or full refund at no additional cost to you.</p>
+        <h2>3. How to Report an Issue</h2>
+        <ol>
+          <li>Contact us within 48 hours of delivery via email or WhatsApp.</li>
+          <li>Share your <strong>order number</strong>, a short description of the issue, and clear photos of the product and packaging (front and back labels included).</li>
+          <li>Please keep the product and packaging until the case is resolved — we may ask for additional photos or a pickup.</li>
+        </ol>
       </section>
 
       <section className="s2-static-section">
-        <h2>4. Refund Process</h2>
-        <p>Once we receive and inspect the returned item:</p>
+        <h2>4. How Refunds Are Issued</h2>
         <ul>
-          <li>Refunds are processed within <strong>5–7 business days</strong>.</li>
-          <li>For online orders paid via card, refunds are credited to the original payment method.</li>
-          <li>For in-store cash purchases, refunds are issued as store credit or cash (at our discretion).</li>
+          <li>Once we confirm eligibility, refunds are processed within <strong>5–7 business days</strong>.</li>
+          <li>Refunds are credited back to the <strong>original payment method</strong> (Razorpay, UPI, card or net banking).</li>
+          <li>For orders paid by bank transfer (typically B2B), refunds are issued by NEFT/IMPS to the account the payment originated from.</li>
+          <li>Replacements are shipped at our cost on the next dispatch day.</li>
         </ul>
       </section>
 
       <section className="s2-static-section">
-        <h2>5. Repair Warranty</h2>
-        <p>All repairs carried out at Zayara come with a <strong>30-day warranty</strong> on parts and labour. If the same issue recurs within this period, we will re-repair at no charge.</p>
+        <h2>5. Wholesale / B2B Orders</h2>
+        <p>
+          For B2B and bulk orders fulfilled through our wholesale process, the same eligibility rules apply (damaged, wrong, or defective on arrival, reported within 48 hours). Custom-packaged or co-branded orders, once dispatched, are non-refundable except where the goods themselves are defective.
+        </p>
       </section>
 
       <section className="s2-static-section">
-        <h2>6. How to Initiate a Return</h2>
-        <p>To start a return, contact us via:</p>
-        <ul>
-          <li>📧 Email: <a href="mailto:zayaraelectronics@gmail.com">zayaraelectronics@gmail.com</a></li>
-          <li>📞 Phone / WhatsApp: <a href="tel:+971506397752">+971 50 639 7752</a></li>
-          <li>📍 Walk in: Murbah St, Fujairah, UAE</li>
-        </ul>
-        <p>Please have your order number ready when you contact us.</p>
+        <h2>6. Contact</h2>
+        <p>
+          <strong>Kalif Dates &amp; Nuts</strong> (Tamar International)<br />
+          📍 6/559 Neerad, Kondotty, Kerala 673638, India<br />
+          📧 <a href="mailto:mail@kalif.co">mail@kalif.co</a><br />
+          📞 / WhatsApp: <a href="tel:+917510762657">+91 75107 62657</a>
+        </p>
       </section>
     </StaticPage>
   );
