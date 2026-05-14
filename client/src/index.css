@@ -1085,6 +1085,10 @@ input, textarea, select { font-family: var(--font-body); }
 
 /* ===== CART ===== */
 .cart-page, .checkout-page, .orders-page, .profile-page { padding: 3rem 0 5rem; }
+/* Defensive clip — grid children inside these pages default to min-width:auto
+   and can refuse to shrink below their content (long select options, etc.),
+   pushing the form past the viewport on narrow screens. */
+.cart-page, .checkout-page, .orders-page, .profile-page { overflow-x: hidden; }
 .cart-page h1, .checkout-page h1, .orders-page h1 {
   font-family: var(--font-display);
   margin-bottom: 2.5rem; font-size: 2.2rem; font-weight: 500;
@@ -1219,7 +1223,7 @@ input, textarea, select { font-family: var(--font-body); }
 }
 
 /* ===== FORMS ===== */
-.form-group { margin-bottom: 1.25rem; }
+.form-group { margin-bottom: 1.25rem; min-width: 0; }   /* let grid children shrink */
 .form-group label {
   display: block; font-size: 0.72rem; font-weight: 600;
   margin-bottom: 0.5rem; color: var(--text-secondary);
@@ -1264,7 +1268,7 @@ input, textarea, select { font-family: var(--font-body); }
 }
 
 /* ===== CHECKOUT ===== */
-.checkout-layout { display: grid; grid-template-columns: 1fr 380px; gap: 3rem; }
+.checkout-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 3rem; }
 .checkout-section {
   background: var(--bg-card); padding: 2rem;
   border: 1px solid var(--border-light);
