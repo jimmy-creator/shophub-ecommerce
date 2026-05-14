@@ -4063,3 +4063,11 @@ body:has(.cart-page)::after {
   color: var(--text-secondary) !important;
   font-family: var(--font-body) !important;
 }
+
+/* Narrower input width on the checkout page — fields stretch to the full
+   section width otherwise, which looks loose on desktop. Direct-child
+   selector so form-groups nested inside .form-row (city / state / zip)
+   keep their grid sizing. */
+.checkout-page .checkout-section > .form-group {
+  max-width: 480px;
+}
