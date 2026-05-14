@@ -4007,3 +4007,59 @@ body:has(.admin-page) .s2-footer {
   .s2-grid-list .s2-product-body { padding: 0.75rem 0.85rem; flex-wrap: wrap; }
   .s2-grid-list .s2-product-name { -webkit-line-clamp: 2; font-size: 0.9rem; }
 }
+
+/* ============================================================
+   Match store1 look on the checkout + cart pages.
+   The page already has flat white cards via the Kalif aesthetic
+   block above; this strips the remaining store2-inherited glass
+   on form inputs, replaces the sky-blue focus accent with the
+   store1 copper, and hides the aurora background behind these
+   pages so the page renders exactly like store1.
+   ============================================================ */
+body:has(.checkout-page)::before,
+body:has(.checkout-page)::after,
+body:has(.cart-page)::before,
+body:has(.cart-page)::after {
+  display: none !important;
+}
+
+.checkout-page,
+.cart-page {
+  background: var(--bg) !important;
+}
+
+.checkout-page .form-group input,
+.checkout-page .form-group textarea,
+.checkout-page .form-group select,
+.cart-page .form-group input,
+.cart-page .form-group textarea,
+.cart-page .form-group select {
+  background: var(--bg-card) !important;
+  border: 1.5px solid var(--border) !important;
+  color: var(--text) !important;
+  border-radius: var(--radius) !important;
+  font-family: var(--font-body) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.checkout-page .form-group input:focus,
+.checkout-page .form-group textarea:focus,
+.checkout-page .form-group select:focus,
+.cart-page .form-group input:focus,
+.cart-page .form-group textarea:focus,
+.cart-page .form-group select:focus {
+  border-color: var(--copper) !important;
+  box-shadow: 0 0 0 3px rgba(196, 120, 74, 0.08) !important;
+}
+
+.checkout-page .form-group input::placeholder,
+.cart-page .form-group input::placeholder {
+  color: var(--text-light) !important;
+}
+
+.checkout-page .form-group label,
+.cart-page .form-group label {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-body) !important;
+}
