@@ -7,12 +7,25 @@
  *   us  -> SR init checkout    | POST /init-checkout
  *   SR  -> us order completed  | POST /webhook/order (token-protected via query param)
  *
- * variant_id format:
- *   "<productId>"          for products with no variants in our DB
- *   "<productId>-<idx>"    for products with a `variants` JSON array, idx into it
+ * variant_id encoding (numeric — SR's validator rejects non-numeric strings):
+ *   no variants : productId               (e.g. 5)
+ *   with variants: productId * 10000 + idx (e.g. product 5 variant 0 -> 50000)
+ * Decode: id < 10000 => base product, id >= 10000 => (id/10000, id%10000)
+ * This assumes no product has id >= 10000 and no product has >= 10000 variants.
  *
  * Currency is INR. Weights are in kg (SR expects kg).
  */
+const VARIANT_BASE = 10000;
+export function encodeVariantId(productId, variantIdx) {
+  if (variantIdx == null) return productId;
+  return productId * VARIANT_BASE + variantIdx;
+}
+export function decodeVariantId(variantId) {
+  const n = parseInt(variantId, 10);
+  if (isNaN(n)) return { productId: null, variantIdx: null };
+  if (n < VARIANT_BASE) return { productId: n, variantIdx: null };
+  return { productId: Math.floor(n / VARIANT_BASE), variantIdx: n % VARIANT_BASE };
+}
 import { Router } from 'express';
 import { Op } from 'sequelize';
 import { Product, Category, Order, User } from '../models/index.js';
@@ -51,7 +64,7 @@ function toShiprocketProduct(p) {
 
   const variantPayload = hasVariants
     ? obj.variants.map((v, idx) => ({
-        id: `${obj.id}-${idx}`,
+        id: encodeVariantId(obj.id, idx),
         title: Object.values(v.options || {}).join(' / ') || `Variant ${idx + 1}`,
         price: num(v.price, obj.price).toFixed(2),
         quantity: parseInt(num(v.stock, obj.stock, 0), 10),
@@ -61,7 +74,7 @@ function toShiprocketProduct(p) {
         weight: num(v.weight, obj.weight, DEFAULT_WEIGHT_KG),
       }))
     : [{
-        id: String(obj.id),
+        id: encodeVariantId(obj.id, null),
         title: obj.name,
         price: num(obj.price).toFixed(2),
         quantity: parseInt(num(obj.stock, 0), 10),
@@ -200,14 +213,17 @@ router.post('/init-checkout', async (req, res) => {
 
     const resolvedItems = items.map((it) => {
       const product = byId.get(it.productId);
-      let variantId = String(it.productId);
+      let variantIdx = null;
       if (product && Array.isArray(product.variants) && product.variants.length > 0 && it.selectedVariant) {
         const idx = product.variants.findIndex((v) =>
           v.options && Object.entries(it.selectedVariant).every(([k, val]) => v.options[k] === val)
         );
-        if (idx >= 0) variantId = `${it.productId}-${idx}`;
+        if (idx >= 0) variantIdx = idx;
       }
-      return { variant_id: variantId, quantity: parseInt(it.quantity, 10) || 1 };
+      return {
+        variant_id: encodeVariantId(it.productId, variantIdx),
+        quantity: parseInt(it.quantity, 10) || 1,
+      };
     });
 
     const cart_data = { items: resolvedItems };
@@ -219,16 +235,22 @@ router.post('/init-checkout', async (req, res) => {
     };
     const bodyStr = JSON.stringify(body);
 
+    console.log('[shiprocket] init-checkout sending:', bodyStr);
+
     const resp = await fetch(`${SHIPROCKET_BASE}/api/v1/access-token/checkout`, {
       method: 'POST',
       headers: signedHeaders(bodyStr),
       body: bodyStr,
     });
-    const data = await resp.json();
+    const rawText = await resp.text();
+    let data;
+    try { data = JSON.parse(rawText); } catch { data = { _raw: rawText }; }
 
-    if (!resp.ok) {
+    console.log(`[shiprocket] init-checkout response: HTTP ${resp.status}`, JSON.stringify(data).slice(0, 600));
+
+    if (!resp.ok || data?.ok === false) {
       console.error('[shiprocket] init-checkout error:', data);
-      return res.status(502).json({ message: data?.message || 'Shiprocket rejected the request', detail: data });
+      return res.status(502).json({ message: data?.error?.message || data?.message || 'Shiprocket rejected the request', detail: data });
     }
 
     // SR returns the token nested under result.token per the docs sample.
@@ -265,18 +287,15 @@ router.post('/webhook/order', async (req, res) => {
       return res.json({ ok: true, skipped: true });
     }
 
-    // Resolve variant_ids back to our products. Variant IDs are either "42"
-    // or "42-3" — split on the dash.
+    // Resolve variant_ids back to our products via decodeVariantId.
     const items = Array.isArray(payload.cart_data?.items) ? payload.cart_data.items : [];
     const orderItems = [];
     for (const it of items) {
-      const [pidStr, idxStr] = String(it.variant_id || '').split('-');
-      const productId = parseInt(pidStr, 10);
+      const { productId, variantIdx } = decodeVariantId(it.variant_id);
       if (!productId) continue;
       const product = await Product.findByPk(productId);
       if (!product) continue;
       const qty = parseInt(it.quantity, 10) || 1;
-      const variantIdx = idxStr != null ? parseInt(idxStr, 10) : null;
       const variant = variantIdx != null && product.variants ? product.variants[variantIdx] : null;
       const unitPrice = variant?.price != null ? parseFloat(variant.price) : parseFloat(product.price);
 
@@ -360,6 +379,54 @@ router.post('/webhook/order', async (req, res) => {
     console.error('[shiprocket] webhook error:', err);
     // Return 200 anyway so SR doesn't retry — log + investigate.
     res.json({ ok: false, error: err.message });
+  }
+});
+
+// =====================================================================
+// Diagnostics — call from the VPS to debug auth + connectivity to SR.
+// GET /api/shiprocket/debug?productId=1  — runs an access-token call
+// using productId (no variant) and logs everything to pm2.
+// =====================================================================
+
+router.get('/debug', async (req, res) => {
+  try {
+    const productId = parseInt(req.query.productId, 10);
+    if (!productId) return res.status(400).json({ message: 'productId query required' });
+    const product = await Product.findByPk(productId);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    const hasVariants = Array.isArray(product.variants) && product.variants.length > 0;
+    const variant_id = encodeVariantId(productId, hasVariants ? 0 : null);
+
+    const body = {
+      cart_data: { items: [{ variant_id, quantity: 1 }] },
+      redirect_url: `${SITE_URL}/order-success`,
+      timestamp: new Date().toISOString(),
+    };
+    const bodyStr = JSON.stringify(body);
+
+    const resp = await fetch(`${SHIPROCKET_BASE}/api/v1/access-token/checkout`, {
+      method: 'POST',
+      headers: signedHeaders(bodyStr),
+      body: bodyStr,
+    });
+    const text = await resp.text();
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = { _raw: text }; }
+
+    res.json({
+      ok: resp.ok,
+      status: resp.status,
+      sent: body,
+      receivedHeaders: Object.fromEntries(resp.headers.entries()),
+      received: parsed,
+      hint: !resp.ok
+        ? 'Common causes: (1) SR has not crawled catalog yet, (2) variant_id not in their inventory, (3) HMAC mismatch (api key/secret typo), (4) account onboarding incomplete on SR side. Check pm2 logs for the request body that was sent.'
+        : 'Looks good — the token in `received.result.token` is what the frontend would use.',
+    });
+  } catch (err) {
+    console.error('[shiprocket] /debug exception:', err);
+    res.status(500).json({ message: err.message });
   }
 });
 

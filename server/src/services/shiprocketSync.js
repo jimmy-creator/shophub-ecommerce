@@ -9,6 +9,7 @@
  */
 import { Product, Category } from '../models/index.js';
 import { signedHeaders, SHIPROCKET_BASE, SHIPROCKET_API_KEY, SHIPROCKET_SECRET } from '../utils/shiprocketAuth.js';
+import { encodeVariantId } from '../routes/shiprocket.js';
 
 const SITE_URL = (process.env.SITE_URL || process.env.CLIENT_URL || '').replace(/\/$/, '');
 const DEFAULT_WEIGHT_KG = 0.1;
@@ -36,7 +37,7 @@ function buildProductPayload(product) {
 
   const variants = hasVariants
     ? obj.variants.map((v, idx) => ({
-        id: `${obj.id}-${idx}`,
+        id: encodeVariantId(obj.id, idx),
         title: Object.values(v.options || {}).join(' / ') || `Variant ${idx + 1}`,
         price: num(v.price, obj.price).toFixed(2),
         quantity: parseInt(num(v.stock, obj.stock, 0), 10),
@@ -46,7 +47,7 @@ function buildProductPayload(product) {
         weight: num(v.weight, obj.weight, DEFAULT_WEIGHT_KG),
       }))
     : [{
-        id: String(obj.id),
+        id: encodeVariantId(obj.id, null),
         title: obj.name,
         price: num(obj.price).toFixed(2),
         quantity: parseInt(num(obj.stock, 0), 10),
