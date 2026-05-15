@@ -10,6 +10,7 @@
 import { Product, Category } from '../models/index.js';
 import { signedHeaders, SHIPROCKET_BASE, SHIPROCKET_API_KEY, SHIPROCKET_SECRET } from '../utils/shiprocketAuth.js';
 import { encodeVariantId } from '../routes/shiprocket.js';
+import { parseWeightFromOptions } from '../utils/productWeight.js';
 
 const SITE_URL = (process.env.SITE_URL || process.env.CLIENT_URL || '').replace(/\/$/, '');
 const DEFAULT_WEIGHT_KG = 0.1;
@@ -44,7 +45,7 @@ function buildProductPayload(product) {
         sku: v.sku || obj.code || `P${obj.id}-V${idx}`,
         updated_at: obj.updatedAt,
         image: { src: baseImage },
-        weight: num(v.weight, obj.weight, DEFAULT_WEIGHT_KG),
+        weight: num(v.weight, parseWeightFromOptions(v.options), obj.weight, DEFAULT_WEIGHT_KG),
       }))
     : [{
         id: encodeVariantId(obj.id, null),

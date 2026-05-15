@@ -931,6 +931,8 @@ export default function Admin() {
   const [b2bQuotes, setB2bQuotes] = useState([]);
   const [b2bQuoteForm, setB2bQuoteForm] = useState(null);
   const [b2bStatusFilter, setB2bStatusFilter] = useState('');
+  const [shipModal, setShipModal] = useState(null);     // order being managed in the shipping modal
+  const [shipBusy, setShipBusy] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [showForm, setShowForm] = useState(false);
@@ -1509,6 +1511,7 @@ export default function Admin() {
                   <th>Status</th>
                   <th>Update</th>
                   <th>Refund</th>
+                  <th>Shipping</th>
                   <th>Invoice</th>
                 </tr>
               </thead>
@@ -1565,6 +1568,27 @@ export default function Admin() {
                       )}
                     </td>
                     <td>
+                      {o.shippingMeta?.awb ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-light)' }}>{o.shippingMeta.courierName || '—'}</span>
+                          <span style={{ fontSize: '0.72rem', fontFamily: 'monospace' }}>{o.shippingMeta.awb}</span>
+                          <button className="invoice-btn" style={{ fontSize: '0.7rem', padding: '0.18rem 0.45rem' }} onClick={() => setShipModal(o)}>Manage</button>
+                        </div>
+                      ) : o.shippingMeta?.shipmentId ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--warning, #a16207)' }}>AWB pending</span>
+                          <button className="invoice-btn" style={{ fontSize: '0.7rem', padding: '0.18rem 0.45rem' }} onClick={() => setShipModal(o)}>Manage</button>
+                        </div>
+                      ) : o.shippingMeta?.lastError ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--danger)' }} title={o.shippingMeta.lastError}>Failed</span>
+                          <button className="invoice-btn" style={{ fontSize: '0.7rem', padding: '0.18rem 0.45rem' }} onClick={() => setShipModal(o)}>Retry</button>
+                        </div>
+                      ) : (
+                        <button className="invoice-btn" style={{ fontSize: '0.7rem', padding: '0.18rem 0.5rem' }} onClick={() => setShipModal(o)}>Ship</button>
+                      )}
+                    </td>
+                    <td>
                       <button className="invoice-btn" onClick={() => window.open(`/api/orders/${o.id}/invoice`, '_blank')}>
                         PDF
                       </button>
@@ -1573,6 +1597,145 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
+
+            {shipModal && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShipModal(null); }}>
+                <div className="admin-form" style={{ maxWidth: 600 }}>
+                  <h3>Shipping — {shipModal.orderNumber}</h3>
+
+                  {/* Read-only summary */}
+                  <div style={{ padding: '0.85rem 1rem', background: 'var(--bg-warm)', borderRadius: 'var(--radius)', marginBottom: '1rem', fontSize: '0.85rem', lineHeight: 1.7 }}>
+                    {shipModal.shippingMeta?.awb ? (
+                      <>
+                        <div><strong>AWB:</strong> <span style={{ fontFamily: 'monospace' }}>{shipModal.shippingMeta.awb}</span></div>
+                        <div><strong>Courier:</strong> {shipModal.shippingMeta.courierName} (#{shipModal.shippingMeta.courierId})</div>
+                        <div><strong>Status:</strong> {shipModal.shippingMeta.currentStatus || 'AWB_ASSIGNED'}</div>
+                        {shipModal.shippingMeta.pickupScheduledDate && (
+                          <div><strong>Pickup:</strong> {shipModal.shippingMeta.pickupScheduledDate}</div>
+                        )}
+                        {shipModal.shippingMeta.etd && <div><strong>ETD:</strong> {shipModal.shippingMeta.etd}</div>}
+                      </>
+                    ) : shipModal.shippingMeta?.shipmentId ? (
+                      <>
+                        <div><strong>SR Order:</strong> {shipModal.shippingMeta.srOrderId}</div>
+                        <div><strong>Shipment:</strong> {shipModal.shippingMeta.shipmentId}</div>
+                        <div style={{ color: 'var(--warning, #a16207)' }}>AWB not yet assigned. Use "Retry create" to attempt.</div>
+                      </>
+                    ) : shipModal.shippingMeta?.lastError ? (
+                      <div style={{ color: 'var(--danger)' }}>
+                        <strong>Last error:</strong> {shipModal.shippingMeta.lastError}
+                      </div>
+                    ) : (
+                      <div style={{ color: 'var(--text-secondary)' }}>No shipment yet.</div>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    {(!shipModal.shippingMeta?.awb) && (
+                      <button type="button" className="btn btn-primary" disabled={shipBusy}
+                        onClick={async () => {
+                          setShipBusy(true);
+                          try {
+                            const { data } = await api.post(`/shipping/orders/${shipModal.id}/create`);
+                            toast.success(data.message || 'Shipment created');
+                            const fresh = await api.get('/orders/all?limit=50');
+                            setOrders(fresh.data.orders);
+                            setShipModal(fresh.data.orders.find((o) => o.id === shipModal.id) || null);
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || 'Failed');
+                          } finally { setShipBusy(false); }
+                        }}>
+                        {shipModal.shippingMeta?.shipmentId ? 'Retry AWB' : 'Create shipment'}
+                      </button>
+                    )}
+
+                    {shipModal.shippingMeta?.shipmentId && (
+                      <>
+                        <button type="button" className="btn btn-secondary" disabled={shipBusy}
+                          onClick={async () => {
+                            setShipBusy(true);
+                            try {
+                              const { data } = await api.get(`/shipping/orders/${shipModal.id}/label`);
+                              window.open(data.url, '_blank');
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Label unavailable');
+                            } finally { setShipBusy(false); }
+                          }}>Label</button>
+                        <button type="button" className="btn btn-secondary" disabled={shipBusy}
+                          onClick={async () => {
+                            setShipBusy(true);
+                            try {
+                              const { data } = await api.get(`/shipping/orders/${shipModal.id}/invoice`);
+                              window.open(data.url, '_blank');
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Invoice unavailable');
+                            } finally { setShipBusy(false); }
+                          }}>Invoice</button>
+                        <button type="button" className="btn btn-secondary" disabled={shipBusy}
+                          onClick={async () => {
+                            setShipBusy(true);
+                            try {
+                              const { data } = await api.get(`/shipping/orders/${shipModal.id}/manifest`);
+                              window.open(data.url, '_blank');
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Manifest unavailable');
+                            } finally { setShipBusy(false); }
+                          }}>Manifest</button>
+                        <button type="button" className="btn btn-secondary" disabled={shipBusy}
+                          onClick={async () => {
+                            setShipBusy(true);
+                            try {
+                              await api.post(`/shipping/orders/${shipModal.id}/refresh`);
+                              toast.success('Tracking refreshed');
+                              const fresh = await api.get('/orders/all?limit=50');
+                              setOrders(fresh.data.orders);
+                              setShipModal(fresh.data.orders.find((o) => o.id === shipModal.id) || null);
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Failed');
+                            } finally { setShipBusy(false); }
+                          }}>Refresh tracking</button>
+                        <button type="button" className="btn btn-secondary" disabled={shipBusy} style={{ marginLeft: 'auto', color: 'var(--danger)' }}
+                          onClick={async () => {
+                            if (!confirm('Cancel this shipment? The order itself will not be cancelled.')) return;
+                            setShipBusy(true);
+                            try {
+                              await api.post(`/shipping/orders/${shipModal.id}/cancel`);
+                              toast.success('Shipment cancelled');
+                              const fresh = await api.get('/orders/all?limit=50');
+                              setOrders(fresh.data.orders);
+                              setShipModal(null);
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Failed');
+                            } finally { setShipBusy(false); }
+                          }}>Cancel shipment</button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Recent scans */}
+                  {Array.isArray(shipModal.shippingMeta?.scans) && shipModal.shippingMeta.scans.length > 0 && (
+                    <details style={{ marginTop: '0.75rem' }}>
+                      <summary style={{ cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        Tracking history ({shipModal.shippingMeta.scans.length} scans)
+                      </summary>
+                      <div style={{ maxHeight: 240, overflowY: 'auto', marginTop: '0.5rem', fontSize: '0.78rem', lineHeight: 1.6 }}>
+                        {shipModal.shippingMeta.scans.slice().reverse().map((s, i) => (
+                          <div key={i} style={{ padding: '0.45rem 0.6rem', borderBottom: '1px solid var(--border-light)' }}>
+                            <div><strong>{s.srStatusLabel || s.status}</strong> · {s.date}</div>
+                            <div style={{ color: 'var(--text-light)' }}>{s.activity} — {s.location}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+
+                  <div style={{ marginTop: '1.25rem', textAlign: 'right' }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setShipModal(null)}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

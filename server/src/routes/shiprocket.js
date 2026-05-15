@@ -30,6 +30,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import { Product, Category, Order, User } from '../models/index.js';
 import { signedHeaders, SHIPROCKET_BASE } from '../utils/shiprocketAuth.js';
+import { parseWeightFromOptions } from '../utils/productWeight.js';
 import { sendOrderConfirmation, sendNewOrderNotification } from '../services/emailService.js';
 import { autoCreateShipment } from '../services/shipping.js';
 
@@ -72,7 +73,9 @@ function toShiprocketProduct(p) {
         sku: v.sku || obj.code || `P${obj.id}-V${idx}`,
         updated_at: obj.updatedAt,
         image: { src: baseImage },
-        weight: num(v.weight, obj.weight, DEFAULT_WEIGHT_KG),
+        // Variant weight: prefer explicit numeric on the variant, else parse
+        // "500g"/"1kg" out of the option string, else fall back to product.
+        weight: num(v.weight, parseWeightFromOptions(v.options), obj.weight, DEFAULT_WEIGHT_KG),
       }))
     : [{
         id: encodeVariantId(obj.id, null),

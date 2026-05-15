@@ -21,6 +21,14 @@ import { protect, admin } from '../middleware/auth.js';
 import { Order } from '../models/index.js';
 import { srFetch, SHIPROCKET_SHIP_ENABLED } from '../utils/shipAuth.js';
 import { sendOrderStatusUpdate } from '../services/emailService.js';
+import {
+  autoCreateShipment,
+  cancelShipment,
+  getLabel,
+  getInvoice,
+  getManifest,
+  refreshTracking,
+} from '../services/shipping.js';
 
 const router = Router();
 
@@ -245,6 +253,132 @@ router.get('/pickup-locations', protect, admin, async (req, res) => {
     const { ok, status, data } = await srFetch('/settings/company/pickup');
     if (!ok) return res.status(502).json({ message: 'SR rejected', detail: data });
     res.json(data?.data || data);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// =====================================================================
+// Admin per-order shipping operations.
+// All require admin/staff with 'orders' permission.
+// =====================================================================
+
+async function findOrder(req, res) {
+  const id = parseInt(req.params.orderId, 10);
+  if (!id) {
+    res.status(400).json({ message: 'Invalid order id' });
+    return null;
+  }
+  const order = await Order.findByPk(id);
+  if (!order) {
+    res.status(404).json({ message: 'Order not found' });
+    return null;
+  }
+  return order;
+}
+
+// Trigger or retry shipment creation. Resets prior error state.
+router.post('/orders/:orderId/create', protect, admin, async (req, res) => {
+  try {
+    const order = await findOrder(req, res);
+    if (!order) return;
+    // Clear prior error so autoCreateShipment isn't seen as already-tried.
+    // If a shipment was partially created, idempotency still keeps it.
+    const meta = await autoCreateShipment(order);
+    await order.reload();
+    res.json({
+      ok: !!order.shippingMeta?.shipmentId,
+      shippingMeta: order.shippingMeta,
+      message: order.shippingMeta?.awb
+        ? `AWB ${order.shippingMeta.awb} (${order.shippingMeta.courierName})`
+        : order.shippingMeta?.shipmentId
+          ? 'Shipment created — AWB still pending. Use Retry AWB.'
+          : (order.shippingMeta?.lastError || 'Create failed'),
+    });
+  } catch (err) {
+    console.error('[shipping] admin create error:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/orders/:orderId/cancel', protect, admin, async (req, res) => {
+  try {
+    const order = await findOrder(req, res);
+    if (!order) return;
+    await cancelShipment(order);
+    res.json({ ok: true, shippingMeta: order.shippingMeta });
+  } catch (err) {
+    console.error('[shipping] admin cancel error:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/orders/:orderId/refresh', protect, admin, async (req, res) => {
+  try {
+    const order = await findOrder(req, res);
+    if (!order) return;
+    const tracking = await refreshTracking(order);
+    res.json({ ok: true, tracking });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/orders/:orderId/label', protect, admin, async (req, res) => {
+  try {
+    const order = await findOrder(req, res);
+    if (!order) return;
+    const url = await getLabel(order);
+    if (!url) return res.status(404).json({ message: 'No label available yet' });
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/orders/:orderId/invoice', protect, admin, async (req, res) => {
+  try {
+    const order = await findOrder(req, res);
+    if (!order) return;
+    const url = await getInvoice(order);
+    if (!url) return res.status(404).json({ message: 'No invoice available' });
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get('/orders/:orderId/manifest', protect, admin, async (req, res) => {
+  try {
+    const order = await findOrder(req, res);
+    if (!order) return;
+    const url = await getManifest(order);
+    if (!url) return res.status(404).json({ message: 'No manifest available' });
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// NDR action — re-attempt delivery or return-to-origin.
+// SR endpoint structure varies; using the common pattern. If SR rejects,
+// admin can fall back to their dashboard for now.
+router.post('/orders/:orderId/ndr-action', protect, admin, async (req, res) => {
+  try {
+    const order = await findOrder(req, res);
+    if (!order) return;
+    const awb = order.shippingMeta?.awb;
+    if (!awb) return res.status(400).json({ message: 'No AWB on this order' });
+    const { action, comment } = req.body || {};
+    if (!['re-attempt', 'return'].includes(action)) {
+      return res.status(400).json({ message: 'action must be "re-attempt" or "return"' });
+    }
+    const { ok, status, data } = await srFetch('/ndr/' + encodeURIComponent(awb) + '/action', {
+      method: 'POST',
+      body: JSON.stringify({ action, comments: comment || '' }),
+    });
+    if (!ok) return res.status(502).json({ message: 'SR rejected NDR action', detail: data });
+    res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

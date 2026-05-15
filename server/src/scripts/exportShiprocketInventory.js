@@ -16,6 +16,7 @@
 import 'dotenv/config';
 import sequelize from '../config/database.js';
 import { Product } from '../models/index.js';
+import { parseWeightFromOptions } from '../utils/productWeight.js';
 
 const PINCODE_DEFAULT = process.env.WAREHOUSE_PINCODE || '673638';   // Kondotty
 const WEIGHT_DEFAULT = parseFloat(process.env.DEFAULT_WEIGHT || '0.1');     // kg
@@ -71,7 +72,7 @@ async function main() {
         const optionLabel = v.options ? Object.values(v.options).join('/') : `Variant ${idx + 1}`;
         const sku = v.sku || obj.code || `P${obj.id}-V${idx}`;
         const qty = pickInt(v.stock, obj.stock, 0);
-        const weight = pick(v.weight, obj.weight) ?? WEIGHT_DEFAULT;
+        const weight = pick(v.weight, parseWeightFromOptions(v.options), obj.weight) ?? WEIGHT_DEFAULT;
         lines.push(row([
           sku,
           PINCODE_DEFAULT,

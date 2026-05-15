@@ -1,10 +1,55 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { HiDownload } from 'react-icons/hi';
-import { XCircle } from 'lucide-react';
+import { XCircle, Truck, ExternalLink } from 'lucide-react';
 import api from '../api/axios';
 import { showToast } from '../utils/toast';
 import { CURRENCY } from '../utils/currency';
+
+function ShipmentBlock({ order }) {
+  const meta = order.shippingMeta;
+  if (!meta?.awb && !meta?.shipmentId) return null;
+
+  const lastScan = Array.isArray(meta.scans) && meta.scans.length > 0 ? meta.scans[meta.scans.length - 1] : null;
+  const trackUrl = meta.awb
+    ? `https://shiprocket.co/tracking/${meta.awb}`
+    : null;
+
+  return (
+    <div style={{ margin: '0.75rem 0', padding: '0.85rem 1rem', background: 'var(--bg-warm, #faf8f5)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius)', fontSize: '0.88rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Truck size={16} strokeWidth={1.8} />
+          <strong>
+            {meta.awb ? `${meta.courierName || 'Shipped'}` : 'Preparing shipment'}
+          </strong>
+          {meta.currentStatus && (
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-light)', textTransform: 'capitalize' }}>
+              · {meta.currentStatus.toLowerCase()}
+            </span>
+          )}
+        </div>
+        {trackUrl && (
+          <a href={trackUrl} target="_blank" rel="noopener noreferrer"
+             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.82rem', color: 'var(--copper, #c4784a)', textDecoration: 'none' }}>
+            Track parcel <ExternalLink size={12} />
+          </a>
+        )}
+      </div>
+      {meta.awb && (
+        <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: 'var(--text-light)' }}>
+          AWB: <span style={{ fontFamily: 'monospace' }}>{meta.awb}</span>
+          {meta.etd && <> · ETD {meta.etd}</>}
+        </div>
+      )}
+      {lastScan && (
+        <div style={{ marginTop: '0.5rem', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+          {lastScan.activity || lastScan.srStatusLabel} — {lastScan.location} · {lastScan.date}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const statusColors = {
   processing: '#f59e0b',
@@ -99,6 +144,8 @@ export default function Orders() {
                     </div>
                   ))}
                 </div>
+
+                <ShipmentBlock order={order} />
 
                 {/* Refund info */}
                 {order.refundStatus && (

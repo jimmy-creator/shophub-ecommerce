@@ -16,12 +16,13 @@
 import { Op } from 'sequelize';
 import { Order, Product } from '../models/index.js';
 import { srFetch, SHIPROCKET_SHIP_ENABLED } from '../utils/shipAuth.js';
+import { resolveItemWeight, DEFAULT_KG } from '../utils/productWeight.js';
 
 const PICKUP_LOCATION = process.env.SHIPROCKET_SHIP_PICKUP_LOCATION || 'warehouse';
 const BOX_L = parseFloat(process.env.SHIP_BOX_LENGTH_CM || '25');
 const BOX_B = parseFloat(process.env.SHIP_BOX_BREADTH_CM || '20');
 const BOX_H = parseFloat(process.env.SHIP_BOX_HEIGHT_CM || '10');
-const DEFAULT_ITEM_WEIGHT_KG = 0.1;
+const DEFAULT_ITEM_WEIGHT_KG = DEFAULT_KG;
 
 function num(...vals) {
   for (const v of vals) {
@@ -37,15 +38,17 @@ async function buildAdhocPayload(order) {
   const o = order.toJSON ? order.toJSON() : order;
   const addr = o.shippingAddress || {};
 
-  // Pre-fetch products for accurate per-item weights.
+  // Pre-fetch products so we can resolve per-variant weights (a 500g pack
+  // and a 1kg pack of the same product must register differently).
   const productIds = (o.items || []).map((i) => i.productId).filter(Boolean);
   const products = productIds.length
     ? await Product.findAll({ where: { id: { [Op.in]: productIds } } })
     : [];
-  const weightMap = new Map(products.map((p) => [p.id, num(p.weight, DEFAULT_ITEM_WEIGHT_KG)]));
+  const productMap = new Map(products.map((p) => [p.id, p]));
 
   const totalWeight = (o.items || []).reduce((sum, it) => {
-    const w = it.productId ? (weightMap.get(it.productId) ?? DEFAULT_ITEM_WEIGHT_KG) : DEFAULT_ITEM_WEIGHT_KG;
+    const product = it.productId ? productMap.get(it.productId) : null;
+    const w = resolveItemWeight(it, product);
     return sum + w * (parseInt(it.quantity, 10) || 1);
   }, 0);
 
@@ -172,14 +175,14 @@ async function getCourierOptionsForShipment(order) {
   const pincode = addr.postalCode || addr.zipCode || addr.pincode || '';
   if (!pincode) return [];
 
-  // Sum weights using same logic as the adhoc payload (default 0.1kg).
+  // Sum weights using the same variant-aware resolver as the adhoc payload.
   const productIds = (o.items || []).map((i) => i.productId).filter(Boolean);
   const products = productIds.length
     ? await Product.findAll({ where: { id: { [Op.in]: productIds } } })
     : [];
-  const wMap = new Map(products.map((p) => [p.id, num(p.weight, DEFAULT_ITEM_WEIGHT_KG)]));
+  const productMap = new Map(products.map((p) => [p.id, p]));
   const weight = Math.max(0.1, (o.items || []).reduce((s, it) =>
-    s + (wMap.get(it.productId) ?? DEFAULT_ITEM_WEIGHT_KG) * (parseInt(it.quantity, 10) || 1), 0));
+    s + resolveItemWeight(it, productMap.get(it.productId)) * (parseInt(it.quantity, 10) || 1), 0));
 
   const isCod = (o.paymentMethod || '').toLowerCase() === 'cod';
   const params = new URLSearchParams({
