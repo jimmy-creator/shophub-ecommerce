@@ -30,6 +30,7 @@ import abandonedCartRoutes from './routes/abandonedCart.js';
 import contactRoutes from './routes/contact.js';
 import b2bRoutes from './routes/b2b.js';
 import shiprocketRoutes from './routes/shiprocket.js';
+import shippingRoutes from './routes/shipping.js';
 import { registerShiprocketHooks } from './services/shiprocketSync.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
@@ -110,6 +111,7 @@ app.use('/api/abandoned-cart', abandonedCartRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/b2b', b2bRoutes);
 app.use('/api/shiprocket', shiprocketRoutes);
+app.use('/api/shipping', shippingRoutes);
 app.use('/', sitemapRoutes);
 
 // Per-URL HTML meta injection — replaces nginx's static index.html serve.

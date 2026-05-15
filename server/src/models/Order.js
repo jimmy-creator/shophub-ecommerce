@@ -94,6 +94,18 @@ const Order = sequelize.define('Order', {
     type: DataTypes.JSON,
     defaultValue: null,
   },
+  shippingMeta: {
+    // Shiprocket Shipping integration. Populated after auto-create or
+    // admin "Ship via Shiprocket" action. Shape:
+    //   { srOrderId, shipmentId, awb, courierName, courierId,
+    //     pickupScheduledDate, etd,
+    //     currentStatus, currentStatusId, lastWebhookAt,
+    //     labelUrl, invoiceUrl, manifestUrl,
+    //     scans: [{date, status, activity, location, srStatus, srStatusLabel}],
+    //     lastError? }
+    type: DataTypes.JSON,
+    defaultValue: null,
+  },
 });
 
 export default Order;

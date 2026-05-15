@@ -4,6 +4,7 @@ import { Op } from 'sequelize';
 import { sendOrderConfirmation, sendOrderStatusUpdate, sendNewOrderNotification } from '../services/emailService.js';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
 import { calculateShipping } from '../utils/shipping.js';
+import { autoCreateShipment } from '../services/shipping.js';
 
 const generateOrderNumber = () => {
   const prefix = 'ORD';
@@ -175,6 +176,11 @@ export const createOrder = async (req, res) => {
     await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), req.user.email).catch(() => {});
     sendNewOrderNotification(order.toJSON()).catch(() => {});
+    // COD orders don't go through /payment/verify so we kick off the
+    // shipment here. Other gateways trigger from payment.js after verify.
+    if ((paymentMethod || '').toLowerCase() === 'cod') {
+      autoCreateShipment(order).catch((e) => console.error('[shipping] auto-create after COD order failed:', e.message));
+    }
 
     res.status(201).json(order);
   } catch (error) {
@@ -228,6 +234,9 @@ export const createGuestOrder = async (req, res) => {
     await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), guestEmail.toLowerCase().trim()).catch(() => {});
     sendNewOrderNotification(order.toJSON()).catch(() => {});
+    if ((paymentMethod || '').toLowerCase() === 'cod') {
+      autoCreateShipment(order).catch((e) => console.error('[shipping] auto-create after guest COD order failed:', e.message));
+    }
 
     res.status(201).json(order);
   } catch (error) {
