@@ -22,41 +22,46 @@ router.get('/permissions', protect, admin, (req, res) => {
   res.json(AVAILABLE_PERMISSIONS);
 });
 
-// List all staff members
+// List staff members; ?role=cashier to filter cashiers only.
 router.get('/', protect, admin, async (req, res) => {
   try {
-    // Only super admin (role=admin) can manage staff
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Only admin can manage staff' });
     }
-
+    const roles = req.query.role === 'cashier'
+      ? ['cashier']
+      : ['admin', 'staff'];
     const staff = await User.findAll({
-      where: { role: { [Op.in]: ['admin', 'staff'] } },
-      attributes: ['id', 'name', 'email', 'phone', 'role', 'permissions', 'createdAt'],
+      where: { role: { [Op.in]: roles } },
+      attributes: ['id', 'name', 'email', 'phone', 'role', 'permissions', 'homeLocationId', 'createdAt'],
       order: [['role', 'ASC'], ['createdAt', 'DESC']],
     });
-
     res.json(staff);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Create staff account
+// Create staff or cashier account. role='cashier' uses pin + homeLocationId.
 router.post('/', protect, admin, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Only admin can create staff' });
     }
 
-    const { name, email, password, permissions } = req.body;
+    const { name, email, password, permissions, role, pin, homeLocationId } = req.body;
+    const targetRole = role === 'cashier' ? 'cashier' : 'staff';
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
     }
-
     if (password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+    if (targetRole === 'cashier') {
+      if (!pin || !/^\d{4,6}$/.test(String(pin))) {
+        return res.status(400).json({ message: 'Cashier PIN must be 4–6 digits' });
+      }
     }
 
     const existing = await User.findOne({ where: { email: email.toLowerCase().trim() } });
@@ -64,14 +69,19 @@ router.post('/', protect, admin, async (req, res) => {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const user = await User.create({
+    const userData = {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password,
-      role: 'staff',
-      permissions: permissions || [],
-    });
+      role: targetRole,
+    };
+    if (targetRole === 'staff') userData.permissions = permissions || [];
+    if (targetRole === 'cashier') {
+      userData.pin = String(pin);
+      if (homeLocationId) userData.homeLocationId = parseInt(homeLocationId, 10);
+    }
 
+    const user = await User.create(userData);
     res.status(201).json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -93,11 +103,15 @@ router.put('/:id', protect, admin, async (req, res) => {
       return res.status(403).json({ message: 'Cannot modify another admin' });
     }
 
-    const { name, permissions, password } = req.body;
+    const { name, permissions, password, pin, homeLocationId } = req.body;
     const updates = {};
     if (name) updates.name = name.trim();
-    if (permissions) updates.permissions = permissions;
+    if (permissions !== undefined && user.role !== 'cashier') updates.permissions = permissions;
     if (password && password.length >= 8) updates.password = password;
+    if (user.role === 'cashier') {
+      if (pin && /^\d{4,6}$/.test(String(pin))) updates.pin = String(pin);
+      if (homeLocationId !== undefined) updates.homeLocationId = homeLocationId ? parseInt(homeLocationId, 10) : null;
+    }
 
     await user.update(updates);
     res.json(user);
@@ -120,8 +134,8 @@ router.delete('/:id', protect, admin, async (req, res) => {
       return res.status(403).json({ message: 'Cannot delete admin account' });
     }
 
-    if (user.role !== 'staff') {
-      return res.status(400).json({ message: 'Can only delete staff accounts' });
+    if (user.role !== 'staff' && user.role !== 'cashier') {
+      return res.status(400).json({ message: 'Can only delete staff or cashier accounts' });
     }
 
     await user.destroy();

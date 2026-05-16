@@ -946,6 +946,9 @@ export default function Admin() {
   const [transfers, setTransfers] = useState([]);
   const [transferForm, setTransferForm] = useState(null);    // new-transfer modal state
   const [transferStatusFilter, setTransferStatusFilter] = useState('');
+  const [cashiers, setCashiers] = useState([]);
+  const [cashierForm, setCashierForm] = useState(null);      // { name, email, password, pin, homeLocationId, _editing }
+  const [shifts, setShifts] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [showForm, setShowForm] = useState(false);
@@ -1011,6 +1014,13 @@ export default function Admin() {
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
       const qs = transferStatusFilter ? `?status=${transferStatusFilter}` : '';
       api.get(`/stock-transfers${qs}`).then((res) => setTransfers(res.data)).catch(() => {});
+    } else if (tab === 'cashiers') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      api.get('/staff?role=cashier').then((res) => setCashiers(res.data)).catch(() => {
+        // Fallback if /staff doesn't filter by role — fetch all then filter
+        api.get('/staff').then((r) => setCashiers((r.data || []).filter((u) => u.role === 'cashier'))).catch(() => {});
+      });
+      api.get('/cashier/shifts?limit=50').then((res) => setShifts(res.data)).catch(() => {});
     }
   }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter]);
 
@@ -1085,6 +1095,7 @@ export default function Admin() {
           {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'locations' ? 'active' : ''} onClick={() => setTab('locations')}>Locations</button>}
           {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button>}
           {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'transfers' ? 'active' : ''} onClick={() => setTab('transfers')}>Stock Transfers</button>}
+          {MULTILOC_ENABLED && isAdmin && <button className={tab === 'cashiers' ? 'active' : ''} onClick={() => setTab('cashiers')}>Cashiers</button>}
           {hasAccess('settings') && <button className={tab === 'pincodes' ? 'active' : ''} onClick={() => setTab('pincodes')}>Pincodes</button>}
           {hasAccess('settings') && <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Theme</button>}
           {isAdmin && <button className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>Staff</button>}
@@ -2553,6 +2564,169 @@ export default function Admin() {
                     <button type="button" className="btn btn-secondary" onClick={() => setTransferForm(null)}>Cancel</button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'cashiers' && (
+          <div>
+            <button
+              className="btn btn-primary"
+              onClick={() => setCashierForm({ name: '', email: '', password: '', pin: '', homeLocationId: '', role: 'cashier', _editing: false })}
+              style={{ marginBottom: '1.5rem' }}
+            >
+              <HiPlus /> Add Cashier
+            </button>
+
+            <div className="admin-table" style={{ marginBottom: '2rem' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Home location</th>
+                    <th>Created</th>
+                    <th>Edit</th>
+                    <th>Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cashiers.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No cashier accounts yet</td></tr>}
+                  {cashiers.map((u) => (
+                    <tr key={u.id}>
+                      <td><strong>{u.name}</strong></td>
+                      <td style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{u.email}</td>
+                      <td>{locations.find((l) => l.id === u.homeLocationId)?.name || '—'}</td>
+                      <td style={{ fontSize: '0.78rem' }}>{new Date(u.createdAt).toLocaleDateString()}</td>
+                      <td>
+                        <button className="icon-btn" onClick={() => setCashierForm({
+                          ...u, password: '', pin: '', role: 'cashier', _editing: true, _id: u.id,
+                        })}><HiPencil /></button>
+                      </td>
+                      <td>
+                        <button className="icon-btn danger" onClick={async () => {
+                          if (!confirm(`Delete cashier "${u.name}"?`)) return;
+                          try {
+                            await api.delete(`/staff/${u.id}`);
+                            setCashiers(cashiers.filter((x) => x.id !== u.id));
+                            toast.success('Deleted');
+                          } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+                        }}><HiTrash /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h3 style={{ marginTop: '2rem', fontSize: '1rem', color: 'var(--text-secondary)' }}>Recent shifts</h3>
+            <div className="admin-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cashier</th>
+                    <th>Location</th>
+                    <th>Opened</th>
+                    <th>Closed</th>
+                    <th>Opening</th>
+                    <th>Closing</th>
+                    <th>Variance</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {shifts.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No shifts yet</td></tr>}
+                  {shifts.map((s) => (
+                    <tr key={s.id}>
+                      <td>{s.User?.name || `User #${s.userId}`}</td>
+                      <td>{s.Location?.name || `Loc #${s.locationId}`}</td>
+                      <td style={{ fontSize: '0.78rem' }}>{new Date(s.openedAt).toLocaleString()}</td>
+                      <td style={{ fontSize: '0.78rem' }}>{s.closedAt ? new Date(s.closedAt).toLocaleString() : '—'}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{CURRENCY}{parseFloat(s.openingCash).toFixed(3)}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>{s.closingCash != null ? `${CURRENCY}${parseFloat(s.closingCash).toFixed(3)}` : '—'}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums', color: s.cashVariance < 0 ? 'var(--danger)' : s.cashVariance > 0 ? 'var(--success)' : 'var(--text-secondary)' }}>
+                        {s.cashVariance != null ? `${s.cashVariance >= 0 ? '+' : ''}${parseFloat(s.cashVariance).toFixed(3)}` : '—'}
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: 4,
+                          background: s.status === 'open' ? 'rgba(34,197,94,0.18)' : 'rgba(148,163,184,0.15)',
+                          color: s.status === 'open' ? '#15803d' : '#475569' }}>{s.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {cashierForm && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCashierForm(null); }}>
+                <form className="admin-form" onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    if (cashierForm._editing) {
+                      const payload = {
+                        name: cashierForm.name,
+                        homeLocationId: cashierForm.homeLocationId || null,
+                      };
+                      if (cashierForm.password) payload.password = cashierForm.password;
+                      if (cashierForm.pin) payload.pin = cashierForm.pin;
+                      await api.put(`/staff/${cashierForm._id}`, payload);
+                      toast.success('Cashier updated');
+                    } else {
+                      await api.post('/staff', {
+                        name: cashierForm.name,
+                        email: cashierForm.email,
+                        password: cashierForm.password,
+                        pin: cashierForm.pin,
+                        homeLocationId: cashierForm.homeLocationId || null,
+                        role: 'cashier',
+                      });
+                      toast.success('Cashier account created');
+                    }
+                    setCashierForm(null);
+                    api.get('/staff?role=cashier').then((r) => setCashiers(r.data)).catch(() => {});
+                  } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+                }}>
+                  <h3>{cashierForm._editing ? 'Edit Cashier' : 'New Cashier'}</h3>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Name</label>
+                      <input value={cashierForm.name} onChange={(e) => setCashierForm({ ...cashierForm, name: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Email {cashierForm._editing && <small>(read-only)</small>}</label>
+                      <input type="email" value={cashierForm.email} onChange={(e) => setCashierForm({ ...cashierForm, email: e.target.value })} required={!cashierForm._editing} disabled={cashierForm._editing} />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>{cashierForm._editing ? 'New password (leave blank to keep)' : 'Password'}</label>
+                      <input type="password" value={cashierForm.password} onChange={(e) => setCashierForm({ ...cashierForm, password: e.target.value })} required={!cashierForm._editing} minLength={8} />
+                    </div>
+                    <div className="form-group">
+                      <label>{cashierForm._editing ? 'New PIN (leave blank to keep)' : 'PIN (4–6 digits)'}</label>
+                      <input
+                        type="text" inputMode="numeric" pattern="\d{4,6}"
+                        value={cashierForm.pin}
+                        onChange={(e) => setCashierForm({ ...cashierForm, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                        required={!cashierForm._editing}
+                        placeholder="1234"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Home location (suggested at login)</label>
+                    <select value={cashierForm.homeLocationId || ''} onChange={(e) => setCashierForm({ ...cashierForm, homeLocationId: e.target.value })}>
+                      <option value="">— None —</option>
+                      {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">{cashierForm._editing ? 'Save' : 'Create'}</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setCashierForm(null)}>Cancel</button>
+                  </div>
+                </form>
               </div>
             )}
           </div>

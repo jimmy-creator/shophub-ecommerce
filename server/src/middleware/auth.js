@@ -72,3 +72,33 @@ export const generateToken = (id) => {
     expiresIn: process.env.JWT_EXPIRE,
   });
 };
+
+/**
+ * Guard for POS endpoints. The cashier login flow signs a JWT with
+ * { id, role: 'cashier', sessionId, locationId } and stores it in the
+ * same `token` cookie. We verify the cookie, confirm the user still
+ * exists with role='cashier', and attach `req.cashierSessionId` /
+ * `req.cashierLocationId` for the route to use.
+ */
+export const protectCashier = async (req, res, next) => {
+  try {
+    const token = req.cookies?.token;
+    if (!token) return res.status(401).json({ message: 'Not authenticated as cashier' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 'cashier' || !decoded.sessionId) {
+      return res.status(401).json({ message: 'Not a cashier session' });
+    }
+
+    const user = await User.findByPk(decoded.id);
+    if (!user || user.role !== 'cashier') {
+      return res.status(401).json({ message: 'Cashier account not found' });
+    }
+    req.user = user;
+    req.cashierSessionId = decoded.sessionId;
+    req.cashierLocationId = decoded.locationId;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid cashier session' });
+  }
+};

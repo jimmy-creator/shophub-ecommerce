@@ -27,9 +27,12 @@ import WholesaleRequest from './pages/WholesaleRequest';
 import WholesaleQuotes from './pages/WholesaleQuotes';
 import WholesaleQuoteDetail from './pages/WholesaleQuoteDetail';
 import ShiprocketCheckout from './pages/ShiprocketCheckout';
+import PosLogin from './pages/PosLogin';
+import Pos from './pages/Pos';
 
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
 const SHIPROCKET_CHECKOUT = import.meta.env.VITE_FEATURE_SHIPROCKET_CHECKOUT === 'true';
+const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -98,6 +101,8 @@ export default function App() {
                 {B2B_ENABLED && <Route path="/wholesale/request" element={<WholesaleRequest />} />}
                 {B2B_ENABLED && <Route path="/wholesale/my-quotes" element={<WholesaleQuotes />} />}
                 {B2B_ENABLED && <Route path="/wholesale/my-quotes/:id" element={<WholesaleQuoteDetail />} />}
+                {MULTILOC_ENABLED && <Route path="/pos/login" element={<PosLogin />} />}
+                {MULTILOC_ENABLED && <Route path="/pos" element={<Pos />} />}
               </Routes>
               </PageWrapper>
             </main>
