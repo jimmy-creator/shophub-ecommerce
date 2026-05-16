@@ -13,6 +13,11 @@ import ProductStock from './ProductStock.js';
 import StockTransfer from './StockTransfer.js';
 import CashierSession from './CashierSession.js';
 import SalesReturn from './SalesReturn.js';
+import Supplier from './Supplier.js';
+import PurchaseOrder from './PurchaseOrder.js';
+import PurchaseReceipt from './PurchaseReceipt.js';
+import PurchaseReturn from './PurchaseReturn.js';
+import SupplierPayment from './SupplierPayment.js';
 
 // ── Existing associations ────────────────────────────────────────
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -61,6 +66,33 @@ CashierSession.hasMany(SalesReturn, { foreignKey: 'cashierSessionId' });
 SalesReturn.belongsTo(CashierSession, { foreignKey: 'cashierSessionId' });
 SalesReturn.belongsTo(User, { as: 'processor', foreignKey: 'processedBy' });
 
+// ── Purchasing (Supplier, POs, GRNs, returns, payments) ─────────
+Supplier.hasMany(PurchaseOrder, { foreignKey: 'supplierId' });
+PurchaseOrder.belongsTo(Supplier, { foreignKey: 'supplierId' });
+Location.hasMany(PurchaseOrder, { foreignKey: 'locationId' });
+PurchaseOrder.belongsTo(Location, { foreignKey: 'locationId' });
+PurchaseOrder.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+
+PurchaseOrder.hasMany(PurchaseReceipt, { foreignKey: 'purchaseOrderId' });
+PurchaseReceipt.belongsTo(PurchaseOrder, { foreignKey: 'purchaseOrderId' });
+Location.hasMany(PurchaseReceipt, { foreignKey: 'locationId' });
+PurchaseReceipt.belongsTo(Location, { foreignKey: 'locationId' });
+PurchaseReceipt.belongsTo(User, { as: 'receiver', foreignKey: 'receivedBy' });
+
+Supplier.hasMany(PurchaseReturn, { foreignKey: 'supplierId' });
+PurchaseReturn.belongsTo(Supplier, { foreignKey: 'supplierId' });
+PurchaseOrder.hasMany(PurchaseReturn, { foreignKey: 'purchaseOrderId' });
+PurchaseReturn.belongsTo(PurchaseOrder, { foreignKey: 'purchaseOrderId' });
+Location.hasMany(PurchaseReturn, { foreignKey: 'locationId' });
+PurchaseReturn.belongsTo(Location, { foreignKey: 'locationId' });
+PurchaseReturn.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+
+Supplier.hasMany(SupplierPayment, { foreignKey: 'supplierId' });
+SupplierPayment.belongsTo(Supplier, { foreignKey: 'supplierId' });
+PurchaseOrder.hasMany(SupplierPayment, { foreignKey: 'purchaseOrderId' });
+SupplierPayment.belongsTo(PurchaseOrder, { foreignKey: 'purchaseOrderId' });
+SupplierPayment.belongsTo(User, { as: 'payer', foreignKey: 'paidBy' });
+
 // ── Keep Product.stock in sync with SUM(ProductStock.quantity) ───
 // Called explicitly by routes after they mutate ProductStock (and after
 // any transaction has committed). An earlier version did this via
@@ -82,4 +114,5 @@ export {
   Pincode, AbandonedCart, PriceRequest,
   Location, ProductStock, StockTransfer, CashierSession,
   SalesReturn,
+  Supplier, PurchaseOrder, PurchaseReceipt, PurchaseReturn, SupplierPayment,
 };
