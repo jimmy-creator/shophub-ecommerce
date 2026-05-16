@@ -3061,7 +3061,7 @@ body:has(.admin-page) .s2-footer {
   .s2-glass,
   .s2-nav,
   .s2-bottom-nav.s2-bottom-nav-always {
-    background: #ffffff !important;
+    background: rgb(252, 237, 194) !important;
   }
   .s2-glass::before { display: none; }
 
@@ -3374,7 +3374,7 @@ body:has(.admin-page) .s2-footer {
   margin: 0;
   width: 100%;
   max-width: none;
-  background: #ffffff;
+  background: rgb(252, 237, 194);   /* matches the cream page bg */
   border: none;
   border-bottom: 1px solid rgba(23, 19, 17, 0.08);
   border-radius: 0;
