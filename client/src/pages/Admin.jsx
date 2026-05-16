@@ -949,6 +949,13 @@ export default function Admin() {
   const [cashiers, setCashiers] = useState([]);
   const [cashierForm, setCashierForm] = useState(null);      // { name, email, password, pin, homeLocationId, _editing }
   const [shifts, setShifts] = useState([]);
+  const [reportType, setReportType] = useState('cashier');   // 'cashier' | 'location'
+  const [reportFrom, setReportFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const [reportTo, setReportTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [reportFilterCashier, setReportFilterCashier] = useState('');
+  const [reportFilterLocation, setReportFilterLocation] = useState('');
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [showForm, setShowForm] = useState(false);
@@ -1021,6 +1028,9 @@ export default function Admin() {
         api.get('/staff').then((r) => setCashiers((r.data || []).filter((u) => u.role === 'cashier'))).catch(() => {});
       });
       api.get('/cashier/shifts?limit=50').then((res) => setShifts(res.data)).catch(() => {});
+    } else if (tab === 'pos-reports') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      api.get('/staff?role=cashier').then((res) => setCashiers(res.data)).catch(() => {});
     }
   }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter]);
 
@@ -1096,6 +1106,7 @@ export default function Admin() {
           {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button>}
           {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'transfers' ? 'active' : ''} onClick={() => setTab('transfers')}>Stock Transfers</button>}
           {MULTILOC_ENABLED && isAdmin && <button className={tab === 'cashiers' ? 'active' : ''} onClick={() => setTab('cashiers')}>Cashiers</button>}
+          {MULTILOC_ENABLED && hasAccess('analytics') && <button className={tab === 'pos-reports' ? 'active' : ''} onClick={() => setTab('pos-reports')}>POS Reports</button>}
           {hasAccess('settings') && <button className={tab === 'pincodes' ? 'active' : ''} onClick={() => setTab('pincodes')}>Pincodes</button>}
           {hasAccess('settings') && <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Theme</button>}
           {isAdmin && <button className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>Staff</button>}
@@ -2728,6 +2739,198 @@ export default function Admin() {
                   </div>
                 </form>
               </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'pos-reports' && (
+          <div className="admin-section">
+            <div className="admin-section-header">
+              <h2>POS Reports</h2>
+            </div>
+
+            <div className="report-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Group by</label>
+                <select value={reportType} onChange={(e) => { setReportType(e.target.value); setReportData(null); }}>
+                  <option value="cashier">Cashier</option>
+                  <option value="location">Location</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>From</label>
+                <input type="date" value={reportFrom} onChange={(e) => setReportFrom(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>To</label>
+                <input type="date" value={reportTo} onChange={(e) => setReportTo(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Quick range</label>
+                <select onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) return;
+                  const today = new Date();
+                  const iso = (d) => d.toISOString().slice(0, 10);
+                  setReportTo(iso(today));
+                  if (v === 'today') setReportFrom(iso(today));
+                  if (v === '7d') { const d = new Date(today); d.setDate(d.getDate() - 6); setReportFrom(iso(d)); }
+                  if (v === '30d') { const d = new Date(today); d.setDate(d.getDate() - 29); setReportFrom(iso(d)); }
+                  if (v === 'mtd') setReportFrom(iso(new Date(today.getFullYear(), today.getMonth(), 1)));
+                  e.target.value = '';
+                }}>
+                  <option value="">— Pick —</option>
+                  <option value="today">Today</option>
+                  <option value="7d">Last 7 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="mtd">Month to date</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Location</label>
+                <select value={reportFilterLocation} onChange={(e) => setReportFilterLocation(e.target.value)}>
+                  <option value="">All</option>
+                  {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              {reportType === 'cashier' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Cashier</label>
+                  <select value={reportFilterCashier} onChange={(e) => setReportFilterCashier(e.target.value)}>
+                    <option value="">All</option>
+                    {cashiers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              )}
+              <button
+                className="btn btn-primary"
+                disabled={reportLoading}
+                onClick={async () => {
+                  setReportLoading(true);
+                  try {
+                    const params = {
+                      from: new Date(reportFrom + 'T00:00:00').toISOString(),
+                      to: new Date(reportTo + 'T23:59:59.999').toISOString(),
+                    };
+                    if (reportFilterLocation) params.locationId = reportFilterLocation;
+                    if (reportType === 'cashier' && reportFilterCashier) params.cashierId = reportFilterCashier;
+                    const url = reportType === 'cashier' ? '/reports/cashier-sales' : '/reports/location-sales';
+                    const { data } = await api.get(url, { params });
+                    setReportData(data);
+                  } catch (err) {
+                    toast.error(err.response?.data?.message || 'Failed to load report');
+                  } finally {
+                    setReportLoading(false);
+                  }
+                }}>
+                {reportLoading ? 'Loading…' : 'Run report'}
+              </button>
+              {reportData && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    const rows = reportData.rows || [];
+                    const headers = reportType === 'cashier'
+                      ? ['Cashier', 'Orders', 'Cash sales', 'Card sales', 'Refunds', 'Net sales']
+                      : ['Location', 'Orders', 'Cash sales', 'Card sales', 'Refunds', 'Net sales'];
+                    const lines = [headers.join(',')];
+                    for (const r of rows) {
+                      const label = reportType === 'cashier' ? r.cashierName : r.locationName;
+                      const refunds = (r.cashRefunds + r.cardRefunds).toFixed(3);
+                      lines.push([`"${label}"`, r.orderCount, r.cashSales, r.cardSales, refunds, r.netSales].join(','));
+                    }
+                    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `${reportType}-sales-${reportFrom}-to-${reportTo}.csv`;
+                    a.click();
+                  }}>
+                  Export CSV
+                </button>
+              )}
+            </div>
+
+            {!reportData && !reportLoading && (
+              <p style={{ color: 'var(--text-light)' }}>Choose filters and click <strong>Run report</strong>.</p>
+            )}
+
+            {reportData && (
+              <>
+                <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                  <div className="dash-card">
+                    <div className="dash-card-label">Total orders</div>
+                    <div className="dash-card-value">{reportData.totals.orderCount}</div>
+                  </div>
+                  <div className="dash-card">
+                    <div className="dash-card-label">Cash sales</div>
+                    <div className="dash-card-value">{CURRENCY}{reportData.totals.cashSales.toFixed(3)}</div>
+                  </div>
+                  <div className="dash-card">
+                    <div className="dash-card-label">Card sales</div>
+                    <div className="dash-card-value">{CURRENCY}{reportData.totals.cardSales.toFixed(3)}</div>
+                  </div>
+                  <div className="dash-card">
+                    <div className="dash-card-label">Net sales</div>
+                    <div className="dash-card-value">{CURRENCY}{reportData.totals.netSales.toFixed(3)}</div>
+                  </div>
+                </div>
+
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>{reportType === 'cashier' ? 'Cashier' : 'Location'}</th>
+                        <th style={{ textAlign: 'right' }}>Orders</th>
+                        <th style={{ textAlign: 'right' }}>Cash</th>
+                        <th style={{ textAlign: 'right' }}>Card</th>
+                        <th style={{ textAlign: 'right' }}>Refunds</th>
+                        <th style={{ textAlign: 'right' }}>Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reportData.rows.length === 0 && (
+                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No sales in this range</td></tr>
+                      )}
+                      {reportData.rows.map((r, i) => (
+                        <tr key={i}>
+                          <td>{reportType === 'cashier' ? r.cashierName : r.locationName}</td>
+                          <td style={{ textAlign: 'right' }}>{r.orderCount}</td>
+                          <td style={{ textAlign: 'right' }}>{CURRENCY}{r.cashSales.toFixed(3)}</td>
+                          <td style={{ textAlign: 'right' }}>{CURRENCY}{r.cardSales.toFixed(3)}</td>
+                          <td style={{ textAlign: 'right' }}>{CURRENCY}{(r.cashRefunds + r.cardRefunds).toFixed(3)}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{CURRENCY}{r.netSales.toFixed(3)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {reportType === 'location' && reportData.topItems?.length > 0 && (
+                  <div style={{ marginTop: '1.5rem' }}>
+                    <h3 style={{ marginBottom: '0.75rem' }}>Top selling items</h3>
+                    <div className="admin-table-wrap">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>Item</th>
+                            <th style={{ textAlign: 'right' }}>Qty sold</th>
+                            <th style={{ textAlign: 'right' }}>Revenue</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportData.topItems.map((it, i) => (
+                            <tr key={i}>
+                              <td>{it.name}</td>
+                              <td style={{ textAlign: 'right' }}>{it.qty}</td>
+                              <td style={{ textAlign: 'right' }}>{CURRENCY}{it.revenue.toFixed(3)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

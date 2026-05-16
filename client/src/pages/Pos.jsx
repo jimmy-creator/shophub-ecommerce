@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
 import PosReceipt from '../components/PosReceipt';
+import PosReportReceipt from '../components/PosReportReceipt';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -37,6 +38,7 @@ export default function Pos() {
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [closeForm, setCloseForm] = useState(null);
+  const [report, setReport] = useState(null);   // X or Z report payload
 
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
@@ -51,14 +53,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm) return;
+    if (variantPicker || payOpen || receipt || closeForm || report) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm]);
+  }, [variantPicker, payOpen, receipt, closeForm, report]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -190,16 +192,42 @@ export default function Pos() {
     navigate('/pos/login');
   };
 
+  const openXReport = async () => {
+    try {
+      const { data } = await api.get('/reports/x');
+      setReport(data);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not load X-report');
+    }
+  };
+
+  // On close: fire the Z-report *before* the JWT cookie is wiped, then
+  // navigate to /pos/login when the report dialog is dismissed.
   const submitClose = async (e) => {
     e.preventDefault();
     try {
+      const sessionId = session.id;
+      // Fetch the Z-report data first (still has the cashier JWT)
+      const { data: zData } = await api.get(`/reports/z/${sessionId}`).catch(() => ({ data: null }));
       const { data } = await api.post('/cashier/shift/close', closeForm);
       const v = data.variance;
       toast.success(`Shift closed · variance ${v >= 0 ? '+' : ''}${v}`);
-      navigate('/pos/login');
+      setCloseForm(null);
+      if (zData) {
+        // Overlay merges the freshly closed counts.
+        setReport({ ...zData, closingCash: data.session.closingCash, variance: data.variance, type: 'Z' });
+      } else {
+        navigate('/pos/login');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed');
     }
+  };
+
+  const closeReport = () => {
+    const wasZ = report?.type === 'Z';
+    setReport(null);
+    if (wasZ) navigate('/pos/login');
   };
 
   const fmt = (n) => `${CURRENCY} ${(parseFloat(n) || 0).toFixed(3)}`;
@@ -215,6 +243,7 @@ export default function Pos() {
           <span style={{ color: '#94a3b8' }}>{user.name}</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={openXReport} className="topbar-btn">X-report</button>
           <button onClick={() => setCloseForm({ closingCash: '', notes: '' })} className="topbar-btn topbar-btn-warn">
             Close shift
           </button>
@@ -441,6 +470,13 @@ export default function Pos() {
       {receipt && (
         <div className="modal-backdrop">
           <PosReceipt payload={receipt} currency={CURRENCY} onClose={() => setReceipt(null)} />
+        </div>
+      )}
+
+      {/* ─── X/Z report overlay ───────────────── */}
+      {report && (
+        <div className="modal-backdrop">
+          <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} />
         </div>
       )}
 
