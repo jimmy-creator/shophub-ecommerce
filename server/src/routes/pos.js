@@ -174,12 +174,14 @@ router.post('/sale', protectCashier, async (req, res) => {
       stockDecrements.push({ stockRow: stock, qty });
 
       const unitPrice = parseFloat(variant?.price ?? product.price) || 0;
+      const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
       subTotal += unitPrice * qty;
       orderItems.push({
         productId,
         name: product.name + (variant ? ` (${Object.values(variant.options || {}).join('/')})` : ''),
         category: product.category,
         price: unitPrice,
+        costPrice: unitCost,                 // snapshot for COGS
         quantity: qty,
         image: product.images?.[0] || null,
         variant: variant ? { ...variant.options, sku: variant.sku } : null,

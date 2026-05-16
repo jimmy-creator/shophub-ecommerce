@@ -34,6 +34,13 @@ const Product = sequelize.define('Product', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
   },
+  // Cost price for COGS / margin reporting (Phase D). Snapshotted into
+  // Order.items at sale time so historical P&L is stable when cost
+  // changes later.
+  costPrice: {
+    type: DataTypes.DECIMAL(10, 3),
+    allowNull: true,
+  },
   category: {
     type: DataTypes.STRING,
     allowNull: false,

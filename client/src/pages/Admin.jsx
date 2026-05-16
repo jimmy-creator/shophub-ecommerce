@@ -13,7 +13,7 @@ import FinanceTabs from '../components/admin/FinanceTabs';
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 
 const emptyProduct = {
-  name: '', code: '', description: '', price: '', comparePrice: '',
+  name: '', code: '', description: '', price: '', comparePrice: '', costPrice: '',
   category: '', brand: '', stock: '', featured: false, images: [],
   variantOptions: null, variants: null,
 };
@@ -988,6 +988,20 @@ export default function Admin() {
   const [cashTransferForm, setCashTransferForm] = useState(null);
   const [dailyCash, setDailyCash] = useState(null);
   const [dailyCashFilter, setDailyCashFilter] = useState({ date: new Date().toISOString().slice(0, 10), locationId: '' });
+  // Phase D: Daybook / P&L / Stock Value
+  const [daybook, setDaybook] = useState(null);
+  const [daybookFilter, setDaybookFilter] = useState({ date: new Date().toISOString().slice(0, 10), accountId: '', source: '' });
+  const [pnl, setPnl] = useState(null);
+  const [pnlFilter, setPnlFilter] = useState(() => {
+    const now = new Date();
+    return {
+      from: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+      to: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10),
+      locationId: '',
+    };
+  });
+  const [stockValue, setStockValue] = useState(null);
+  const [stockValueFilter, setStockValueFilter] = useState({ locationId: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('admin_collapsed_sections') || '[]')); }
@@ -1116,6 +1130,25 @@ export default function Admin() {
       const params = { date: dailyCashFilter.date };
       if (dailyCashFilter.locationId) params.locationId = dailyCashFilter.locationId;
       api.get('/finance/daily-cash', { params }).then((res) => setDailyCash(res.data)).catch(() => {});
+    } else if (tab === 'daybook') {
+      api.get('/finance/cash-accounts?active=true').then((res) => setCashAccounts(res.data)).catch(() => {});
+      const params = { date: daybookFilter.date };
+      if (daybookFilter.accountId) params.accountId = daybookFilter.accountId;
+      if (daybookFilter.source) params.source = daybookFilter.source;
+      api.get('/finance/daybook', { params }).then((res) => setDaybook(res.data)).catch(() => {});
+    } else if (tab === 'pnl') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      const params = {
+        from: new Date(pnlFilter.from + 'T00:00:00').toISOString(),
+        to: new Date(pnlFilter.to + 'T23:59:59.999').toISOString(),
+      };
+      if (pnlFilter.locationId) params.locationId = pnlFilter.locationId;
+      api.get('/finance/pnl', { params }).then((res) => setPnl(res.data)).catch(() => {});
+    } else if (tab === 'stock-value') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      const params = {};
+      if (stockValueFilter.locationId) params.locationId = stockValueFilter.locationId;
+      api.get('/finance/stock-value', { params }).then((res) => setStockValue(res.data)).catch(() => {});
     } else if (tab === 'purchase-returns') {
       api.get('/suppliers?active=true').then((res) => setSuppliers(res.data)).catch(() => {});
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
@@ -1127,7 +1160,7 @@ export default function Admin() {
       if (prFilter.locationId) params.locationId = prFilter.locationId;
       api.get('/purchase-returns', { params }).then((res) => setPurchaseReturns(res.data)).catch(() => {});
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter, daybookFilter, pnlFilter, stockValueFilter]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -1155,6 +1188,9 @@ export default function Admin() {
         { tab: 'expenses',       label: 'Expenses',       show: MULTILOC_ENABLED && hasAccess('analytics') },
         { tab: 'cash-transfers', label: 'Cash Transfers', show: MULTILOC_ENABLED && hasAccess('analytics') },
         { tab: 'daily-cash',     label: 'Daily Cash',     show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'daybook',        label: 'Daybook',        show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'pnl',            label: 'Profit & Loss',  show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'stock-value',    label: 'Stock Value',    show: MULTILOC_ENABLED && hasAccess('analytics') },
     ]},
     { id: 'sales', label: 'Sales', items: [
         { tab: 'orders',      label: 'Orders',      show: hasAccess('orders') },
@@ -1565,6 +1601,10 @@ export default function Admin() {
                       <div className="form-group">
                         <label>Compare Price</label>
                         <input type="number" step="0.01" value={form.comparePrice} onChange={(e) => setForm({ ...form, comparePrice: e.target.value })} />
+                      </div>
+                      <div className="form-group">
+                        <label>Cost Price <span style={{ color: 'var(--text-light)', fontSize: '0.78rem' }}>(for COGS / margin)</span></label>
+                        <input type="number" step="0.001" value={form.costPrice || ''} onChange={(e) => setForm({ ...form, costPrice: e.target.value })} />
                       </div>
                       <div className="form-group">
                         <label>Stock</label>
@@ -3568,7 +3608,7 @@ export default function Admin() {
           </div>
         )}
 
-        {(tab === 'cash-accounts' || tab === 'expenses' || tab === 'cash-transfers' || tab === 'daily-cash') && (
+        {(['cash-accounts','expenses','cash-transfers','daily-cash','daybook','pnl','stock-value'].includes(tab)) && (
           <FinanceTabs
             tab={tab} currency={CURRENCY} isAdmin={isAdmin} locations={locations}
             cashAccounts={cashAccounts} setCashAccounts={setCashAccounts}
@@ -3582,6 +3622,9 @@ export default function Admin() {
             cashTransferForm={cashTransferForm} setCashTransferForm={setCashTransferForm}
             dailyCash={dailyCash} setDailyCash={setDailyCash}
             dailyCashFilter={dailyCashFilter} setDailyCashFilter={setDailyCashFilter}
+            daybook={daybook} daybookFilter={daybookFilter} setDaybookFilter={setDaybookFilter}
+            pnl={pnl} pnlFilter={pnlFilter} setPnlFilter={setPnlFilter}
+            stockValue={stockValue} stockValueFilter={stockValueFilter} setStockValueFilter={setStockValueFilter}
           />
         )}
 

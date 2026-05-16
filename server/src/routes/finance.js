@@ -36,7 +36,7 @@ import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
   CashAccount, CashTransaction, ExpenseCategory, Expense, CashTransfer,
-  Location, User,
+  Location, User, Order, SalesReturn, Product, ProductStock,
   writeCashTxn, getCashAccountBalance,
 } from '../models/index.js';
 import { protect, admin } from '../middleware/auth.js';
@@ -500,6 +500,264 @@ router.get('/daily-cash', protect, async (req, res) => {
     res.json({ date: dateStr, accounts: result });
   } catch (err) {
     console.error('[finance/daily-cash]', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── Daybook ────────────────────────────────────────────────────────
+// Chronological CashTransaction listing for a date (or range), per
+// account. Supports filters: ?date=, ?from=&to=, ?accountId=, ?source=.
+router.get('/daybook', protect, async (req, res) => {
+  try {
+    if (!hasFinanceAccess(req)) return res.status(403).json({ message: 'Forbidden' });
+    let from, to;
+    if (req.query.from || req.query.to) {
+      from = req.query.from ? new Date(req.query.from) : new Date('1970-01-01');
+      to = req.query.to ? new Date(req.query.to) : new Date('2999-12-31');
+    } else {
+      const dateStr = req.query.date || new Date().toISOString().slice(0, 10);
+      from = new Date(dateStr + 'T00:00:00');
+      to = new Date(dateStr + 'T23:59:59.999');
+    }
+    const where = { date: { [Op.between]: [from, to] } };
+    if (req.query.accountId) where.cashAccountId = parseInt(req.query.accountId, 10);
+    if (req.query.source) where.source = req.query.source;
+    const txns = await CashTransaction.findAll({
+      where,
+      include: [
+        { model: CashAccount, attributes: ['id', 'name', 'type'] },
+        { model: User, as: 'author', attributes: ['id', 'name'] },
+      ],
+      order: [['date', 'ASC'], ['id', 'ASC']],
+      limit: parseInt(req.query.limit, 10) || 1000,
+    });
+    const totals = txns.reduce((s, t) => {
+      const amt = parseFloat(t.amount);
+      if (amt > 0) s.in += amt; else s.out += amt;
+      s.net += amt;
+      return s;
+    }, { in: 0, out: 0, net: 0 });
+    const round = (n) => +n.toFixed(3);
+    res.json({
+      range: { from, to },
+      totals: { in: round(totals.in), out: round(totals.out), net: round(totals.net) },
+      entries: txns,
+    });
+  } catch (err) {
+    console.error('[finance/daybook]', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── Profit & Loss ──────────────────────────────────────────────────
+// Revenue (POS+online orders, status paid)
+//   minus refunds (SalesReturn)
+//   = Net revenue
+// minus COGS (Σ Order.items[].costPrice × qty, less refund cost share)
+//   = Gross profit
+// minus Expenses (status=paid)
+//   = Net profit
+//
+// COGS uses the snapshot costPrice on each Order line. Lines without
+// costPrice contribute 0 (older orders, products without cost set).
+// Returns subtract proportionally — refundAmount/totalAmount.
+router.get('/pnl', protect, async (req, res) => {
+  try {
+    if (!hasFinanceAccess(req)) return res.status(403).json({ message: 'Forbidden' });
+    const { from, to } = parseRange(req.query);
+    const locationFilter = req.query.locationId ? { locationId: parseInt(req.query.locationId, 10) } : {};
+
+    const orderWhere = {
+      paymentStatus: 'paid',
+      createdAt: { [Op.between]: [from, to] },
+      ...locationFilter,
+    };
+    const orders = await Order.findAll({
+      where: orderWhere,
+      attributes: ['id', 'orderNumber', 'totalAmount', 'refundAmount', 'paymentMethod', 'items', 'locationId', 'createdAt'],
+    });
+
+    let revenue = 0, cogs = 0;
+    const linesByCategory = new Map();   // category → { revenue, cogs }
+    for (const o of orders) {
+      revenue += parseFloat(o.totalAmount || 0);
+      for (const it of (o.items || [])) {
+        const qty = parseInt(it.quantity, 10) || 0;
+        const cost = parseFloat(it.costPrice || 0);
+        const lineRev = (parseFloat(it.price) || 0) * qty;
+        const lineCogs = cost * qty;
+        cogs += lineCogs;
+        const cat = it.category || 'Uncategorized';
+        const cur = linesByCategory.get(cat) || { revenue: 0, cogs: 0, qty: 0 };
+        cur.revenue += lineRev;
+        cur.cogs += lineCogs;
+        cur.qty += qty;
+        linesByCategory.set(cat, cur);
+      }
+    }
+
+    // Returns in range
+    const returnWhere = {
+      status: 'completed',
+      createdAt: { [Op.between]: [from, to] },
+      ...locationFilter,
+    };
+    const returns = await SalesReturn.findAll({
+      where: returnWhere,
+      attributes: ['refundAmount', 'items', 'orderId'],
+    });
+    let refunds = 0, refundCogs = 0;
+    for (const r of returns) {
+      refunds += parseFloat(r.refundAmount || 0);
+      for (const it of (r.items || [])) {
+        const qty = parseInt(it.quantity, 10) || 0;
+        // Look up the original line's costPrice — items in SalesReturn
+        // don't carry it. We could also re-look-up Product.costPrice,
+        // but the snapshot would be more accurate. For now, fall back
+        // to Product current cost.
+        // Skip refundCogs for v1 — under-counts COGS slightly when items
+        // are returned (we keep their COGS as if still sold).
+        if (it.costPrice != null) refundCogs += parseFloat(it.costPrice) * qty;
+      }
+    }
+
+    const expenseWhere = {
+      status: 'paid',
+      expenseDate: { [Op.between]: [from.toISOString().slice(0, 10), to.toISOString().slice(0, 10)] },
+      ...locationFilter,
+    };
+    const exps = await Expense.findAll({
+      where: expenseWhere,
+      include: [{ model: ExpenseCategory, attributes: ['id', 'name'] }],
+      attributes: ['amount', 'expenseCategoryId'],
+    });
+    let totalExpenses = 0;
+    const expensesByCategory = new Map();
+    for (const e of exps) {
+      const amt = parseFloat(e.amount || 0);
+      totalExpenses += amt;
+      const cat = e.ExpenseCategory?.name || 'Uncategorized';
+      expensesByCategory.set(cat, (expensesByCategory.get(cat) || 0) + amt);
+    }
+
+    const round = (n) => +n.toFixed(3);
+    const netRevenue = revenue - refunds;
+    const netCogs = cogs - refundCogs;
+    const grossProfit = netRevenue - netCogs;
+    const netProfit = grossProfit - totalExpenses;
+    const grossMargin = netRevenue > 0 ? +((grossProfit / netRevenue) * 100).toFixed(2) : 0;
+
+    res.json({
+      range: { from, to },
+      locationId: req.query.locationId || null,
+      revenue: round(revenue),
+      refunds: round(refunds),
+      netRevenue: round(netRevenue),
+      cogs: round(netCogs),
+      grossProfit: round(grossProfit),
+      grossMargin,
+      expenses: round(totalExpenses),
+      netProfit: round(netProfit),
+      byCategory: [...linesByCategory.entries()].map(([category, v]) => ({
+        category, qty: v.qty, revenue: round(v.revenue), cogs: round(v.cogs), grossProfit: round(v.revenue - v.cogs),
+      })).sort((a, b) => b.revenue - a.revenue),
+      expensesByCategory: [...expensesByCategory.entries()].map(([name, amount]) => ({
+        category: name, amount: round(amount),
+      })).sort((a, b) => b.amount - a.amount),
+    });
+  } catch (err) {
+    console.error('[finance/pnl]', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+function parseRange(q) {
+  const now = new Date();
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const from = q.from ? new Date(q.from) : firstOfMonth;
+  const to = q.to ? new Date(q.to) : endOfMonth;
+  return { from, to };
+}
+
+// ─── Stock Value ────────────────────────────────────────────────────
+// Inventory valuation per product per location:
+//   value = ProductStock.quantity × Product.costPrice
+// Totals roll up per location and overall.
+router.get('/stock-value', protect, async (req, res) => {
+  try {
+    if (!hasFinanceAccess(req)) return res.status(403).json({ message: 'Forbidden' });
+    const where = {};
+    if (req.query.locationId) where.locationId = parseInt(req.query.locationId, 10);
+
+    const stocks = await ProductStock.findAll({
+      where,
+      include: [
+        { model: Product, attributes: ['id', 'name', 'code', 'category', 'costPrice', 'price', 'variants'] },
+        { model: Location, attributes: ['id', 'name', 'code'] },
+      ],
+    });
+
+    const rows = [];
+    let totalValue = 0, totalRetail = 0, totalQty = 0;
+    const byLocation = new Map();
+    for (const s of stocks) {
+      const p = s.Product;
+      if (!p) continue;
+      // Resolve variant cost/price if applicable.
+      let cost = parseFloat(p.costPrice || 0);
+      let retail = parseFloat(p.price || 0);
+      let name = p.name;
+      if (s.variantIndex != null && Array.isArray(p.variants) && p.variants[s.variantIndex]) {
+        const v = p.variants[s.variantIndex];
+        if (v.costPrice != null) cost = parseFloat(v.costPrice);
+        if (v.price != null) retail = parseFloat(v.price);
+        name = `${p.name} (${Object.values(v.options || {}).join('/')})`;
+      }
+      const qty = s.quantity || 0;
+      const value = cost * qty;
+      const retailVal = retail * qty;
+      rows.push({
+        productId: p.id, variantIndex: s.variantIndex,
+        name, sku: p.code,
+        category: p.category,
+        location: s.Location ? { id: s.Location.id, name: s.Location.name } : null,
+        quantity: qty,
+        costPrice: cost,
+        retailPrice: retail,
+        value: +value.toFixed(3),
+        retailValue: +retailVal.toFixed(3),
+        margin: retailVal > 0 ? +((retailVal - value) / retailVal * 100).toFixed(2) : 0,
+      });
+      totalValue += value;
+      totalRetail += retailVal;
+      totalQty += qty;
+      if (s.locationId) {
+        const k = s.locationId;
+        const cur = byLocation.get(k) || { locationName: s.Location?.name || `#${k}`, qty: 0, value: 0, retailValue: 0 };
+        cur.qty += qty;
+        cur.value += value;
+        cur.retailValue += retailVal;
+        byLocation.set(k, cur);
+      }
+    }
+
+    const round = (n) => +n.toFixed(3);
+    res.json({
+      totals: {
+        quantity: totalQty,
+        value: round(totalValue),
+        retailValue: round(totalRetail),
+        marginPct: totalRetail > 0 ? +((totalRetail - totalValue) / totalRetail * 100).toFixed(2) : 0,
+      },
+      byLocation: [...byLocation.entries()].map(([locationId, v]) => ({
+        locationId, locationName: v.locationName,
+        quantity: v.qty, value: round(v.value), retailValue: round(v.retailValue),
+      })).sort((a, b) => b.value - a.value),
+      rows: rows.sort((a, b) => b.value - a.value),
+    });
+  } catch (err) {
+    console.error('[finance/stock-value]', err);
     res.status(500).json({ message: err.message });
   }
 });

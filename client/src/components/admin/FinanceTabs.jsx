@@ -18,6 +18,9 @@ export default function FinanceTabs(props) {
   if (tab === 'expenses') return <ExpensesTab {...props} />;
   if (tab === 'cash-transfers') return <CashTransfersTab {...props} />;
   if (tab === 'daily-cash') return <DailyCashTab {...props} />;
+  if (tab === 'daybook') return <DaybookTab {...props} />;
+  if (tab === 'pnl') return <PnlTab {...props} />;
+  if (tab === 'stock-value') return <StockValueTab {...props} />;
   return null;
 }
 
@@ -505,6 +508,244 @@ function DailyCashTab({ currency, locations, dailyCash, dailyCashFilter, setDail
             </tbody>
           </table>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Daybook ───────────────────────────────────────────────────────
+function DaybookTab({ currency, cashAccounts, daybook, daybookFilter, setDaybookFilter }) {
+  const SOURCE_LABEL = {
+    sale: 'Sale', return: 'Refund', expense: 'Expense',
+    supplier_payment: 'Supplier payment', transfer: 'Transfer',
+    opening: 'Opening', adjust: 'Adjustment', other: 'Other',
+  };
+  return (
+    <div className="admin-section">
+      <div className="admin-section-header">
+        <h2>Daybook</h2>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.25rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+        <div><label style={dlbl}>Date</label><input type="date" value={daybookFilter.date} onChange={(e) => setDaybookFilter({ ...daybookFilter, date: e.target.value })} /></div>
+        <div><label style={dlbl}>Account</label>
+          <select value={daybookFilter.accountId} onChange={(e) => setDaybookFilter({ ...daybookFilter, accountId: e.target.value })}>
+            <option value="">All</option>
+            {cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+        <div><label style={dlbl}>Source</label>
+          <select value={daybookFilter.source} onChange={(e) => setDaybookFilter({ ...daybookFilter, source: e.target.value })}>
+            <option value="">All</option>
+            {Object.entries(SOURCE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {daybook && (
+        <>
+          <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <div className="dash-card"><div className="dash-card-label">Money in</div><div className="dash-card-value" style={{ color: 'var(--success)' }}>{currency}{daybook.totals.in.toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Money out</div><div className="dash-card-value" style={{ color: 'var(--danger)' }}>{currency}{Math.abs(daybook.totals.out).toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Net</div><div className="dash-card-value" style={{ color: daybook.totals.net >= 0 ? 'var(--success)' : 'var(--danger)' }}>{currency}{daybook.totals.net.toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Entries</div><div className="dash-card-value">{daybook.entries.length}</div></div>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Time</th><th>Account</th><th>Source</th><th>Reference</th><th>Description</th><th style={{ textAlign: 'right' }}>In</th><th style={{ textAlign: 'right' }}>Out</th><th>By</th></tr></thead>
+              <tbody>
+                {daybook.entries.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No entries</td></tr>}
+                {daybook.entries.map((e) => {
+                  const amt = parseFloat(e.amount);
+                  return (
+                    <tr key={e.id}>
+                      <td style={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}>{new Date(e.date).toLocaleTimeString()}</td>
+                      <td>{e.CashAccount?.name || '—'}</td>
+                      <td>{SOURCE_LABEL[e.source] || e.source}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{e.reference || '—'}</td>
+                      <td style={{ fontSize: '0.85rem' }}>{e.description || '—'}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 600 }}>{amt > 0 ? `${currency}${amt.toFixed(3)}` : ''}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--danger)', fontWeight: 600 }}>{amt < 0 ? `${currency}${Math.abs(amt).toFixed(3)}` : ''}</td>
+                      <td style={{ fontSize: '0.82rem', color: 'var(--text-light)' }}>{e.author?.name || '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── P&L ───────────────────────────────────────────────────────────
+function PnlTab({ currency, locations, pnl, pnlFilter, setPnlFilter }) {
+  const setRange = (kind) => {
+    const today = new Date();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    if (kind === 'today') setPnlFilter({ ...pnlFilter, from: iso(today), to: iso(today) });
+    if (kind === '7d') { const d = new Date(today); d.setDate(d.getDate() - 6); setPnlFilter({ ...pnlFilter, from: iso(d), to: iso(today) }); }
+    if (kind === '30d') { const d = new Date(today); d.setDate(d.getDate() - 29); setPnlFilter({ ...pnlFilter, from: iso(d), to: iso(today) }); }
+    if (kind === 'mtd') setPnlFilter({ ...pnlFilter, from: iso(new Date(today.getFullYear(), today.getMonth(), 1)), to: iso(today) });
+    if (kind === 'ytd') setPnlFilter({ ...pnlFilter, from: iso(new Date(today.getFullYear(), 0, 1)), to: iso(today) });
+  };
+
+  return (
+    <div className="admin-section">
+      <div className="admin-section-header">
+        <h2>Profit &amp; Loss</h2>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.25rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+        <div><label style={dlbl}>From</label><input type="date" value={pnlFilter.from} onChange={(e) => setPnlFilter({ ...pnlFilter, from: e.target.value })} /></div>
+        <div><label style={dlbl}>To</label><input type="date" value={pnlFilter.to} onChange={(e) => setPnlFilter({ ...pnlFilter, to: e.target.value })} /></div>
+        <div><label style={dlbl}>Location</label>
+          <select value={pnlFilter.locationId} onChange={(e) => setPnlFilter({ ...pnlFilter, locationId: e.target.value })}>
+            <option value="">All</option>
+            {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {['today', '7d', '30d', 'mtd', 'ytd'].map((k) => (
+            <button key={k} className="btn btn-secondary" style={{ padding: '0.4rem 0.7rem', fontSize: '0.78rem' }} onClick={() => setRange(k)}>{k.toUpperCase()}</button>
+          ))}
+        </div>
+      </div>
+
+      {pnl && (
+        <>
+          <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <div className="dash-card"><div className="dash-card-label">Revenue</div><div className="dash-card-value">{currency}{pnl.netRevenue.toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">COGS</div><div className="dash-card-value">{currency}{pnl.cogs.toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Gross profit</div><div className="dash-card-value" style={{ color: pnl.grossProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>{currency}{pnl.grossProfit.toFixed(3)}</div><div className="dash-card-change" style={{ color: 'var(--text-light)' }}>{pnl.grossMargin}% margin</div></div>
+            <div className="dash-card"><div className="dash-card-label">Expenses</div><div className="dash-card-value">{currency}{pnl.expenses.toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Net profit</div><div className="dash-card-value" style={{ color: pnl.netProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>{currency}{pnl.netProfit.toFixed(3)}</div></div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1rem' }}>
+            <div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Revenue by category</h3>
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead><tr><th>Category</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Revenue</th><th style={{ textAlign: 'right' }}>COGS</th><th style={{ textAlign: 'right' }}>Gross</th></tr></thead>
+                  <tbody>
+                    {pnl.byCategory.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-light)' }}>No sales</td></tr>}
+                    {pnl.byCategory.map((r, i) => (
+                      <tr key={i}>
+                        <td>{r.category}</td>
+                        <td style={{ textAlign: 'right' }}>{r.qty}</td>
+                        <td style={{ textAlign: 'right' }}>{currency}{r.revenue.toFixed(3)}</td>
+                        <td style={{ textAlign: 'right' }}>{currency}{r.cogs.toFixed(3)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{currency}{r.grossProfit.toFixed(3)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h3 style={{ marginBottom: '0.5rem' }}>Expenses by category</h3>
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead><tr><th>Category</th><th style={{ textAlign: 'right' }}>Amount</th></tr></thead>
+                  <tbody>
+                    {pnl.expensesByCategory.length === 0 && <tr><td colSpan={2} style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-light)' }}>No expenses</td></tr>}
+                    {pnl.expensesByCategory.map((r, i) => (
+                      <tr key={i}>
+                        <td>{r.category}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{currency}{r.amount.toFixed(3)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {pnl.cogs === 0 && pnl.revenue > 0 && (
+            <div style={{ padding: '0.75rem 1rem', background: 'rgba(196,120,74,0.1)', borderRadius: 8, marginTop: '1rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              <strong>Heads up:</strong> COGS is 0. Set <em>Cost Price</em> on your products (or receive a PO with unit costs) so margin can be calculated.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Stock Value ───────────────────────────────────────────────────
+function StockValueTab({ currency, locations, stockValue, stockValueFilter, setStockValueFilter }) {
+  return (
+    <div className="admin-section">
+      <div className="admin-section-header">
+        <h2>Stock Value</h2>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.25rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+        <div><label style={dlbl}>Location</label>
+          <select value={stockValueFilter.locationId} onChange={(e) => setStockValueFilter({ ...stockValueFilter, locationId: e.target.value })}>
+            <option value="">All</option>
+            {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {stockValue && (
+        <>
+          <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <div className="dash-card"><div className="dash-card-label">Total units</div><div className="dash-card-value">{stockValue.totals.quantity.toLocaleString()}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Stock value (cost)</div><div className="dash-card-value">{currency}{stockValue.totals.value.toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Retail value</div><div className="dash-card-value">{currency}{stockValue.totals.retailValue.toFixed(3)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Potential margin</div><div className="dash-card-value">{stockValue.totals.marginPct}%</div></div>
+          </div>
+
+          {!stockValueFilter.locationId && stockValue.byLocation.length > 1 && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <h3 style={{ marginBottom: '0.5rem' }}>By location</h3>
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead><tr><th>Location</th><th style={{ textAlign: 'right' }}>Units</th><th style={{ textAlign: 'right' }}>Cost value</th><th style={{ textAlign: 'right' }}>Retail value</th></tr></thead>
+                  <tbody>
+                    {stockValue.byLocation.map((r) => (
+                      <tr key={r.locationId}>
+                        <td>{r.locationName}</td>
+                        <td style={{ textAlign: 'right' }}>{r.quantity.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600 }}>{currency}{r.value.toFixed(3)}</td>
+                        <td style={{ textAlign: 'right' }}>{currency}{r.retailValue.toFixed(3)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <h3 style={{ marginBottom: '0.5rem' }}>By product</h3>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Item</th><th>Location</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Cost</th><th style={{ textAlign: 'right' }}>Value</th><th style={{ textAlign: 'right' }}>Retail</th><th style={{ textAlign: 'right' }}>Margin</th></tr></thead>
+              <tbody>
+                {stockValue.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No stock</td></tr>}
+                {stockValue.rows.map((r, i) => (
+                  <tr key={i} style={{ opacity: r.quantity === 0 ? 0.4 : 1 }}>
+                    <td>
+                      <div>{r.name}</div>
+                      {r.sku && <div style={{ fontSize: '0.72rem', color: 'var(--text-light)', fontFamily: 'monospace' }}>{r.sku}</div>}
+                    </td>
+                    <td>{r.location?.name || '—'}</td>
+                    <td style={{ textAlign: 'right' }}>{r.quantity}</td>
+                    <td style={{ textAlign: 'right' }}>{r.costPrice ? `${currency}${r.costPrice.toFixed(3)}` : <span style={{ color: 'var(--text-light)' }}>no cost</span>}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{currency}{r.value.toFixed(3)}</td>
+                    <td style={{ textAlign: 'right' }}>{currency}{r.retailValue.toFixed(3)}</td>
+                    <td style={{ textAlign: 'right', color: r.margin > 0 ? 'var(--success)' : 'var(--text-light)' }}>{r.costPrice ? `${r.margin}%` : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

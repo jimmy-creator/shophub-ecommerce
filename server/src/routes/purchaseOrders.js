@@ -280,7 +280,9 @@ router.post('/:id/receive', protect, async (req, res) => {
       return res.status(400).json({ message: 'No quantities specified' });
     }
 
-    // Increment ProductStock at the PO's location.
+    // Increment ProductStock at the PO's location AND update each
+    // product's costPrice to the latest received cost (simple last-in
+    // pricing — admin can override manually on the product page).
     for (const g of grnItems) {
       const existing = await ProductStock.findOne({
         where: { productId: g.productId, variantIndex: g.variantIndex, locationId: po.locationId },
@@ -295,6 +297,9 @@ router.post('/:id/receive', protect, async (req, res) => {
           locationId: po.locationId,
           quantity: g.quantity,
         }, { transaction: t });
+      }
+      if (g.unitCost && g.unitCost > 0) {
+        await Product.update({ costPrice: g.unitCost }, { where: { id: g.productId }, transaction: t });
       }
     }
 
