@@ -52,22 +52,20 @@ Order.belongsTo(CashierSession, { foreignKey: 'cashierSessionId' });
 CashierSession.hasMany(Order, { foreignKey: 'cashierSessionId' });
 
 // ── Keep Product.stock in sync with SUM(ProductStock.quantity) ───
-// Legacy code reads Product.stock; with this hook, multi-location stores
-// can populate ProductStock and the existing readers stay correct.
-// Skipped silently if the product no longer exists (e.g. cascading deletes).
-async function syncProductStock(stockRow) {
+// Called explicitly by routes after they mutate ProductStock (and after
+// any transaction has committed). An earlier version did this via
+// afterCreate/afterUpdate/afterDestroy hooks, but the hook ran inside
+// the active transaction context and produced TransactionFinishedError
+// cascades — explicit recompute is more predictable.
+export async function recomputeProductStock(productId) {
+  if (!productId) return;
   try {
-    const productId = stockRow.productId;
-    if (!productId) return;
     const total = await ProductStock.sum('quantity', { where: { productId } });
     await Product.update({ stock: total || 0 }, { where: { id: productId } });
   } catch (err) {
-    console.error('[ProductStock sync] failed:', err.message);
+    console.error('[recomputeProductStock]', productId, err.message);
   }
 }
-ProductStock.afterCreate(syncProductStock);
-ProductStock.afterUpdate(syncProductStock);
-ProductStock.afterDestroy(syncProductStock);
 
 export {
   User, Product, Order, Coupon, Review, Setting, Category,

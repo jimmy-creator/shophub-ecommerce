@@ -31,6 +31,9 @@ import contactRoutes from './routes/contact.js';
 import b2bRoutes from './routes/b2b.js';
 import shiprocketRoutes from './routes/shiprocket.js';
 import shippingRoutes from './routes/shipping.js';
+import locationRoutes from './routes/locations.js';
+import inventoryRoutes from './routes/inventory.js';
+import stockTransferRoutes from './routes/stockTransfers.js';
 import { registerShiprocketHooks } from './services/shiprocketSync.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
@@ -112,6 +115,9 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/b2b', b2bRoutes);
 app.use('/api/shiprocket', shiprocketRoutes);
 app.use('/api/shipping', shippingRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/stock-transfers', stockTransferRoutes);
 app.use('/', sitemapRoutes);
 
 // Per-URL HTML meta injection — replaces nginx's static index.html serve.
