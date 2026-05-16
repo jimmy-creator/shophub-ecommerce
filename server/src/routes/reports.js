@@ -11,7 +11,7 @@
  */
 import { Router } from 'express';
 import { Op } from 'sequelize';
-import { Order, User, CashierSession, Location } from '../models/index.js';
+import { Order, User, CashierSession, Location, SalesReturn } from '../models/index.js';
 import { protect, admin, protectCashier } from '../middleware/auth.js';
 
 const router = Router();
@@ -30,15 +30,25 @@ function parseRange(q) {
 const isCash = (pm) => pm === 'pos_cash' || pm === 'cash';
 const isCard = (pm) => pm === 'pos_card' || pm === 'card';
 
-function rollup(orders) {
+// Refunds are attributed to the refundMethod (= the actual money-out path
+// from today's drawer), NOT to the original order's paymentMethod, since a
+// customer can pay cash today and refund onto a card tomorrow.
+function rollup(orders, returns = []) {
   let totalSales = 0, cashSales = 0, cardSales = 0;
-  let cashRefunds = 0, cardRefunds = 0;
   for (const o of orders) {
     const amt = parseFloat(o.totalAmount || 0);
-    const refund = parseFloat(o.refundAmount || 0);
     totalSales += amt;
-    if (isCash(o.paymentMethod)) { cashSales += amt; cashRefunds += refund; }
-    else if (isCard(o.paymentMethod)) { cardSales += amt; cardRefunds += refund; }
+    if (isCash(o.paymentMethod)) cashSales += amt;
+    else if (isCard(o.paymentMethod)) cardSales += amt;
+  }
+  let cashRefunds = 0, cardRefunds = 0, creditRefunds = 0, returnCount = 0;
+  for (const r of returns) {
+    if (r.status === 'cancelled') continue;
+    const amt = parseFloat(r.refundAmount || 0);
+    returnCount += 1;
+    if (r.refundMethod === 'cash') cashRefunds += amt;
+    else if (r.refundMethod === 'card') cardRefunds += amt;
+    else if (r.refundMethod === 'store_credit') creditRefunds += amt;
   }
   const round = (n) => +n.toFixed(3);
   return {
@@ -46,9 +56,11 @@ function rollup(orders) {
     totalSales: round(totalSales),
     cashSales: round(cashSales),
     cardSales: round(cardSales),
+    returnCount,
     cashRefunds: round(cashRefunds),
     cardRefunds: round(cardRefunds),
-    netSales: round(totalSales - cashRefunds - cardRefunds),
+    creditRefunds: round(creditRefunds),
+    netSales: round(totalSales - cashRefunds - cardRefunds - creditRefunds),
   };
 }
 
@@ -98,7 +110,31 @@ router.get('/cashier-sales', protect, admin, async (req, res) => {
       filtered = orders.filter((o) => o.CashierSession?.userId === cId);
     }
 
-    // Group by cashier id
+    // Returns attributed per cashier — fetch returns in the same range
+    // tied to a shift, then group by the shift's cashier.
+    const returnWhere = {
+      cashierSessionId: { [Op.ne]: null },
+      createdAt: { [Op.between]: [from, to] },
+    };
+    if (req.query.locationId) returnWhere.locationId = parseInt(req.query.locationId, 10);
+    const returns = await SalesReturn.findAll({
+      where: returnWhere,
+      include: [{
+        model: CashierSession,
+        attributes: ['id', 'userId'],
+        required: true,
+      }],
+    });
+    const returnsByCashier = new Map();
+    for (const r of returns) {
+      const uid = r.CashierSession?.userId;
+      if (!uid) continue;
+      if (req.query.cashierId && uid !== parseInt(req.query.cashierId, 10)) continue;
+      if (!returnsByCashier.has(uid)) returnsByCashier.set(uid, []);
+      returnsByCashier.get(uid).push(r);
+    }
+
+    // Group orders by cashier id
     const groups = new Map();
     for (const o of filtered) {
       const uid = o.CashierSession?.userId;
@@ -107,17 +143,25 @@ router.get('/cashier-sales', protect, admin, async (req, res) => {
       if (!groups.has(uid)) groups.set(uid, { cashierId: uid, cashierName, orders: [] });
       groups.get(uid).orders.push(o);
     }
+    // Make sure cashiers with only returns also show up.
+    for (const uid of returnsByCashier.keys()) {
+      if (!groups.has(uid)) groups.set(uid, { cashierId: uid, cashierName: 'Cashier', orders: [] });
+    }
 
     const rows = [...groups.values()].map((g) => ({
       cashierId: g.cashierId,
       cashierName: g.cashierName,
-      ...rollup(g.orders),
+      ...rollup(g.orders, returnsByCashier.get(g.cashierId) || []),
     })).sort((a, b) => b.totalSales - a.totalSales);
+
+    const allReturnsForTotal = req.query.cashierId
+      ? returns.filter((r) => r.CashierSession?.userId === parseInt(req.query.cashierId, 10))
+      : returns;
 
     res.json({
       range: { from, to },
       filters: { cashierId: req.query.cashierId || null, locationId: req.query.locationId || null },
-      totals: rollup(filtered),
+      totals: rollup(filtered, allReturnsForTotal),
       rows,
     });
   } catch (err) {
@@ -141,6 +185,14 @@ router.get('/location-sales', protect, admin, async (req, res) => {
       attributes: ['id', 'totalAmount', 'refundAmount', 'paymentMethod', 'items', 'locationId', 'createdAt'],
     });
 
+    const returns = await SalesReturn.findAll({ where });
+    const returnsByLoc = new Map();
+    for (const r of returns) {
+      const lid = r.locationId;
+      if (!returnsByLoc.has(lid)) returnsByLoc.set(lid, []);
+      returnsByLoc.get(lid).push(r);
+    }
+
     const locations = await Location.findAll({ attributes: ['id', 'name', 'code'] });
     const locMap = new Map(locations.map((l) => [l.id, l]));
 
@@ -150,18 +202,21 @@ router.get('/location-sales', protect, admin, async (req, res) => {
       if (!groups.has(lid)) groups.set(lid, { locationId: lid, locationName: locMap.get(lid)?.name || `#${lid}`, orders: [] });
       groups.get(lid).orders.push(o);
     }
+    for (const lid of returnsByLoc.keys()) {
+      if (!groups.has(lid)) groups.set(lid, { locationId: lid, locationName: locMap.get(lid)?.name || `#${lid}`, orders: [] });
+    }
 
     const rows = [...groups.values()].map((g) => ({
       locationId: g.locationId,
       locationName: g.locationName,
-      ...rollup(g.orders),
+      ...rollup(g.orders, returnsByLoc.get(g.locationId) || []),
       topItems: topItems(g.orders, 5),
     })).sort((a, b) => b.totalSales - a.totalSales);
 
     res.json({
       range: { from, to },
       filters: { locationId: req.query.locationId || null },
-      totals: rollup(orders),
+      totals: rollup(orders, returns),
       topItems: topItems(orders, 10),
       rows,
     });
@@ -187,8 +242,12 @@ router.get('/x', protectCashier, async (req, res) => {
       attributes: ['id', 'orderNumber', 'totalAmount', 'refundAmount', 'paymentMethod', 'items', 'createdAt'],
       order: [['createdAt', 'DESC']],
     });
+    const returns = await SalesReturn.findAll({
+      where: { cashierSessionId: session.id },
+      order: [['createdAt', 'DESC']],
+    });
 
-    const totals = rollup(orders);
+    const totals = rollup(orders, returns);
     const openingCash = parseFloat(session.openingCash) || 0;
     const expectedCash = +(openingCash + totals.cashSales - totals.cashRefunds).toFixed(3);
 
@@ -203,6 +262,7 @@ router.get('/x', protectCashier, async (req, res) => {
       ...totals,
       topItems: topItems(orders, 5),
       recentOrders: orders.slice(0, 10),
+      recentReturns: returns.slice(0, 10),
     });
   } catch (err) {
     console.error('[reports/x]', err);
@@ -229,8 +289,12 @@ router.get('/z/:sessionId', protect, async (req, res) => {
       attributes: ['id', 'orderNumber', 'totalAmount', 'refundAmount', 'paymentMethod', 'items', 'createdAt'],
       order: [['createdAt', 'DESC']],
     });
+    const returns = await SalesReturn.findAll({
+      where: { cashierSessionId: session.id },
+      order: [['createdAt', 'DESC']],
+    });
 
-    const totals = rollup(orders);
+    const totals = rollup(orders, returns);
     const openingCash = parseFloat(session.openingCash) || 0;
     const closingCash = parseFloat(session.closingCash) || 0;
     const expectedCash = +(openingCash + totals.cashSales - totals.cashRefunds).toFixed(3);

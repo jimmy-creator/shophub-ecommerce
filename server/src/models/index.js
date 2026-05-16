@@ -12,6 +12,7 @@ import Location from './Location.js';
 import ProductStock from './ProductStock.js';
 import StockTransfer from './StockTransfer.js';
 import CashierSession from './CashierSession.js';
+import SalesReturn from './SalesReturn.js';
 
 // ── Existing associations ────────────────────────────────────────
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -51,6 +52,15 @@ Location.hasMany(Order, { foreignKey: 'locationId' });
 Order.belongsTo(CashierSession, { foreignKey: 'cashierSessionId' });
 CashierSession.hasMany(Order, { foreignKey: 'cashierSessionId' });
 
+// ── Sales Returns ───────────────────────────────────────────────
+Order.hasMany(SalesReturn, { foreignKey: 'orderId' });
+SalesReturn.belongsTo(Order, { foreignKey: 'orderId' });
+Location.hasMany(SalesReturn, { foreignKey: 'locationId' });
+SalesReturn.belongsTo(Location, { foreignKey: 'locationId' });
+CashierSession.hasMany(SalesReturn, { foreignKey: 'cashierSessionId' });
+SalesReturn.belongsTo(CashierSession, { foreignKey: 'cashierSessionId' });
+SalesReturn.belongsTo(User, { as: 'processor', foreignKey: 'processedBy' });
+
 // ── Keep Product.stock in sync with SUM(ProductStock.quantity) ───
 // Called explicitly by routes after they mutate ProductStock (and after
 // any transaction has committed). An earlier version did this via
@@ -71,4 +81,5 @@ export {
   User, Product, Order, Coupon, Review, Setting, Category,
   Pincode, AbandonedCart, PriceRequest,
   Location, ProductStock, StockTransfer, CashierSession,
+  SalesReturn,
 };

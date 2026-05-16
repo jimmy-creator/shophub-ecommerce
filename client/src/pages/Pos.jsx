@@ -18,6 +18,8 @@ import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
 import PosReceipt from '../components/PosReceipt';
 import PosReportReceipt from '../components/PosReportReceipt';
+import PosReturnModal from '../components/PosReturnModal';
+import PosReturnReceipt from '../components/PosReturnReceipt';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -39,6 +41,8 @@ export default function Pos() {
   const [receipt, setReceipt] = useState(null);
   const [closeForm, setCloseForm] = useState(null);
   const [report, setReport] = useState(null);   // X or Z report payload
+  const [returnOpen, setReturnOpen] = useState(false);
+  const [returnReceipt, setReturnReceipt] = useState(null);
 
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
@@ -53,14 +57,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -243,6 +247,7 @@ export default function Pos() {
           <span style={{ color: '#94a3b8' }}>{user.name}</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setReturnOpen(true)} className="topbar-btn">Return</button>
           <button onClick={openXReport} className="topbar-btn">X-report</button>
           <button onClick={() => setCloseForm({ closingCash: '', notes: '' })} className="topbar-btn topbar-btn-warn">
             Close shift
@@ -477,6 +482,20 @@ export default function Pos() {
       {report && (
         <div className="modal-backdrop">
           <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} />
+        </div>
+      )}
+
+      {/* ─── Return flow + receipt ────────────── */}
+      {returnOpen && (
+        <PosReturnModal
+          currency={CURRENCY}
+          onClose={() => setReturnOpen(false)}
+          onComplete={(data) => { setReturnOpen(false); setReturnReceipt(data); }}
+        />
+      )}
+      {returnReceipt && (
+        <div className="modal-backdrop">
+          <PosReturnReceipt payload={returnReceipt} currency={CURRENCY} onClose={() => setReturnReceipt(null)} />
         </div>
       )}
 

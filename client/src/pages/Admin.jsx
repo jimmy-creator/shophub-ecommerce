@@ -956,6 +956,22 @@ export default function Admin() {
   const [reportFilterLocation, setReportFilterLocation] = useState('');
   const [reportData, setReportData] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [salesReturns, setSalesReturns] = useState([]);
+  const [returnsFilter, setReturnsFilter] = useState({ from: '', to: '', locationId: '', refundMethod: '' });
+  const [returnDetail, setReturnDetail] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('admin_collapsed_sections') || '[]')); }
+    catch { return new Set(); }
+  });
+  const toggleSection = (id) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      localStorage.setItem('admin_collapsed_sections', JSON.stringify([...next]));
+      return next;
+    });
+  };
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyProduct);
   const [showForm, setShowForm] = useState(false);
@@ -1031,14 +1047,65 @@ export default function Admin() {
     } else if (tab === 'pos-reports') {
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
       api.get('/staff?role=cashier').then((res) => setCashiers(res.data)).catch(() => {});
+    } else if (tab === 'returns') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      const params = {};
+      if (returnsFilter.from) params.from = new Date(returnsFilter.from + 'T00:00:00').toISOString();
+      if (returnsFilter.to) params.to = new Date(returnsFilter.to + 'T23:59:59.999').toISOString();
+      if (returnsFilter.locationId) params.locationId = returnsFilter.locationId;
+      if (returnsFilter.refundMethod) params.refundMethod = returnsFilter.refundMethod;
+      api.get('/returns', { params }).then((res) => setSalesReturns(res.data)).catch(() => {});
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
   const userPerms = user?.permissions || [];
 
   const hasAccess = (perm) => isAdmin || userPerms.includes(perm);
+
+  // ─── Sidebar nav structure ──────────────────────────────────────
+  // `show` is computed per render so role/feature gating stays live.
+  const NAV_SECTIONS = [
+    { id: 'catalog', label: 'Catalog', items: [
+        { tab: 'products',   label: 'Products',        show: hasAccess('products') },
+        { tab: 'categories', label: 'Categories',      show: hasAccess('categories') },
+        { tab: 'inventory',  label: 'Inventory',       show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'locations',  label: 'Locations',       show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'transfers',  label: 'Stock Transfers', show: MULTILOC_ENABLED && hasAccess('products') },
+    ]},
+    { id: 'sales', label: 'Sales', items: [
+        { tab: 'orders',      label: 'Orders',      show: hasAccess('orders') },
+        { tab: 'returns',     label: 'Returns',     show: MULTILOC_ENABLED && hasAccess('orders') },
+        { tab: 'abandoned',   label: 'Abandoned',   show: hasAccess('orders') },
+        { tab: 'b2bquotes',   label: 'B2B Quotes',  show: hasAccess('orders') },
+        { tab: 'pos-reports', label: 'POS Reports', show: MULTILOC_ENABLED && hasAccess('analytics') },
+    ]},
+    { id: 'people', label: 'People', items: [
+        { tab: 'customers', label: 'Customers', show: hasAccess('customers') },
+        { tab: 'reviews',   label: 'Reviews',   show: hasAccess('reviews') },
+        { tab: 'staff',     label: 'Staff',     show: isAdmin },
+        { tab: 'cashiers',  label: 'Cashiers',  show: MULTILOC_ENABLED && isAdmin },
+    ]},
+    { id: 'settings', label: 'Settings', items: [
+        { tab: 'coupons',  label: 'Coupons',  show: hasAccess('coupons') },
+        { tab: 'pincodes', label: 'Pincodes', show: hasAccess('settings') },
+        { tab: 'theme',    label: 'Theme',    show: hasAccess('settings') },
+    ]},
+  ];
+
+  // Auto-expand the section containing the active tab so a tab switch is
+  // always visible even if the user had collapsed that section earlier.
+  useEffect(() => {
+    const sec = NAV_SECTIONS.find((s) => s.items.some((i) => i.tab === tab && i.show));
+    if (sec && collapsedSections.has(sec.id)) {
+      setCollapsedSections((prev) => {
+        const n = new Set(prev); n.delete(sec.id); return n;
+      });
+    }
+    setSidebarOpen(false);   // close mobile drawer on tab change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   if (!isAdmin && !isStaff) {
     return <div className="empty-state"><h2>Access Denied</h2></div>;
@@ -1088,29 +1155,58 @@ export default function Admin() {
     toast.success('Status updated');
   };
 
+  // Pretty label for the active tab — shown in the mobile top bar.
+  const activeLabel = (() => {
+    if (tab === 'dashboard') return 'Dashboard';
+    for (const s of NAV_SECTIONS) {
+      const i = s.items.find((x) => x.tab === tab);
+      if (i) return i.label;
+    }
+    return '';
+  })();
+
   return (
     <div className="admin-page">
-      <div className="container">
-        <h1>Admin Panel</h1>
-        <div className="admin-tabs">
-          {hasAccess('analytics') && <button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Dashboard</button>}
-          {hasAccess('products') && <button className={tab === 'products' ? 'active' : ''} onClick={() => setTab('products')}>Products</button>}
-          {hasAccess('orders') && <button className={tab === 'orders' ? 'active' : ''} onClick={() => setTab('orders')}>Orders</button>}
-          {hasAccess('categories') && <button className={tab === 'categories' ? 'active' : ''} onClick={() => setTab('categories')}>Categories</button>}
-          {hasAccess('customers') && <button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>}
-          {hasAccess('coupons') && <button className={tab === 'coupons' ? 'active' : ''} onClick={() => setTab('coupons')}>Coupons</button>}
-          {hasAccess('reviews') && <button className={tab === 'reviews' ? 'active' : ''} onClick={() => setTab('reviews')}>Reviews</button>}
-          {hasAccess('orders') && <button className={tab === 'abandoned' ? 'active' : ''} onClick={() => setTab('abandoned')}>Abandoned</button>}
-          {hasAccess('orders') && <button className={tab === 'b2bquotes' ? 'active' : ''} onClick={() => setTab('b2bquotes')}>B2B Quotes</button>}
-          {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'locations' ? 'active' : ''} onClick={() => setTab('locations')}>Locations</button>}
-          {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'inventory' ? 'active' : ''} onClick={() => setTab('inventory')}>Inventory</button>}
-          {MULTILOC_ENABLED && hasAccess('products') && <button className={tab === 'transfers' ? 'active' : ''} onClick={() => setTab('transfers')}>Stock Transfers</button>}
-          {MULTILOC_ENABLED && isAdmin && <button className={tab === 'cashiers' ? 'active' : ''} onClick={() => setTab('cashiers')}>Cashiers</button>}
-          {MULTILOC_ENABLED && hasAccess('analytics') && <button className={tab === 'pos-reports' ? 'active' : ''} onClick={() => setTab('pos-reports')}>POS Reports</button>}
-          {hasAccess('settings') && <button className={tab === 'pincodes' ? 'active' : ''} onClick={() => setTab('pincodes')}>Pincodes</button>}
-          {hasAccess('settings') && <button className={tab === 'theme' ? 'active' : ''} onClick={() => setTab('theme')}>Theme</button>}
-          {isAdmin && <button className={tab === 'staff' ? 'active' : ''} onClick={() => setTab('staff')}>Staff</button>}
-        </div>
+      <div className="container admin-layout">
+        <button className="admin-sidebar-toggle" onClick={() => setSidebarOpen((s) => !s)}>
+          <span>☰</span> {activeLabel || 'Menu'}
+        </button>
+        {sidebarOpen && <div className="admin-backdrop" onClick={() => setSidebarOpen(false)} />}
+
+        <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="admin-sidebar-brand">Admin</div>
+          {hasAccess('analytics') && (
+            <button
+              className={`sidebar-item sidebar-item-top ${tab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setTab('dashboard')}>
+              Dashboard
+            </button>
+          )}
+          {NAV_SECTIONS.map((section) => {
+            const visible = section.items.filter((i) => i.show);
+            if (visible.length === 0) return null;
+            const collapsed = collapsedSections.has(section.id);
+            return (
+              <div key={section.id} className="admin-sidebar-section">
+                <button className="sidebar-section-header" onClick={() => toggleSection(section.id)}>
+                  <span className="caret">{collapsed ? '▸' : '▾'}</span>
+                  {section.label}
+                </button>
+                {!collapsed && visible.map((i) => (
+                  <button
+                    key={i.tab}
+                    className={`sidebar-item ${tab === i.tab ? 'active' : ''}`}
+                    onClick={() => setTab(i.tab)}>
+                    {i.label}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </aside>
+
+        <main className="admin-content">
+          <h1>Admin Panel</h1>
 
         {tab === 'dashboard' && dashboard && (
           <div className="dashboard">
@@ -2935,6 +3031,168 @@ export default function Admin() {
           </div>
         )}
 
+        {tab === 'returns' && (
+          <div className="admin-section">
+            <div className="admin-section-header">
+              <h2>Sales Returns</h2>
+              <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>
+                {salesReturns.length} return{salesReturns.length === 1 ? '' : 's'}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>From</label>
+                <input type="date" value={returnsFilter.from} onChange={(e) => setReturnsFilter({ ...returnsFilter, from: e.target.value })} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>To</label>
+                <input type="date" value={returnsFilter.to} onChange={(e) => setReturnsFilter({ ...returnsFilter, to: e.target.value })} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Location</label>
+                <select value={returnsFilter.locationId} onChange={(e) => setReturnsFilter({ ...returnsFilter, locationId: e.target.value })}>
+                  <option value="">All</option>
+                  {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Refund method</label>
+                <select value={returnsFilter.refundMethod} onChange={(e) => setReturnsFilter({ ...returnsFilter, refundMethod: e.target.value })}>
+                  <option value="">All</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="store_credit">Store credit</option>
+                </select>
+              </div>
+              <button className="btn btn-secondary" onClick={() => setReturnsFilter({ from: '', to: '', locationId: '', refundMethod: '' })}>
+                Clear
+              </button>
+            </div>
+
+            {(() => {
+              const totals = salesReturns.reduce((s, r) => {
+                if (r.status === 'cancelled') return s;
+                const amt = parseFloat(r.refundAmount || 0);
+                s.total += amt;
+                if (r.refundMethod === 'cash') s.cash += amt;
+                if (r.refundMethod === 'card') s.card += amt;
+                if (r.refundMethod === 'store_credit') s.credit += amt;
+                return s;
+              }, { total: 0, cash: 0, card: 0, credit: 0 });
+              return (
+                <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                  <div className="dash-card"><div className="dash-card-label">Total refunded</div><div className="dash-card-value">{CURRENCY}{totals.total.toFixed(3)}</div></div>
+                  <div className="dash-card"><div className="dash-card-label">Cash refunds</div><div className="dash-card-value">{CURRENCY}{totals.cash.toFixed(3)}</div></div>
+                  <div className="dash-card"><div className="dash-card-label">Card refunds</div><div className="dash-card-value">{CURRENCY}{totals.card.toFixed(3)}</div></div>
+                  <div className="dash-card"><div className="dash-card-label">Store credit</div><div className="dash-card-value">{CURRENCY}{totals.credit.toFixed(3)}</div></div>
+                </div>
+              );
+            })()}
+
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Return #</th>
+                    <th>Order</th>
+                    <th>Location</th>
+                    <th>Cashier</th>
+                    <th>Method</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {salesReturns.length === 0 && <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No returns in this range</td></tr>}
+                  {salesReturns.map((r) => (
+                    <tr key={r.id} style={{ opacity: r.status === 'cancelled' ? 0.5 : 1 }}>
+                      <td style={{ whiteSpace: 'nowrap', fontSize: '0.82rem' }}>{new Date(r.createdAt).toLocaleString()}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{r.returnNumber}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{r.Order?.orderNumber}</td>
+                      <td>{r.Location?.name || '—'}</td>
+                      <td>{r.processor?.name || '—'}</td>
+                      <td style={{ textTransform: 'capitalize' }}>{r.refundMethod.replace('_', ' ')}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 600 }}>{CURRENCY}{parseFloat(r.refundAmount).toFixed(3)}</td>
+                      <td>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px',
+                          background: r.status === 'completed' ? 'rgba(90,138,106,0.15)' : 'rgba(220,38,38,0.15)',
+                          color: r.status === 'completed' ? 'var(--success)' : 'var(--danger)',
+                          textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem' }}
+                          onClick={() => api.get(`/returns/${r.id}`).then((res) => setReturnDetail(res.data))}>
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {returnDetail && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setReturnDetail(null); }}>
+                <div className="admin-form" style={{ maxWidth: 640 }}>
+                  <h3>Return {returnDetail.returnNumber}</h3>
+                  <div style={{ marginBottom: '1rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
+                    <div>Original order: <strong>{returnDetail.Order?.orderNumber}</strong></div>
+                    <div>Location: {returnDetail.Location?.name}</div>
+                    <div>Processed by: {returnDetail.processor?.name}</div>
+                    <div>Method: {returnDetail.refundMethod.replace('_', ' ')}</div>
+                    {returnDetail.reason && <div>Reason: {returnDetail.reason}</div>}
+                    {returnDetail.notes && <div>Notes: {returnDetail.notes}</div>}
+                  </div>
+
+                  <div className="admin-table-wrap">
+                    <table className="admin-table">
+                      <thead><tr><th>Item</th><th style={{ textAlign: 'right' }}>Qty</th><th style={{ textAlign: 'right' }}>Refund</th><th>To stock</th></tr></thead>
+                      <tbody>
+                        {(returnDetail.items || []).map((it, i) => (
+                          <tr key={i}>
+                            <td>{it.name}</td>
+                            <td style={{ textAlign: 'right' }}>{it.quantity}</td>
+                            <td style={{ textAlign: 'right' }}>{CURRENCY}{parseFloat(it.refundAmount).toFixed(3)}</td>
+                            <td>{it.returnToStock === false ? 'No' : 'Yes'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderTop: '1px solid var(--border-light)', marginTop: '0.75rem' }}>
+                    <strong>Total refunded</strong>
+                    <strong>{CURRENCY}{parseFloat(returnDetail.refundAmount).toFixed(3)}</strong>
+                  </div>
+
+                  <div className="form-actions" style={{ marginTop: '1rem' }}>
+                    {isAdmin && returnDetail.status === 'completed' && (
+                      <button className="btn btn-secondary" onClick={async () => {
+                        if (!confirm('Cancel this return? Stock will be deducted and refund reversed.')) return;
+                        try {
+                          await api.post(`/returns/${returnDetail.id}/cancel`);
+                          toast.success('Return cancelled');
+                          setReturnDetail(null);
+                          // Refresh list
+                          api.get('/returns').then((res) => setSalesReturns(res.data));
+                        } catch (err) {
+                          toast.error(err.response?.data?.message || 'Failed');
+                        }
+                      }}>Cancel return</button>
+                    )}
+                    <button className="btn btn-primary" onClick={() => setReturnDetail(null)}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {tab === 'categories' && (
           <div>
             <button
@@ -4126,6 +4384,7 @@ export default function Admin() {
             </div>
           </div>
         )}
+        </main>
       </div>
     </div>
   );

@@ -20,7 +20,7 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { Op } from 'sequelize';
-import { User, Location, CashierSession, Order } from '../models/index.js';
+import { User, Location, CashierSession, Order, SalesReturn } from '../models/index.js';
 import { protect, admin, protectCashier } from '../middleware/auth.js';
 import sequelize from '../config/database.js';
 
@@ -153,14 +153,22 @@ router.post('/shift/close', protectCashier, async (req, res) => {
       return res.status(400).json({ message: 'closingCash is required' });
     }
 
-    // Compute expected cash = opening + cash sales - cash refunds for this session.
+    // Compute expected cash = opening + cash sales − cash refunds for THIS shift.
+    // Cash sales come from Orders attributed to this session; cash refunds come
+    // from SalesReturn rows attributed to this session with refundMethod='cash'
+    // (this handles returns of items sold in earlier shifts correctly).
     const cashOrders = await Order.findAll({
       where: { cashierSessionId: session.id, paymentMethod: { [Op.in]: ['cash', 'pos_cash'] } },
-      attributes: ['totalAmount', 'refundAmount'],
+      attributes: ['totalAmount'],
+      transaction: t,
+    });
+    const cashReturns = await SalesReturn.findAll({
+      where: { cashierSessionId: session.id, refundMethod: 'cash', status: 'completed' },
+      attributes: ['refundAmount'],
       transaction: t,
     });
     const cashSales = cashOrders.reduce((s, o) => s + parseFloat(o.totalAmount || 0), 0);
-    const cashRefunds = cashOrders.reduce((s, o) => s + parseFloat(o.refundAmount || 0), 0);
+    const cashRefunds = cashReturns.reduce((s, r) => s + parseFloat(r.refundAmount || 0), 0);
     const expectedCash = parseFloat(session.openingCash || 0) + cashSales - cashRefunds;
     const variance = +(closingCash - expectedCash).toFixed(3);
 
