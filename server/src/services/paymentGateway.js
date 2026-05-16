@@ -567,6 +567,123 @@ class NomodGateway extends PaymentGateway {
 }
 
 // ============================================
+// TAP PAYMENTS (Kuwait / GCC)
+// Hosted-redirect Charge API. Auth: Bearer <secret_key>.
+// KWD uses 3 decimal places (e.g. 1.500 KWD); amount is sent as a
+// decimal in major units, not subunits.
+// Docs: https://developers.tap.company/reference/create-a-charge
+// ============================================
+class TapGateway extends PaymentGateway {
+  constructor() {
+    super();
+    this.secretKey = process.env.TAP_SECRET_KEY;
+    this.publicKey = process.env.TAP_PUBLIC_KEY;
+    this.baseUrl = 'https://api.tap.company/v2';
+    this.clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  }
+
+  async createOrder(amount, currency = 'KWD', receipt, notes = {}) {
+    const customer = notes.customer || {};
+    const orderItems = notes.items || [];
+
+    // KWD is a 3-decimal currency; format defensively.
+    const fmt = (n) => Number.parseFloat(n).toFixed(currency === 'KWD' ? 3 : 2);
+
+    // Split phone into country_code + number. Default to Kuwait (+965).
+    let countryCode = '965';
+    let phoneNumber = '';
+    if (customer.phone) {
+      const cleaned = String(customer.phone).replace(/[^\d]/g, '');
+      if (cleaned.startsWith('965') && cleaned.length > 3) {
+        countryCode = '965';
+        phoneNumber = cleaned.slice(3);
+      } else {
+        phoneNumber = cleaned;
+      }
+    }
+
+    const [firstName, ...lastParts] = String(customer.name || 'Customer').trim().split(/\s+/);
+    const lastName = lastParts.join(' ') || firstName;
+
+    const body = {
+      amount: fmt(amount),
+      currency: currency.toUpperCase(),
+      threeDSecure: true,
+      save_card: false,
+      description: `Order ${receipt}`,
+      statement_descriptor: 'Anfal Sports',
+      reference: { transaction: receipt, order: String(notes.orderId || receipt) },
+      receipt: { email: !!customer.email, sms: !!phoneNumber },
+      customer: {
+        first_name: firstName,
+        last_name: lastName,
+        email: customer.email || undefined,
+        ...(phoneNumber ? { phone: { country_code: countryCode, number: phoneNumber } } : {}),
+      },
+      source: { id: 'src_all' },           // "all" lets the hosted page show KNET / cards / Apple Pay / etc.
+      redirect: { url: `${this.clientUrl}/order-success?orderNumber=${receipt}&gateway=tap` },
+      post:     { url: `${process.env.SERVER_URL || ''}/api/payment/tap-callback` },
+    };
+
+    const resp = await fetch(`${this.baseUrl}/charges/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.secretKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await resp.json();
+
+    if (!resp.ok || !data.id) {
+      throw new Error(`Tap create charge error: ${data?.errors?.[0]?.description || data?.message || JSON.stringify(data).slice(0, 300)}`);
+    }
+
+    const redirectUrl = data?.transaction?.url || data?.redirect?.url;
+    if (!redirectUrl) {
+      throw new Error('Tap did not return a hosted-checkout URL');
+    }
+
+    return {
+      gatewayOrderId: data.id,
+      chargeId: data.id,
+      sessionUrl: redirectUrl,
+      amount,
+      currency,
+      receipt,
+    };
+  }
+
+  async verifyPayment({ chargeId }) {
+    if (!chargeId) throw new Error('Tap verify requires chargeId');
+    const resp = await fetch(`${this.baseUrl}/charges/${chargeId}`, {
+      headers: { Authorization: `Bearer ${this.secretKey}` },
+    });
+    const data = await resp.json();
+    const status = String(data?.status || '').toUpperCase();
+    const verified = status === 'CAPTURED' || status === 'AUTHORIZED';
+    return {
+      verified,
+      paymentId: data?.id,
+      orderId: data?.reference?.transaction,
+      status,
+      message: data?.response?.message || data?.errors?.[0]?.description,
+    };
+  }
+
+  getCheckoutConfig(order) {
+    return {
+      gateway: 'tap',
+      chargeId: order.chargeId,
+      sessionUrl: order.sessionUrl,
+      orderId: order.gatewayOrderId,
+      amount: order.amount,
+      currency: order.currency,
+    };
+  }
+}
+
+// ============================================
 // Gateway Factory
 // ============================================
 const gateways = {
@@ -578,6 +695,7 @@ const gateways = {
   paytm: PaytmGateway,
   stripe: StripeGateway,
   nomod: NomodGateway,
+  tap: TapGateway,
 };
 
 export function getPaymentGateway(name) {
@@ -615,6 +733,9 @@ export function getAvailableGateways() {
   }
   if (process.env.NOMOD_API_KEY) {
     available.push({ id: 'nomod', name: 'Nomod', description: 'Cards, Apple Pay, Google Pay, Tabby, Tamara' });
+  }
+  if (process.env.TAP_SECRET_KEY) {
+    available.push({ id: 'tap', name: 'Tap Payments', description: 'KNET, Cards, Apple Pay, Google Pay, Benefit' });
   }
 
   return available;

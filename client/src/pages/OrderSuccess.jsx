@@ -17,6 +17,7 @@ export default function OrderSuccess() {
   const guestEmail = searchParams.get('email');
   const sessionId = searchParams.get('session_id');
   const nomodCheckoutId = searchParams.get('nomod_checkout_id');
+  const tapChargeId = searchParams.get('tap_id');
   const status = searchParams.get('status');
   const isFailed = status === 'failed';
   const isGuest = !user;
@@ -31,6 +32,14 @@ export default function OrderSuccess() {
         orderNumber,
         gateway: 'stripe',
         paymentData: { sessionId },
+      }).catch(() => {});
+    }
+
+    if (tapChargeId && orderNumber) {
+      api.post('/payment/verify', {
+        orderNumber,
+        gateway: 'tap',
+        paymentData: { chargeId: tapChargeId },
       }).catch(() => {});
     }
 

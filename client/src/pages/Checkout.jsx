@@ -357,6 +357,25 @@ export default function Checkout() {
     }
   };
 
+  const handleTapPayment = async () => {
+    const createPayload = {
+      items: cart.map((item) => ({ productId: item.id, quantity: item.quantity, selectedVariant: item.selectedVariant || null })),
+      shippingAddress: getShippingAddress(),
+      shippingMethod,
+      gateway: 'tap',
+      couponCode: couponApplied?.code || null,
+    };
+    if (isGuest) createPayload.guestEmail = form.email;
+
+    const { data } = await api.post('/payment/create-order', createPayload);
+    if (data.payment?.sessionUrl) {
+      clearCart();
+      window.location.href = data.payment.sessionUrl;
+    } else {
+      toast.error('Failed to create Tap checkout session');
+    }
+  };
+
   const verifyPaytmOrder = async (orderNumber, paymentOrderId) => {
     try {
       const verifyRes = await api.post('/payment/verify', {
@@ -491,6 +510,8 @@ export default function Checkout() {
         await handleStripePayment();
       } else if (method === 'nomod') {
         await handleNomodPayment();
+      } else if (method === 'tap') {
+        await handleTapPayment();
       } else {
         toast.error(`${method} gateway is not configured yet. Please choose another method.`);
         setLoading(false);

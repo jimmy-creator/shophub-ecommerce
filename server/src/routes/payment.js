@@ -325,6 +325,22 @@ router.post('/webhook/:gateway', async (req, res) => {
   }
 });
 
+// Tap Payments webhook (server-to-server). Tap POSTs here on payment status
+// changes. Client-side verify on /order-success handles the user-facing
+// confirmation; this endpoint just acks so Tap doesn't retry.
+// Full verification is delegated to /payment/verify with gateway='tap'.
+router.post('/tap-callback', async (req, res) => {
+  try {
+    const chargeId = req.body?.id;
+    const status = String(req.body?.status || '').toUpperCase();
+    console.log(`[tap-callback] charge=${chargeId} status=${status}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Tap callback error:', err);
+    res.json({ ok: false });
+  }
+});
+
 // Paytm browser callback — Paytm POSTs here after payment, then we redirect to frontend
 router.post('/paytm-callback', async (req, res) => {
   try {
