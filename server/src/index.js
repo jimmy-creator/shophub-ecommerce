@@ -35,6 +35,7 @@ import locationRoutes from './routes/locations.js';
 import inventoryRoutes from './routes/inventory.js';
 import stockTransferRoutes from './routes/stockTransfers.js';
 import cashierRoutes from './routes/cashier.js';
+import posRoutes from './routes/pos.js';
 import { registerShiprocketHooks } from './services/shiprocketSync.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
@@ -120,6 +121,7 @@ app.use('/api/locations', locationRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/stock-transfers', stockTransferRoutes);
 app.use('/api/cashier', cashierRoutes);
+app.use('/api/pos', posRoutes);
 app.use('/', sitemapRoutes);
 
 // Per-URL HTML meta injection — replaces nginx's static index.html serve.
