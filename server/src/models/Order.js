@@ -106,6 +106,19 @@ const Order = sequelize.define('Order', {
     type: DataTypes.JSON,
     defaultValue: null,
   },
+  locationId: {
+    // Which physical location fulfilled (online: the isOnlineDefault
+    // location; POS: the store where the cashier rang it up).
+    // null for legacy orders placed before multi-location was introduced.
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  cashierSessionId: {
+    // Set when the order was rung up through the POS during a shift.
+    // null for online orders.
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
 });
 
 export default Order;
