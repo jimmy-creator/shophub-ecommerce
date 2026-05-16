@@ -7,9 +7,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --s2-ink:            #ffffff;
-  --s2-ink-2:          #ffffff;
+  --s2-ink:            rgb(252, 237, 194);   /* Kalif cream — the whole-page bg */
+  --s2-ink-2:          rgb(252, 237, 194);
   --s2-ink-3:          #f4f0ea;
+  --bg:                rgb(252, 237, 194);   /* overrides the index.css default so .checkout-page / .cart-page / body all pick it up */
 
   --s2-glass-bg:       rgba(255, 255, 255, 0.55);
   --s2-glass-bg-2:     rgba(255, 255, 255, 0.7);
@@ -2345,31 +2346,9 @@ body {
 }
 .app { max-width: 100vw; overflow-x: clip; }
 
-body::before {
-  content: '';
-  position: fixed;
-  inset: -40vh -20vw;
-  pointer-events: none;
-  z-index: -2;
-  background:
-    radial-gradient(42vw 48vh at 18% 22%, rgba(56, 189, 248, 0.15), transparent 62%),
-    radial-gradient(56vw 52vh at 82% 28%, rgba(34, 211, 238, 0.12), transparent 65%),
-    radial-gradient(48vw 55vh at 50% 82%, rgba(14, 165, 233, 0.13), transparent 60%),
-    radial-gradient(30vw 38vh at 8% 85%, rgba(186, 230, 253, 0.2), transparent 70%);
-  filter: blur(46px);
-  animation: s2-aurora-drift 38s ease-in-out infinite;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  opacity: 0.018;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
-}
+/* Aurora + noise removed — the flat Kalif cream bg doesn't want the
+   cyan blobs or grain texture that worked on the cooler-toned palette. */
+body::before, body::after { display: none !important; }
 
 /* ── Shared headings → Instrument Serif ───────────────────── */
 h1, h2, h3 {
