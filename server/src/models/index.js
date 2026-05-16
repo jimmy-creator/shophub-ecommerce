@@ -18,6 +18,11 @@ import PurchaseOrder from './PurchaseOrder.js';
 import PurchaseReceipt from './PurchaseReceipt.js';
 import PurchaseReturn from './PurchaseReturn.js';
 import SupplierPayment from './SupplierPayment.js';
+import CashAccount from './CashAccount.js';
+import CashTransaction from './CashTransaction.js';
+import ExpenseCategory from './ExpenseCategory.js';
+import Expense from './Expense.js';
+import CashTransfer from './CashTransfer.js';
 
 // ── Existing associations ────────────────────────────────────────
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -93,12 +98,67 @@ PurchaseOrder.hasMany(SupplierPayment, { foreignKey: 'purchaseOrderId' });
 SupplierPayment.belongsTo(PurchaseOrder, { foreignKey: 'purchaseOrderId' });
 SupplierPayment.belongsTo(User, { as: 'payer', foreignKey: 'paidBy' });
 
+// ── Finance (Cash Accounts, Transactions, Expenses, Transfers) ──
+Location.hasMany(CashAccount, { foreignKey: 'locationId' });
+CashAccount.belongsTo(Location, { foreignKey: 'locationId' });
+
+CashAccount.hasMany(CashTransaction, { foreignKey: 'cashAccountId' });
+CashTransaction.belongsTo(CashAccount, { foreignKey: 'cashAccountId' });
+CashTransaction.belongsTo(User, { as: 'author', foreignKey: 'createdBy' });
+
+ExpenseCategory.hasMany(Expense, { foreignKey: 'expenseCategoryId' });
+Expense.belongsTo(ExpenseCategory, { foreignKey: 'expenseCategoryId' });
+Location.hasMany(Expense, { foreignKey: 'locationId' });
+Expense.belongsTo(Location, { foreignKey: 'locationId' });
+CashAccount.hasMany(Expense, { foreignKey: 'cashAccountId' });
+Expense.belongsTo(CashAccount, { foreignKey: 'cashAccountId' });
+Expense.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+
+CashAccount.hasMany(CashTransfer, { as: 'transfersOut', foreignKey: 'fromAccountId' });
+CashAccount.hasMany(CashTransfer, { as: 'transfersIn',  foreignKey: 'toAccountId' });
+CashTransfer.belongsTo(CashAccount, { as: 'fromAccount', foreignKey: 'fromAccountId' });
+CashTransfer.belongsTo(CashAccount, { as: 'toAccount',   foreignKey: 'toAccountId' });
+CashTransfer.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+
 // ── Keep Product.stock in sync with SUM(ProductStock.quantity) ───
 // Called explicitly by routes after they mutate ProductStock (and after
 // any transaction has committed). An earlier version did this via
 // afterCreate/afterUpdate/afterDestroy hooks, but the hook ran inside
 // the active transaction context and produced TransactionFinishedError
 // cascades — explicit recompute is more predictable.
+// ── Cash ledger helper ───────────────────────────────────────────
+// Write a CashTransaction tied to a source row. amount is signed:
+// positive = money IN, negative = money OUT. Called inline from POS,
+// returns, supplier-payment and expense routes — they pass any active
+// Sequelize transaction so the ledger entry commits/rolls back with
+// the originating operation.
+export async function writeCashTxn({
+  cashAccountId, amount, source, sourceType = null, sourceId = null,
+  reference = null, description = null, date, createdBy = null, transaction = null,
+}) {
+  if (!cashAccountId) return null;
+  return CashTransaction.create({
+    cashAccountId,
+    amount,
+    source,
+    sourceType,
+    sourceId,
+    reference,
+    description,
+    date: date || new Date(),
+    createdBy,
+  }, transaction ? { transaction } : undefined);
+}
+
+// Returns the current balance of a CashAccount:
+//   openingBalance + SUM(CashTransaction.amount)
+export async function getCashAccountBalance(cashAccountId) {
+  const acct = await CashAccount.findByPk(cashAccountId, { attributes: ['openingBalance'] });
+  if (!acct) return 0;
+  const sum = await CashTransaction.sum('amount', { where: { cashAccountId } });
+  return +((parseFloat(acct.openingBalance) || 0) + (sum || 0)).toFixed(3);
+}
+
 export async function recomputeProductStock(productId) {
   if (!productId) return;
   try {
@@ -115,4 +175,5 @@ export {
   Location, ProductStock, StockTransfer, CashierSession,
   SalesReturn,
   Supplier, PurchaseOrder, PurchaseReceipt, PurchaseReturn, SupplierPayment,
+  CashAccount, CashTransaction, ExpenseCategory, Expense, CashTransfer,
 };

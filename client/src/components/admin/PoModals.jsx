@@ -8,7 +8,7 @@
  * Props are state from the parent Admin component so opening/closing
  * stays controlled at the top level.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 
@@ -384,11 +384,17 @@ function ReceiveModal({ form, setForm, currency, onDone }) {
 
 // ─── Pay ───────────────────────────────────────────────────────────
 function PayModal({ form, setForm, currency, onDone }) {
+  const [cashAccounts, setCashAccounts] = useState([]);
+  useEffect(() => {
+    api.get('/finance/cash-accounts?active=true').then((r) => setCashAccounts(r.data)).catch(() => {});
+  }, []);
+
   const submit = async () => {
     try {
       await api.post(`/purchase-orders/${form.poId}/pay`, {
         amount: parseFloat(form.amount),
         paymentMethod: form.paymentMethod,
+        cashAccountId: form.cashAccountId || undefined,
         reference: form.reference || undefined,
         notes: form.notes || undefined,
       });
@@ -408,6 +414,12 @@ function PayModal({ form, setForm, currency, onDone }) {
         <div className="form-group"><label>Method</label>
           <select value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>
             <option value="cash">Cash</option><option value="bank">Bank transfer</option><option value="card">Card</option><option value="cheque">Cheque</option><option value="other">Other</option>
+          </select>
+        </div>
+        <div className="form-group"><label>Pay from account</label>
+          <select value={form.cashAccountId || ''} onChange={(e) => setForm({ ...form, cashAccountId: e.target.value })}>
+            <option value="">— Don't move cash (manual reconcile) —</option>
+            {cashAccounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({currency}{parseFloat(a.balance || 0).toFixed(3)})</option>)}
           </select>
         </div>
         <div className="form-group"><label>Reference</label>

@@ -28,8 +28,8 @@ import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
   PurchaseOrder, PurchaseReceipt, SupplierPayment, ProductStock,
-  Supplier, Location, User, Product,
-  recomputeProductStock,
+  Supplier, Location, User, Product, CashAccount,
+  recomputeProductStock, writeCashTxn,
 } from '../models/index.js';
 import { protect, admin } from '../middleware/auth.js';
 
@@ -353,6 +353,24 @@ router.post('/:id/pay', protect, admin, async (req, res) => {
       notes: req.body.notes?.trim() || null,
       paidBy: req.user.id,
     }, { transaction: t });
+
+    // If a cashAccountId is supplied, debit it. Otherwise the payment is
+    // tracked but no cash-ledger entry is written (the user can record
+    // the cash movement manually as an adjustment later).
+    if (req.body.cashAccountId) {
+      await writeCashTxn({
+        cashAccountId: parseInt(req.body.cashAccountId, 10),
+        amount: -amount,
+        source: 'supplier_payment',
+        sourceType: 'SupplierPayment',
+        sourceId: payment.id,
+        reference: payment.paymentNumber,
+        description: `Payment to supplier vs ${po.poNumber}`,
+        date: new Date(),
+        createdBy: req.user.id,
+        transaction: t,
+      });
+    }
 
     const newPaid = +((parseFloat(po.amountPaid) || 0) + amount).toFixed(3);
     const newPaymentStatus = newPaid >= parseFloat(po.totalAmount) ? 'paid' : (newPaid > 0 ? 'partial' : 'unpaid');

@@ -41,6 +41,7 @@ import returnsRoutes from './routes/returns.js';
 import suppliersRoutes from './routes/suppliers.js';
 import purchaseOrdersRoutes from './routes/purchaseOrders.js';
 import purchaseReturnsRoutes from './routes/purchaseReturns.js';
+import financeRoutes, { seedDefaultAccountsIfEmpty } from './routes/finance.js';
 import { registerShiprocketHooks } from './services/shiprocketSync.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
@@ -132,6 +133,7 @@ app.use('/api/returns', returnsRoutes);
 app.use('/api/suppliers', suppliersRoutes);
 app.use('/api/purchase-orders', purchaseOrdersRoutes);
 app.use('/api/purchase-returns', purchaseReturnsRoutes);
+app.use('/api/finance', financeRoutes);
 app.use('/', sitemapRoutes);
 
 // Per-URL HTML meta injection — replaces nginx's static index.html serve.
@@ -169,6 +171,9 @@ const start = async () => {
       startAbandonedCartJob();
       startLowStockJob();
       registerShiprocketHooks();
+      seedDefaultAccountsIfEmpty().catch((err) =>
+        console.error('[finance/seed]', err.message)
+      );
     });
   } catch (error) {
     console.error('Failed to start server:', error);

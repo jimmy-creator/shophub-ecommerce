@@ -23,8 +23,8 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
-  Order, SalesReturn, ProductStock, Location, CashierSession, User,
-  recomputeProductStock,
+  Order, SalesReturn, ProductStock, Location, CashierSession, User, CashAccount,
+  recomputeProductStock, writeCashTxn,
 } from '../models/index.js';
 import { protect, admin, protectCashier } from '../middleware/auth.js';
 
@@ -246,6 +246,30 @@ router.post('/', authEither, async (req, res) => {
     // refunded against this order.
     const newRefundAmount = +((parseFloat(order.refundAmount) || 0) + refundTotal).toFixed(3);
     await order.update({ refundAmount: newRefundAmount }, { transaction: t });
+
+    // Cash/card refunds are money OUT of the corresponding location
+    // account. Store credit doesn't move cash, so no ledger entry.
+    if (refundMethod === 'cash' || refundMethod === 'card') {
+      const acctType = refundMethod === 'cash' ? 'drawer' : 'card_terminal';
+      const acct = await CashAccount.findOne({
+        where: { locationId, type: acctType, active: true },
+        transaction: t,
+      });
+      if (acct) {
+        await writeCashTxn({
+          cashAccountId: acct.id,
+          amount: -refundTotal,
+          source: 'return',
+          sourceType: 'SalesReturn',
+          sourceId: sr.id,
+          reference: sr.returnNumber,
+          description: `Refund vs ${order.orderNumber} (${refundMethod})`,
+          date: new Date(),
+          createdBy: req.user.id,
+          transaction: t,
+        });
+      }
+    }
 
     await t.commit();
     for (const b of stockBumps) await recomputeProductStock(b.productId);

@@ -15,8 +15,8 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
-  Product, ProductStock, Order, CashierSession, Location,
-  recomputeProductStock,
+  Product, ProductStock, Order, CashierSession, Location, CashAccount,
+  recomputeProductStock, writeCashTxn,
 } from '../models/index.js';
 import { protectCashier } from '../middleware/auth.js';
 
@@ -224,6 +224,30 @@ router.post('/sale', protectCashier, async (req, res) => {
       discount: 0,
       taxAmount: 0,
     }, { transaction: t });
+
+    // Write a CashTransaction against this location's drawer (cash) or
+    // card-terminal account, so finance balances reconcile. Missing
+    // account is non-fatal — POS keeps working, the sale just doesn't
+    // hit the ledger until the account is created.
+    const acctType = paymentMethod === 'pos_cash' ? 'drawer' : 'card_terminal';
+    const acct = await CashAccount.findOne({
+      where: { locationId: req.cashierLocationId, type: acctType, active: true },
+      transaction: t,
+    });
+    if (acct) {
+      await writeCashTxn({
+        cashAccountId: acct.id,
+        amount: totalAmount,
+        source: 'sale',
+        sourceType: 'Order',
+        sourceId: order.id,
+        reference: order.orderNumber,
+        description: `POS sale (${paymentMethod === 'pos_cash' ? 'cash' : 'card'})`,
+        date: order.createdAt,
+        createdBy: req.user.id,
+        transaction: t,
+      });
+    }
 
     await t.commit();
 

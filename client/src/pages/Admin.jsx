@@ -8,6 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { CURRENCY } from '../utils/currency';
 import PoModals from '../components/admin/PoModals';
 import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
+import FinanceTabs from '../components/admin/FinanceTabs';
 
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 
@@ -975,6 +976,18 @@ export default function Admin() {
   const [prFilter, setPrFilter] = useState({ from: '', to: '', supplierId: '', locationId: '' });
   const [prForm, setPrForm] = useState(null);          // new purchase-return form
   const [prDetail, setPrDetail] = useState(null);
+  // Finance — Phase C
+  const [cashAccounts, setCashAccounts] = useState([]);
+  const [cashAccountForm, setCashAccountForm] = useState(null);
+  const [expenseCategories, setExpenseCategories] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [expenseFilter, setExpenseFilter] = useState({ from: '', to: '', categoryId: '', locationId: '' });
+  const [expenseForm, setExpenseForm] = useState(null);
+  const [expenseCatForm, setExpenseCatForm] = useState(null);
+  const [cashTransfers, setCashTransfers] = useState([]);
+  const [cashTransferForm, setCashTransferForm] = useState(null);
+  const [dailyCash, setDailyCash] = useState(null);
+  const [dailyCashFilter, setDailyCashFilter] = useState({ date: new Date().toISOString().slice(0, 10), locationId: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('admin_collapsed_sections') || '[]')); }
@@ -1082,6 +1095,27 @@ export default function Admin() {
       if (poFilter.supplierId) params.supplierId = poFilter.supplierId;
       if (poFilter.locationId) params.locationId = poFilter.locationId;
       api.get('/purchase-orders', { params }).then((res) => setPurchaseOrders(res.data)).catch(() => {});
+    } else if (tab === 'cash-accounts') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      api.get('/finance/cash-accounts').then((res) => setCashAccounts(res.data)).catch(() => {});
+    } else if (tab === 'expenses') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      api.get('/finance/cash-accounts?active=true').then((res) => setCashAccounts(res.data)).catch(() => {});
+      api.get('/finance/expense-categories').then((res) => setExpenseCategories(res.data)).catch(() => {});
+      const params = {};
+      if (expenseFilter.from) params.from = new Date(expenseFilter.from + 'T00:00:00').toISOString();
+      if (expenseFilter.to) params.to = new Date(expenseFilter.to + 'T23:59:59.999').toISOString();
+      if (expenseFilter.categoryId) params.expenseCategoryId = expenseFilter.categoryId;
+      if (expenseFilter.locationId) params.locationId = expenseFilter.locationId;
+      api.get('/finance/expenses', { params }).then((res) => setExpenses(res.data)).catch(() => {});
+    } else if (tab === 'cash-transfers') {
+      api.get('/finance/cash-accounts?active=true').then((res) => setCashAccounts(res.data)).catch(() => {});
+      api.get('/finance/cash-transfers').then((res) => setCashTransfers(res.data)).catch(() => {});
+    } else if (tab === 'daily-cash') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      const params = { date: dailyCashFilter.date };
+      if (dailyCashFilter.locationId) params.locationId = dailyCashFilter.locationId;
+      api.get('/finance/daily-cash', { params }).then((res) => setDailyCash(res.data)).catch(() => {});
     } else if (tab === 'purchase-returns') {
       api.get('/suppliers?active=true').then((res) => setSuppliers(res.data)).catch(() => {});
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
@@ -1093,7 +1127,7 @@ export default function Admin() {
       if (prFilter.locationId) params.locationId = prFilter.locationId;
       api.get('/purchase-returns', { params }).then((res) => setPurchaseReturns(res.data)).catch(() => {});
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -1115,6 +1149,12 @@ export default function Admin() {
         { tab: 'suppliers',        label: 'Suppliers',        show: MULTILOC_ENABLED && hasAccess('products') },
         { tab: 'purchase-orders',  label: 'Purchase Orders',  show: MULTILOC_ENABLED && hasAccess('products') },
         { tab: 'purchase-returns', label: 'Purchase Returns', show: MULTILOC_ENABLED && hasAccess('products') },
+    ]},
+    { id: 'finance', label: 'Finance', items: [
+        { tab: 'cash-accounts',  label: 'Cash Accounts',  show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'expenses',       label: 'Expenses',       show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'cash-transfers', label: 'Cash Transfers', show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'daily-cash',     label: 'Daily Cash',     show: MULTILOC_ENABLED && hasAccess('analytics') },
     ]},
     { id: 'sales', label: 'Sales', items: [
         { tab: 'orders',      label: 'Orders',      show: hasAccess('orders') },
@@ -3526,6 +3566,23 @@ export default function Admin() {
               refresh={() => api.get('/purchase-returns', { params: prFilter }).then((res) => setPurchaseReturns(res.data))}
             />
           </div>
+        )}
+
+        {(tab === 'cash-accounts' || tab === 'expenses' || tab === 'cash-transfers' || tab === 'daily-cash') && (
+          <FinanceTabs
+            tab={tab} currency={CURRENCY} isAdmin={isAdmin} locations={locations}
+            cashAccounts={cashAccounts} setCashAccounts={setCashAccounts}
+            cashAccountForm={cashAccountForm} setCashAccountForm={setCashAccountForm}
+            expenses={expenses} setExpenses={setExpenses}
+            expenseFilter={expenseFilter} setExpenseFilter={setExpenseFilter}
+            expenseForm={expenseForm} setExpenseForm={setExpenseForm}
+            expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories}
+            expenseCatForm={expenseCatForm} setExpenseCatForm={setExpenseCatForm}
+            cashTransfers={cashTransfers} setCashTransfers={setCashTransfers}
+            cashTransferForm={cashTransferForm} setCashTransferForm={setCashTransferForm}
+            dailyCash={dailyCash} setDailyCash={setDailyCash}
+            dailyCashFilter={dailyCashFilter} setDailyCashFilter={setDailyCashFilter}
+          />
         )}
 
         {tab === 'categories' && (
