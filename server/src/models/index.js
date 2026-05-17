@@ -23,6 +23,7 @@ import CashTransaction from './CashTransaction.js';
 import ExpenseCategory from './ExpenseCategory.js';
 import Expense from './Expense.js';
 import CashTransfer from './CashTransfer.js';
+import ActivityLog from './ActivityLog.js';
 
 // ── Existing associations ────────────────────────────────────────
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -120,6 +121,11 @@ CashTransfer.belongsTo(CashAccount, { as: 'fromAccount', foreignKey: 'fromAccoun
 CashTransfer.belongsTo(CashAccount, { as: 'toAccount',   foreignKey: 'toAccountId' });
 CashTransfer.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
 
+// ── Activity Log ────────────────────────────────────────────────
+ActivityLog.belongsTo(User, { as: 'actor', foreignKey: 'userId' });
+ActivityLog.belongsTo(User, { as: 'approver', foreignKey: 'managerOverrideBy' });
+ActivityLog.belongsTo(Location, { foreignKey: 'locationId' });
+
 // ── Keep Product.stock in sync with SUM(ProductStock.quantity) ───
 // Called explicitly by routes after they mutate ProductStock (and after
 // any transaction has committed). An earlier version did this via
@@ -176,4 +182,40 @@ export {
   SalesReturn,
   Supplier, PurchaseOrder, PurchaseReceipt, PurchaseReturn, SupplierPayment,
   CashAccount, CashTransaction, ExpenseCategory, Expense, CashTransfer,
+  ActivityLog,
 };
+
+// ── Activity log + manager-override helpers ─────────────────────
+// Write to the audit log. Fire-and-forget — failures are logged but
+// don't break the caller. Pass `transaction` to include the entry
+// in the active SQL transaction (rolls back together).
+export async function logActivity({
+  userId, action, entityType = null, entityId = null,
+  details = null, managerOverrideBy = null, locationId = null,
+  cashierSessionId = null, reason = null, ip = null,
+  transaction = null,
+}) {
+  try {
+    return await ActivityLog.create({
+      userId, action, entityType, entityId, details,
+      managerOverrideBy, locationId, cashierSessionId, reason, ip,
+    }, transaction ? { transaction } : undefined);
+  } catch (err) {
+    console.error('[logActivity]', action, err.message);
+    return null;
+  }
+}
+
+// Verify a manager-override PIN. Accepts admin role implicitly or
+// cashier with isManager=true. Returns the approving user or throws.
+export async function verifyManagerPin({ userId, pin, transaction = null }) {
+  if (!userId || !pin) throw new Error('Manager ID and PIN required');
+  const user = await User.findByPk(parseInt(userId, 10), { transaction });
+  if (!user) throw new Error('Manager not found');
+  const isAuthorised = user.role === 'admin' || (user.role === 'cashier' && user.isManager);
+  if (!isAuthorised) throw new Error('User is not a manager');
+  if (!user.pin) throw new Error('Manager has no PIN set');
+  const ok = await user.comparePin(pin);
+  if (!ok) throw new Error('Invalid manager PIN');
+  return user;
+}

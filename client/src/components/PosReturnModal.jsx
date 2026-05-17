@@ -15,7 +15,7 @@ import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 
-export default function PosReturnModal({ currency = 'KWD', onClose, onComplete }) {
+export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, onNeedOverride }) {
   const [step, setStep] = useState('lookup');         // lookup | pick | pay
   const [orderNumber, setOrderNumber] = useState('');
   const [lookupBusy, setLookupBusy] = useState(false);
@@ -82,28 +82,40 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete }
     setStep('pay');
   };
 
+  const postReturn = async (managerOverride) => {
+    const items = lines
+      .filter((l) => l.returnQty > 0)
+      .map((l) => ({
+        productId: l.productId,
+        variantIndex: l.variantIndex,
+        quantity: l.returnQty,
+        returnToStock: l.returnToStock,
+      }));
+    const { data } = await api.post('/returns', {
+      orderId: lookup.order.id,
+      items,
+      refundMethod,
+      reason: reason || undefined,
+      notes: notes || undefined,
+      managerOverride: managerOverride || undefined,
+    });
+    toast.success(`Return ${data.salesReturn.returnNumber} created`);
+    onComplete(data);
+  };
+
   const submit = async () => {
     setSubmitting(true);
     try {
-      const items = lines
-        .filter((l) => l.returnQty > 0)
-        .map((l) => ({
-          productId: l.productId,
-          variantIndex: l.variantIndex,
-          quantity: l.returnQty,
-          returnToStock: l.returnToStock,
-        }));
-      const { data } = await api.post('/returns', {
-        orderId: lookup.order.id,
-        items,
-        refundMethod,
-        reason: reason || undefined,
-        notes: notes || undefined,
-      });
-      toast.success(`Return ${data.salesReturn.returnNumber} created`);
-      onComplete(data);
+      await postReturn();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Return failed');
+      if (err.response?.data?.requires === 'manager_override' && onNeedOverride) {
+        onNeedOverride({
+          reason: err.response.data.message,
+          retry: (override) => postReturn(override),
+        });
+      } else {
+        toast.error(err.response?.data?.message || 'Return failed');
+      }
     } finally {
       setSubmitting(false);
     }

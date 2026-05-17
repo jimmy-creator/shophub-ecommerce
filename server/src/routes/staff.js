@@ -33,7 +33,7 @@ router.get('/', protect, admin, async (req, res) => {
       : ['admin', 'staff'];
     const staff = await User.findAll({
       where: { role: { [Op.in]: roles } },
-      attributes: ['id', 'name', 'email', 'phone', 'role', 'permissions', 'homeLocationId', 'createdAt'],
+      attributes: ['id', 'name', 'email', 'phone', 'role', 'permissions', 'homeLocationId', 'isManager', 'createdAt'],
       order: [['role', 'ASC'], ['createdAt', 'DESC']],
     });
     res.json(staff);
@@ -49,7 +49,7 @@ router.post('/', protect, admin, async (req, res) => {
       return res.status(403).json({ message: 'Only admin can create staff' });
     }
 
-    const { name, email, password, permissions, role, pin, homeLocationId } = req.body;
+    const { name, email, password, permissions, role, pin, homeLocationId, isManager } = req.body;
     const targetRole = role === 'cashier' ? 'cashier' : 'staff';
 
     if (!name || !email || !password) {
@@ -79,6 +79,7 @@ router.post('/', protect, admin, async (req, res) => {
     if (targetRole === 'cashier') {
       userData.pin = String(pin);
       if (homeLocationId) userData.homeLocationId = parseInt(homeLocationId, 10);
+      userData.isManager = !!isManager;
     }
 
     const user = await User.create(userData);
@@ -103,7 +104,7 @@ router.put('/:id', protect, admin, async (req, res) => {
       return res.status(403).json({ message: 'Cannot modify another admin' });
     }
 
-    const { name, permissions, password, pin, homeLocationId } = req.body;
+    const { name, permissions, password, pin, homeLocationId, isManager } = req.body;
     const updates = {};
     if (name) updates.name = name.trim();
     if (permissions !== undefined && user.role !== 'cashier') updates.permissions = permissions;
@@ -111,6 +112,7 @@ router.put('/:id', protect, admin, async (req, res) => {
     if (user.role === 'cashier') {
       if (pin && /^\d{4,6}$/.test(String(pin))) updates.pin = String(pin);
       if (homeLocationId !== undefined) updates.homeLocationId = homeLocationId ? parseInt(homeLocationId, 10) : null;
+      if (isManager !== undefined) updates.isManager = !!isManager;
     }
 
     await user.update(updates);

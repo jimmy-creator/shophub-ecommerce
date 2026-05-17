@@ -53,6 +53,13 @@ const User = sequelize.define('User', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  // Cashier with manager privileges — can approve POS overrides
+  // (large discounts, large refunds). Admin role is implicitly a
+  // manager regardless of this flag.
+  isManager: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
   phone: {
     type: DataTypes.STRING,
     allowNull: true,

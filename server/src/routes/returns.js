@@ -24,8 +24,10 @@ import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
   Order, SalesReturn, ProductStock, Location, CashierSession, User, CashAccount,
-  recomputeProductStock, writeCashTxn,
+  recomputeProductStock, writeCashTxn, logActivity, verifyManagerPin,
 } from '../models/index.js';
+
+const REFUND_AMOUNT_THRESHOLD = 50;    // KWD — over this needs manager approval
 import { protect, admin, protectCashier } from '../middleware/auth.js';
 
 const router = Router();
@@ -210,6 +212,30 @@ router.post('/', authEither, async (req, res) => {
     }
     refundTotal = +refundTotal.toFixed(3);
 
+    // Manager-override gate for refunds over the threshold. Cashier
+    // initiated only — admin-initiated returns assume admin auth.
+    let managerUser = null;
+    const isAdminInitiated = !req.cashierSessionId;
+    if (!isAdminInitiated && refundTotal > REFUND_AMOUNT_THRESHOLD) {
+      const { managerOverride } = req.body || {};
+      if (!managerOverride?.userId || !managerOverride?.pin) {
+        await t.rollback();
+        return res.status(403).json({
+          message: `Refund above ${REFUND_AMOUNT_THRESHOLD} needs a manager override`,
+          requires: 'manager_override',
+          reason: `refund_${refundTotal}`,
+        });
+      }
+      try {
+        managerUser = await verifyManagerPin({
+          userId: managerOverride.userId, pin: managerOverride.pin, transaction: t,
+        });
+      } catch (err) {
+        await t.rollback();
+        return res.status(403).json({ message: err.message, requires: 'manager_override' });
+      }
+    }
+
     // Update or create per-location stock rows.
     for (const b of stockBumps) {
       const existing = await ProductStock.findOne({
@@ -270,6 +296,26 @@ router.post('/', authEither, async (req, res) => {
         });
       }
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: 'sales_return_create',
+      entityType: 'SalesReturn',
+      entityId: sr.id,
+      details: {
+        returnNumber: sr.returnNumber,
+        orderNumber: order.orderNumber,
+        refundAmount: refundTotal,
+        refundMethod,
+        itemCount: lines.reduce((s, l) => s + l.quantity, 0),
+      },
+      managerOverrideBy: managerUser?.id || null,
+      reason: managerUser ? (req.body.managerOverride?.reason || reason || `Refund ${refundTotal}`) : null,
+      locationId,
+      cashierSessionId: req.cashierSessionId || null,
+      ip: req.ip,
+      transaction: t,
+    });
 
     await t.commit();
     for (const b of stockBumps) await recomputeProductStock(b.productId);

@@ -45,6 +45,15 @@ function PageWrapper({ children }) {
   return <div key={pathname} className="page-transition">{children}</div>;
 }
 
+// Hide the storefront navbar + footer on POS routes — the POS is a
+// full-screen kiosk experience and the marketing chrome doesn't
+// belong there.
+function PosAware({ children }) {
+  const { pathname } = useLocation();
+  if (pathname === '/pos' || pathname === '/pos/login') return null;
+  return children;
+}
+
 let didInitialStaffRedirect = false;
 
 function StaffGate({ children }) {
@@ -71,7 +80,7 @@ export default function App() {
         <ThemeProvider>
           <Toaster position="top-right" />
           <div className="app">
-            <Navbar />
+            <PosAware><Navbar /></PosAware>
             <main className="main">
               <PageWrapper>
               <Routes>
@@ -106,7 +115,7 @@ export default function App() {
               </Routes>
               </PageWrapper>
             </main>
-            <Footer />
+            <PosAware><Footer /></PosAware>
           </div>
         </ThemeProvider>
         </RecentlyViewedProvider>

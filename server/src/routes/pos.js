@@ -15,9 +15,14 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
-  Product, ProductStock, Order, CashierSession, Location, CashAccount, User, Coupon,
-  recomputeProductStock, writeCashTxn,
+  Product, ProductStock, Order, CashierSession, Location, CashAccount, User, Coupon, SalesReturn,
+  recomputeProductStock, writeCashTxn, logActivity, verifyManagerPin,
 } from '../models/index.js';
+
+// Thresholds — when an action crosses these limits, a manager PIN
+// override is required. Could move to Settings table later.
+const DISCOUNT_PCT_THRESHOLD = 15;     // percent
+const REFUND_AMOUNT_THRESHOLD = 50;    // currency units (KWD)
 import { protectCashier } from '../middleware/auth.js';
 
 const router = Router();
@@ -117,6 +122,224 @@ router.get('/products', protectCashier, async (req, res) => {
   } catch (err) {
     console.error('[pos/products]', err);
     res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── Managers (for override PIN picker) ───────────────────────────
+router.get('/managers', protectCashier, async (req, res) => {
+  try {
+    const rows = await User.findAll({
+      where: {
+        [Op.or]: [
+          { role: 'admin' },
+          { role: 'cashier', isManager: true },
+        ],
+      },
+      attributes: ['id', 'name', 'role'],
+      order: [['name', 'ASC']],
+    });
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── Recent sales for this shift ─────────────────────────────────
+router.get('/recent-sales', protectCashier, async (req, res) => {
+  try {
+    const rows = await Order.findAll({
+      where: { cashierSessionId: req.cashierSessionId },
+      attributes: ['id', 'orderNumber', 'totalAmount', 'discount', 'paymentMethod',
+                   'items', 'shippingAddress', 'createdAt', 'refundAmount'],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(req.query.limit, 10) || 25,
+    });
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── Void a sale (manager-gated) ─────────────────────────────────
+// Runs through the SalesReturn pipeline at full original amount,
+// returns all items to stock at this location, refunds via the
+// original payment method, and writes the ledger entry. The cashier
+// just supplies a manager PIN.
+//
+// The order must not already be fully refunded.
+router.post('/sales/:id/void', protectCashier, async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const order = await Order.findByPk(req.params.id, { transaction: t });
+    if (!order) { await t.rollback(); return res.status(404).json({ message: 'Sale not found' }); }
+    if (order.cashierSessionId !== req.cashierSessionId && req.user.role !== 'admin') {
+      // Cashiers can only void within their own session; admin can void any.
+      // Tighter than the SalesReturn route, which lets any cashier return
+      // any order at their location.
+      await t.rollback();
+      return res.status(403).json({ message: 'Can only void sales from your current shift' });
+    }
+    const alreadyRefunded = parseFloat(order.refundAmount || 0);
+    const remaining = +(parseFloat(order.totalAmount) - alreadyRefunded).toFixed(3);
+    if (remaining <= 0) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Sale already fully refunded' });
+    }
+
+    // Void always requires a manager.
+    const { managerOverride } = req.body || {};
+    if (!managerOverride?.userId || !managerOverride?.pin) {
+      await t.rollback();
+      return res.status(403).json({
+        message: 'Voiding a sale needs a manager override',
+        requires: 'manager_override',
+        reason: `void_${order.orderNumber}`,
+      });
+    }
+    let managerUser;
+    try {
+      managerUser = await verifyManagerPin({
+        userId: managerOverride.userId, pin: managerOverride.pin, transaction: t,
+      });
+    } catch (err) {
+      await t.rollback();
+      return res.status(403).json({ message: err.message, requires: 'manager_override' });
+    }
+
+    // Build items list for the SalesReturn — net of any prior partial returns.
+    const priorReturns = await SalesReturn.findAll({
+      where: { orderId: order.id, status: 'completed' },
+      attributes: ['items'], transaction: t,
+    });
+    const returnedSoFar = new Map();
+    for (const r of priorReturns) {
+      for (const it of (r.items || [])) {
+        const k = `${it.productId}:${it.variantIndex ?? 'b'}`;
+        returnedSoFar.set(k, (returnedSoFar.get(k) || 0) + (parseInt(it.quantity, 10) || 0));
+      }
+    }
+    const voidItems = [];
+    let refundTotal = 0;
+    const productIds = new Set();
+    for (const it of (order.items || [])) {
+      const vIdx = it.variantIndex ?? null;
+      const k = `${it.productId}:${vIdx ?? 'b'}`;
+      const remainingQty = (parseInt(it.quantity, 10) || 0) - (returnedSoFar.get(k) || 0);
+      if (remainingQty <= 0) continue;
+      const lineRefund = +((parseFloat(it.price) || 0) * remainingQty).toFixed(3);
+      refundTotal += lineRefund;
+      voidItems.push({
+        productId: it.productId,
+        variantIndex: vIdx,
+        name: it.name,
+        price: parseFloat(it.price) || 0,
+        quantity: remainingQty,
+        refundAmount: lineRefund,
+        returnToStock: true,
+      });
+      productIds.add(it.productId);
+    }
+    // If discount was applied, prorate it down: refund = subtotal share −
+    // discount share. Keeps the void total = order remaining.
+    if (parseFloat(order.discount) > 0 && refundTotal > 0) {
+      const subtotal = (order.items || []).reduce((s, i) => s + (parseFloat(i.price) || 0) * (parseInt(i.quantity, 10) || 0), 0);
+      const discountFactor = subtotal > 0 ? (subtotal - parseFloat(order.discount)) / subtotal : 1;
+      refundTotal = +(refundTotal * discountFactor).toFixed(3);
+      voidItems.forEach((v) => { v.refundAmount = +(v.refundAmount * discountFactor).toFixed(3); });
+    }
+    refundTotal = +Math.min(refundTotal, remaining).toFixed(3);
+    if (refundTotal <= 0) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Nothing to void' });
+    }
+
+    // Refund via the same rail the customer paid through.
+    const refundMethod = order.paymentMethod === 'pos_cash' ? 'cash'
+      : order.paymentMethod === 'pos_card' ? 'card'
+      : 'cash';
+
+    // Decrement stock back to this location.
+    for (const v of voidItems) {
+      const stock = await ProductStock.findOne({
+        where: { productId: v.productId, variantIndex: v.variantIndex, locationId: req.cashierLocationId },
+        transaction: t,
+      });
+      if (stock) {
+        await stock.update({ quantity: stock.quantity + v.quantity }, { transaction: t });
+      } else {
+        await ProductStock.create({
+          productId: v.productId, variantIndex: v.variantIndex,
+          locationId: req.cashierLocationId, quantity: v.quantity,
+        }, { transaction: t });
+      }
+    }
+
+    const sr = await SalesReturn.create({
+      returnNumber: `VOID-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+      orderId: order.id,
+      locationId: req.cashierLocationId,
+      cashierSessionId: req.cashierSessionId,
+      items: voidItems,
+      refundAmount: refundTotal,
+      refundMethod,
+      reason: managerOverride.reason || 'Sale voided',
+      notes: req.body.notes?.trim() || null,
+      processedBy: req.user.id,
+      status: 'completed',
+    }, { transaction: t });
+
+    // Bump Order.refundAmount + write ledger entry if drawer/card account.
+    await order.update({
+      refundAmount: +(alreadyRefunded + refundTotal).toFixed(3),
+    }, { transaction: t });
+
+    const acctType = refundMethod === 'cash' ? 'drawer' : 'card_terminal';
+    const acct = await CashAccount.findOne({
+      where: { locationId: req.cashierLocationId, type: acctType, active: true },
+      transaction: t,
+    });
+    if (acct) {
+      await writeCashTxn({
+        cashAccountId: acct.id,
+        amount: -refundTotal,
+        source: 'return',
+        sourceType: 'SalesReturn',
+        sourceId: sr.id,
+        reference: sr.returnNumber,
+        description: `Void of ${order.orderNumber}`,
+        date: new Date(),
+        createdBy: req.user.id,
+        transaction: t,
+      });
+    }
+
+    await logActivity({
+      userId: req.user.id,
+      action: 'pos_sale_void',
+      entityType: 'Order',
+      entityId: order.id,
+      details: {
+        orderNumber: order.orderNumber,
+        refundAmount: refundTotal,
+        refundMethod,
+        itemsVoided: voidItems.reduce((s, v) => s + v.quantity, 0),
+        salesReturnId: sr.id,
+      },
+      managerOverrideBy: managerUser.id,
+      reason: managerOverride.reason || `Void ${order.orderNumber}`,
+      locationId: req.cashierLocationId,
+      cashierSessionId: req.cashierSessionId,
+      ip: req.ip,
+      transaction: t,
+    });
+
+    await t.commit();
+    for (const pid of productIds) await recomputeProductStock(pid);
+    res.status(201).json({ salesReturn: sr.toJSON(), order: { id: order.id, orderNumber: order.orderNumber } });
+  } catch (err) {
+    if (!t.finished) await t.rollback().catch(() => {});
+    console.error('[pos/sales/void]', err);
+    res.status(400).json({ message: err.message });
   }
 });
 
@@ -248,7 +471,7 @@ router.post('/customers', protectCashier, async (req, res) => {
 router.post('/sale', protectCashier, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { items, customer, payment, userId, couponCode, manualDiscount } = req.body || {};
+    const { items, customer, payment, userId, couponCode, manualDiscount, managerOverride } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
       await t.rollback();
       return res.status(400).json({ message: 'No items in sale' });
@@ -329,12 +552,36 @@ router.post('/sale', protectCashier, async (req, res) => {
     // then the coupon applies to (subtotal − manual). Final total is
     // capped at 0 in case both stack heavily.
     let manualOff = 0;
+    let manualPct = 0;
     if (manualDiscount && parseFloat(manualDiscount.value) > 0) {
       const v = parseFloat(manualDiscount.value);
       manualOff = manualDiscount.kind === 'percentage'
         ? (subTotal * v) / 100
         : v;
       manualOff = Math.min(manualOff, subTotal);
+      manualPct = subTotal > 0 ? (manualOff / subTotal) * 100 : 0;
+    }
+
+    // Manager override gate: any manual discount whose effective
+    // percentage exceeds the threshold must be approved by a manager.
+    let managerUser = null;
+    if (manualPct > DISCOUNT_PCT_THRESHOLD) {
+      if (!managerOverride?.userId || !managerOverride?.pin) {
+        await t.rollback();
+        return res.status(403).json({
+          message: `Discount above ${DISCOUNT_PCT_THRESHOLD}% needs a manager override`,
+          requires: 'manager_override',
+          reason: `discount_${manualPct.toFixed(1)}pct`,
+        });
+      }
+      try {
+        managerUser = await verifyManagerPin({
+          userId: managerOverride.userId, pin: managerOverride.pin, transaction: t,
+        });
+      } catch (err) {
+        await t.rollback();
+        return res.status(403).json({ message: err.message, requires: 'manager_override' });
+      }
     }
     let couponOff = 0;
     let appliedCoupon = null;
@@ -394,6 +641,29 @@ router.post('/sale', protectCashier, async (req, res) => {
     if (appliedCoupon) {
       await appliedCoupon.increment('usedCount', { transaction: t });
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: 'pos_sale',
+      entityType: 'Order',
+      entityId: order.id,
+      details: {
+        orderNumber: order.orderNumber,
+        total: totalAmount,
+        paymentMethod,
+        itemCount: orderItems.reduce((s, i) => s + i.quantity, 0),
+        discount: totalDiscount,
+        manualPct: +manualPct.toFixed(2),
+        couponCode: appliedCoupon?.code || null,
+        customerId: linkedUser?.id || null,
+      },
+      managerOverrideBy: managerUser?.id || null,
+      reason: managerUser ? (managerOverride?.reason || `Discount ${manualPct.toFixed(1)}%`) : null,
+      locationId: req.cashierLocationId,
+      cashierSessionId: req.cashierSessionId,
+      ip: req.ip,
+      transaction: t,
+    });
 
     // Write a CashTransaction against this location's drawer (cash) or
     // card-terminal account, so finance balances reconcile. Missing

@@ -1002,6 +1002,9 @@ export default function Admin() {
   });
   const [stockValue, setStockValue] = useState(null);
   const [stockValueFilter, setStockValueFilter] = useState({ locationId: '' });
+  const [activityLog, setActivityLog] = useState([]);
+  const [activityFilter, setActivityFilter] = useState({ from: '', to: '', action: '', managerOnly: false });
+  const [activityDetail, setActivityDetail] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('admin_collapsed_sections') || '[]')); }
@@ -1149,6 +1152,13 @@ export default function Admin() {
       const params = {};
       if (stockValueFilter.locationId) params.locationId = stockValueFilter.locationId;
       api.get('/finance/stock-value', { params }).then((res) => setStockValue(res.data)).catch(() => {});
+    } else if (tab === 'activity-log') {
+      const params = {};
+      if (activityFilter.from) params.from = new Date(activityFilter.from + 'T00:00:00').toISOString();
+      if (activityFilter.to) params.to = new Date(activityFilter.to + 'T23:59:59.999').toISOString();
+      if (activityFilter.action) params.action = activityFilter.action;
+      if (activityFilter.managerOnly) params.managerOnly = 'true';
+      api.get('/activity-log', { params }).then((res) => setActivityLog(res.data)).catch(() => {});
     } else if (tab === 'purchase-returns') {
       api.get('/suppliers?active=true').then((res) => setSuppliers(res.data)).catch(() => {});
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
@@ -1160,7 +1170,7 @@ export default function Admin() {
       if (prFilter.locationId) params.locationId = prFilter.locationId;
       api.get('/purchase-returns', { params }).then((res) => setPurchaseReturns(res.data)).catch(() => {});
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter, daybookFilter, pnlFilter, stockValueFilter]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter, daybookFilter, pnlFilter, stockValueFilter, activityFilter]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -1200,10 +1210,11 @@ export default function Admin() {
         { tab: 'pos-reports', label: 'POS Reports', show: MULTILOC_ENABLED && hasAccess('analytics') },
     ]},
     { id: 'people', label: 'People', items: [
-        { tab: 'customers', label: 'Customers', show: hasAccess('customers') },
-        { tab: 'reviews',   label: 'Reviews',   show: hasAccess('reviews') },
-        { tab: 'staff',     label: 'Staff',     show: isAdmin },
-        { tab: 'cashiers',  label: 'Cashiers',  show: MULTILOC_ENABLED && isAdmin },
+        { tab: 'customers',    label: 'Customers',    show: hasAccess('customers') },
+        { tab: 'reviews',      label: 'Reviews',      show: hasAccess('reviews') },
+        { tab: 'staff',        label: 'Staff',        show: isAdmin },
+        { tab: 'cashiers',     label: 'Cashiers',     show: MULTILOC_ENABLED && isAdmin },
+        { tab: 'activity-log', label: 'Activity Log', show: MULTILOC_ENABLED && hasAccess('analytics') },
     ]},
     { id: 'settings', label: 'Settings', items: [
         { tab: 'coupons',  label: 'Coupons',  show: hasAccess('coupons') },
@@ -2897,6 +2908,7 @@ export default function Admin() {
                       const payload = {
                         name: cashierForm.name,
                         homeLocationId: cashierForm.homeLocationId || null,
+                        isManager: !!cashierForm.isManager,
                       };
                       if (cashierForm.password) payload.password = cashierForm.password;
                       if (cashierForm.pin) payload.pin = cashierForm.pin;
@@ -2909,6 +2921,7 @@ export default function Admin() {
                         password: cashierForm.password,
                         pin: cashierForm.pin,
                         homeLocationId: cashierForm.homeLocationId || null,
+                        isManager: !!cashierForm.isManager,
                         role: 'cashier',
                       });
                       toast.success('Cashier account created');
@@ -2951,11 +2964,96 @@ export default function Admin() {
                       {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                     </select>
                   </div>
+                  <div className="form-group">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" checked={!!cashierForm.isManager} onChange={(e) => setCashierForm({ ...cashierForm, isManager: e.target.checked })} />
+                      <span>Manager <small style={{ color: 'var(--text-light)' }}>(can approve POS overrides — large discounts, large refunds)</small></span>
+                    </label>
+                  </div>
                   <div className="form-actions">
                     <button type="submit" className="btn btn-primary">{cashierForm._editing ? 'Save' : 'Create'}</button>
                     <button type="button" className="btn btn-secondary" onClick={() => setCashierForm(null)}>Cancel</button>
                   </div>
                 </form>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'activity-log' && (
+          <div className="admin-section">
+            <div className="admin-section-header">
+              <h2>Activity Log</h2>
+              <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>{activityLog.length} entries</span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.25rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+              <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>From</label>
+                <input type="date" value={activityFilter.from} onChange={(e) => setActivityFilter({ ...activityFilter, from: e.target.value })} /></div>
+              <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>To</label>
+                <input type="date" value={activityFilter.to} onChange={(e) => setActivityFilter({ ...activityFilter, to: e.target.value })} /></div>
+              <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Action</label>
+                <select value={activityFilter.action} onChange={(e) => setActivityFilter({ ...activityFilter, action: e.target.value })}>
+                  <option value="">All</option>
+                  <option value="pos_sale">POS sale</option>
+                  <option value="sales_return_create">Sales return</option>
+                </select>
+              </div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+                <input type="checkbox" checked={activityFilter.managerOnly} onChange={(e) => setActivityFilter({ ...activityFilter, managerOnly: e.target.checked })} />
+                Manager overrides only
+              </label>
+              <button className="btn btn-secondary" onClick={() => setActivityFilter({ from: '', to: '', action: '', managerOnly: false })}>Clear</button>
+            </div>
+
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Entity</th><th>Location</th><th>Override</th><th>Reason</th><th></th></tr></thead>
+                <tbody>
+                  {activityLog.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No entries</td></tr>}
+                  {activityLog.map((e) => (
+                    <tr key={e.id} style={{ background: e.managerOverrideBy ? 'rgba(251,191,36,0.06)' : 'inherit' }}>
+                      <td style={{ fontSize: '0.78rem', whiteSpace: 'nowrap' }}>{new Date(e.createdAt).toLocaleString()}</td>
+                      <td>{e.actor?.name || '—'} <small style={{ color: 'var(--text-light)' }}>({e.actor?.role})</small></td>
+                      <td style={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>{e.action}</td>
+                      <td style={{ fontSize: '0.82rem' }}>
+                        {e.entityType && <span>{e.entityType}#{e.entityId}</span>}
+                        {!e.entityType && '—'}
+                      </td>
+                      <td>{e.Location?.name || '—'}</td>
+                      <td>{e.approver?.name ? <strong style={{ color: 'var(--copper)' }}>{e.approver.name}</strong> : '—'}</td>
+                      <td style={{ fontSize: '0.82rem', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.reason || '—'}</td>
+                      <td>
+                        <button className="btn btn-secondary" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                          onClick={() => setActivityDetail(e)}>Detail</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {activityDetail && (
+              <div className="admin-form-overlay" onClick={(ev) => { if (ev.target === ev.currentTarget) setActivityDetail(null); }}>
+                <div className="admin-form" style={{ maxWidth: 560 }}>
+                  <h3>Activity #{activityDetail.id}</h3>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
+                    <div>When: {new Date(activityDetail.createdAt).toLocaleString()}</div>
+                    <div>Actor: {activityDetail.actor?.name} ({activityDetail.actor?.role})</div>
+                    <div>Action: <strong>{activityDetail.action}</strong></div>
+                    {activityDetail.entityType && <div>Entity: {activityDetail.entityType}#{activityDetail.entityId}</div>}
+                    {activityDetail.Location && <div>Location: {activityDetail.Location.name}</div>}
+                    {activityDetail.approver && <div>Manager: <strong>{activityDetail.approver.name}</strong></div>}
+                    {activityDetail.reason && <div>Reason: {activityDetail.reason}</div>}
+                    {activityDetail.ip && <div>IP: {activityDetail.ip}</div>}
+                  </div>
+                  <pre style={{ background: 'var(--bg-warm, #f5f1e8)', padding: '0.75rem', borderRadius: 6, fontSize: '0.78rem', overflow: 'auto', maxHeight: 300 }}>
+                    {JSON.stringify(activityDetail.details, null, 2)}
+                  </pre>
+                  <div className="form-actions" style={{ marginTop: '1rem' }}>
+                    <button className="btn btn-primary" onClick={() => setActivityDetail(null)}>Close</button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
