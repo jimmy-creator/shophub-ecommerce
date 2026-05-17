@@ -17,7 +17,10 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
 
   const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
   const when = order.createdAt ? new Date(order.createdAt).toLocaleString() : '';
-  const method = order.paymentMethod === 'pos_cash' ? 'Cash' : 'Card';
+  const breakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;
+  const method = breakdown
+    ? 'Split'
+    : order.paymentMethod === 'pos_cash' ? 'Cash' : 'Card';
 
   return (
     <>
@@ -110,11 +113,18 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
               <td>TOTAL</td>
               <td className="right">{fmt(order.totalAmount)}</td>
             </tr>
-            <tr>
-              <td>Paid ({method})</td>
-              <td className="right">{fmt(amountTendered ?? order.totalAmount)}</td>
-            </tr>
-            {change > 0 && (
+            {breakdown ? breakdown.map((tn, i) => (
+              <tr key={i}>
+                <td>Paid ({tn.method === 'cash' ? 'Cash' : 'Card'})</td>
+                <td className="right">{fmt(tn.amount)}</td>
+              </tr>
+            )) : (
+              <tr>
+                <td>Paid ({method})</td>
+                <td className="right">{fmt(amountTendered ?? order.totalAmount)}</td>
+              </tr>
+            )}
+            {change > 0 && !breakdown && (
               <tr>
                 <td>Change</td>
                 <td className="right">{fmt(change)}</td>

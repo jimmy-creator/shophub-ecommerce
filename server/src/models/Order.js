@@ -81,6 +81,16 @@ const Order = sequelize.define('Order', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  // Per-tender breakdown for split-payment POS sales.
+  // null = single tender (use paymentMethod as before). When set,
+  // paymentMethod is 'pos_split' and this is an array like
+  //   [{ method: 'cash', amount: 20.000 },
+  //    { method: 'card', amount: 30.000, reference: 'tap-tx-id' }]
+  // Each entry's amount is the retained amount (no cash-back/change).
+  paymentBreakdown: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
   discount: {
     type: DataTypes.DECIMAL(10, 2),
     defaultValue: 0,

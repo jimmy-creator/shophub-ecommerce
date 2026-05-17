@@ -29,6 +29,7 @@ import PosCustomerPicker from '../components/PosCustomerPicker';
 import PosDiscountModal from '../components/PosDiscountModal';
 import PosManagerOverride from '../components/PosManagerOverride';
 import PosRecentSales from '../components/PosRecentSales';
+import PosSplitPayment from '../components/PosSplitPayment';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -62,6 +63,7 @@ export default function Pos() {
   const [discountOpen, setDiscountOpen] = useState(false);
   const [pendingOverride, setPendingOverride] = useState(null);  // { reason, retry } | null
   const [recentOpen, setRecentOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'card' | null
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -84,14 +86,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -223,17 +225,14 @@ export default function Pos() {
     else if (results.length === 0 && query.trim()) toast.error('No match');
   };
 
-  const postSale = async (managerOverride) => {
+  const postSale = async (paymentPayload, managerOverride) => {
     const body = {
       items: cart.map((c) => ({ productId: c.productId, variantIndex: c.variantIndex, quantity: c.quantity })),
       userId: linkedCustomer?.id || undefined,
       couponCode: discount?.coupon?.code || undefined,
       manualDiscount: discount?.manual || undefined,
       managerOverride: managerOverride || undefined,
-      payment: {
-        method: payOpen,
-        amountTendered: payOpen === 'cash' ? parseFloat(tendered) : total,
-      },
+      payment: paymentPayload,
     };
     const { data } = await api.post('/pos/sale', body);
     setReceipt(data);
@@ -242,6 +241,7 @@ export default function Pos() {
     setDiscount(null);
     setTendered('');
     setPayOpen(null);
+    setSplitOpen(false);
     searchRef.current?.focus();
   };
 
@@ -249,12 +249,37 @@ export default function Pos() {
     if (cart.length === 0) return;
     setSubmitting(true);
     try {
-      await postSale();
+      await postSale({
+        method: payOpen,
+        amountTendered: payOpen === 'cash' ? parseFloat(tendered) : total,
+      });
     } catch (err) {
       if (err.response?.data?.requires === 'manager_override') {
         setPendingOverride({
           reason: err.response.data.message,
-          retry: (override) => postSale(override),
+          retry: (override) => postSale({
+            method: payOpen,
+            amountTendered: payOpen === 'cash' ? parseFloat(tendered) : total,
+          }, override),
+        });
+      } else {
+        toast.error(err.response?.data?.message || 'Sale failed');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitSplit = async (tenders) => {
+    if (cart.length === 0) return;
+    setSubmitting(true);
+    try {
+      await postSale({ tenders });
+    } catch (err) {
+      if (err.response?.data?.requires === 'manager_override') {
+        setPendingOverride({
+          reason: err.response.data.message,
+          retry: (override) => postSale({ tenders }, override),
         });
       } else {
         toast.error(err.response?.data?.message || 'Sale failed');
@@ -492,6 +517,12 @@ export default function Pos() {
               <HiCreditCard size={22} /> Card
             </button>
           </div>
+          <button
+            disabled={cart.length === 0}
+            onClick={() => setSplitOpen(true)}
+            className="split-link">
+            or split between cash &amp; card →
+          </button>
         </aside>
       </div>
 
@@ -611,6 +642,17 @@ export default function Pos() {
         <div className="modal-backdrop">
           <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} />
         </div>
+      )}
+
+      {/* ─── Split payment ────────────────────── */}
+      {splitOpen && (
+        <PosSplitPayment
+          total={total}
+          currency={CURRENCY}
+          submitting={submitting}
+          onClose={() => setSplitOpen(false)}
+          onConfirm={submitSplit}
+        />
       )}
 
       {/* ─── Recent sales picker ──────────────── */}
@@ -934,6 +976,15 @@ export default function Pos() {
         .pay-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
         .pay-btn-cash { background: var(--pos-success); color: #052e23; }
         .pay-btn-card { background: var(--pos-card); }
+        .split-link {
+          display: block; width: 100%; margin-top: 0.6rem;
+          padding: 0.5rem;
+          background: transparent; border: none;
+          color: var(--pos-text-2); font-family: inherit; font-size: 0.82rem;
+          cursor: pointer; text-align: center;
+        }
+        .split-link:hover:not(:disabled) { color: var(--pos-accent); }
+        .split-link:disabled { opacity: 0.3; cursor: not-allowed; }
 
         .modal-backdrop {
           position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;

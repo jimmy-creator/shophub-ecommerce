@@ -38,7 +38,15 @@ function rollup(orders, returns = []) {
   for (const o of orders) {
     const amt = parseFloat(o.totalAmount || 0);
     totalSales += amt;
-    if (isCash(o.paymentMethod)) cashSales += amt;
+    // Split-payment orders carry per-tender amounts in paymentBreakdown.
+    // Single-tender orders fall back to paymentMethod-based bucketing.
+    if (Array.isArray(o.paymentBreakdown) && o.paymentBreakdown.length > 0) {
+      for (const tn of o.paymentBreakdown) {
+        const tAmt = parseFloat(tn.amount || 0);
+        if (tn.method === 'cash') cashSales += tAmt;
+        else if (tn.method === 'card') cardSales += tAmt;
+      }
+    } else if (isCash(o.paymentMethod)) cashSales += amt;
     else if (isCard(o.paymentMethod)) cardSales += amt;
   }
   let cashRefunds = 0, cardRefunds = 0, creditRefunds = 0, returnCount = 0;

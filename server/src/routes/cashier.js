@@ -157,9 +157,19 @@ router.post('/shift/close', protectCashier, async (req, res) => {
     // Cash sales come from Orders attributed to this session; cash refunds come
     // from SalesReturn rows attributed to this session with refundMethod='cash'
     // (this handles returns of items sold in earlier shifts correctly).
+    // Cash sales: pure-cash orders contribute totalAmount; split orders
+    // contribute only the cash tender from paymentBreakdown.
     const cashOrders = await Order.findAll({
-      where: { cashierSessionId: session.id, paymentMethod: { [Op.in]: ['cash', 'pos_cash'] } },
+      where: {
+        cashierSessionId: session.id,
+        paymentMethod: { [Op.in]: ['cash', 'pos_cash'] },
+      },
       attributes: ['totalAmount'],
+      transaction: t,
+    });
+    const splitOrders = await Order.findAll({
+      where: { cashierSessionId: session.id, paymentMethod: 'pos_split' },
+      attributes: ['paymentBreakdown'],
       transaction: t,
     });
     const cashReturns = await SalesReturn.findAll({
@@ -167,7 +177,11 @@ router.post('/shift/close', protectCashier, async (req, res) => {
       attributes: ['refundAmount'],
       transaction: t,
     });
-    const cashSales = cashOrders.reduce((s, o) => s + parseFloat(o.totalAmount || 0), 0);
+    const cashSales = cashOrders.reduce((s, o) => s + parseFloat(o.totalAmount || 0), 0)
+      + splitOrders.reduce((s, o) => {
+          const cashLine = (o.paymentBreakdown || []).find((t) => t.method === 'cash');
+          return s + (cashLine ? parseFloat(cashLine.amount || 0) : 0);
+        }, 0);
     const cashRefunds = cashReturns.reduce((s, r) => s + parseFloat(r.refundAmount || 0), 0);
     const expectedCash = parseFloat(session.openingCash || 0) + cashSales - cashRefunds;
     const variance = +(closingCash - expectedCash).toFixed(3);

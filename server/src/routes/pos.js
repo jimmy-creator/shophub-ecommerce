@@ -476,9 +476,24 @@ router.post('/sale', protectCashier, async (req, res) => {
       await t.rollback();
       return res.status(400).json({ message: 'No items in sale' });
     }
-    if (!payment?.method || !['cash', 'card'].includes(payment.method)) {
+    // Accept either single-tender { method, amountTendered? } (back-compat)
+    // or split { tenders: [{ method, amount }] }. Normalise to a tenders
+    // array. Validation of sum vs total happens after discount/total calc.
+    let tenders = [];
+    if (Array.isArray(payment?.tenders) && payment.tenders.length > 0) {
+      tenders = payment.tenders.map((t) => ({
+        method: t.method,
+        amount: parseFloat(t.amount),
+      }));
+    } else if (payment?.method && ['cash', 'card'].includes(payment.method)) {
+      tenders = [{ method: payment.method, amount: null }];   // amount filled after total
+    } else {
       await t.rollback();
-      return res.status(400).json({ message: 'payment.method must be cash or card' });
+      return res.status(400).json({ message: 'payment.method or payment.tenders required' });
+    }
+    if (tenders.some((t) => !['cash', 'card'].includes(t.method))) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Each tender must be cash or card' });
     }
 
     // Validate shift is still open.
@@ -600,13 +615,36 @@ router.post('/sale', protectCashier, async (req, res) => {
     const totalAmount = +(Math.max(0, subTotal - totalDiscount)).toFixed(3);
 
     const orderNumber = genOrderNumber();
-    const paymentMethod = payment.method === 'cash' ? 'pos_cash' : 'pos_card';
-    const amountTendered = payment.amountTendered != null ? parseFloat(payment.amountTendered) : totalAmount;
-    const change = +(amountTendered - totalAmount).toFixed(3);
 
-    if (paymentMethod === 'pos_cash' && change < 0) {
-      throw new Error('Amount tendered is less than total');
+    // Resolve tenders. Single-tender back-compat: amount comes from the
+    // legacy `amountTendered` field (any overage is the cash change).
+    // For splits, each tender carries its retained amount; sum must equal
+    // totalAmount exactly (cash overpay is the cashier's responsibility
+    // to subtract change before sending).
+    let amountTendered = totalAmount;     // for the receipt's "Paid" line
+    let change = 0;
+    if (tenders.length === 1) {
+      const single = tenders[0];
+      amountTendered = payment.amountTendered != null
+        ? parseFloat(payment.amountTendered)
+        : totalAmount;
+      change = +(amountTendered - totalAmount).toFixed(3);
+      if (single.method === 'cash') {
+        if (amountTendered < totalAmount) throw new Error('Amount tendered is less than total');
+        single.amount = totalAmount;       // retained, not tendered
+      } else {
+        if (change > 0) throw new Error('Card payment cannot exceed total');
+        single.amount = totalAmount;
+      }
+    } else {
+      const sum = +tenders.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0).toFixed(3);
+      if (sum !== totalAmount) {
+        throw new Error(`Split tenders sum to ${sum} but total is ${totalAmount}`);
+      }
     }
+    const isSplit = tenders.length > 1;
+    const paymentMethod = isSplit ? 'pos_split'
+      : tenders[0].method === 'cash' ? 'pos_cash' : 'pos_card';
 
     // Decrement stock at this location.
     for (const { stockRow, qty } of stockDecrements) {
@@ -636,6 +674,7 @@ router.post('/sale', protectCashier, async (req, res) => {
       discount: totalDiscount,
       couponCode: appliedCoupon?.code || null,
       taxAmount: 0,
+      paymentBreakdown: isSplit ? tenders : null,
     }, { transaction: t });
 
     if (appliedCoupon) {
@@ -665,24 +704,30 @@ router.post('/sale', protectCashier, async (req, res) => {
       transaction: t,
     });
 
-    // Write a CashTransaction against this location's drawer (cash) or
-    // card-terminal account, so finance balances reconcile. Missing
-    // account is non-fatal — POS keeps working, the sale just doesn't
-    // hit the ledger until the account is created.
-    const acctType = paymentMethod === 'pos_cash' ? 'drawer' : 'card_terminal';
-    const acct = await CashAccount.findOne({
-      where: { locationId: req.cashierLocationId, type: acctType, active: true },
-      transaction: t,
-    });
-    if (acct) {
+    // Write one CashTransaction per tender. Cash hits the location's
+    // drawer; card hits its card-terminal account. Missing account is
+    // non-fatal — POS keeps working, the sale just doesn't hit the
+    // ledger for that tender until the account is created.
+    const acctCache = {};   // type -> CashAccount
+    for (const tn of tenders) {
+      if (!tn.amount || tn.amount <= 0) continue;
+      const acctType = tn.method === 'cash' ? 'drawer' : 'card_terminal';
+      if (!(acctType in acctCache)) {
+        acctCache[acctType] = await CashAccount.findOne({
+          where: { locationId: req.cashierLocationId, type: acctType, active: true },
+          transaction: t,
+        });
+      }
+      const acct = acctCache[acctType];
+      if (!acct) continue;
       await writeCashTxn({
         cashAccountId: acct.id,
-        amount: totalAmount,
+        amount: tn.amount,
         source: 'sale',
         sourceType: 'Order',
         sourceId: order.id,
         reference: order.orderNumber,
-        description: `POS sale (${paymentMethod === 'pos_cash' ? 'cash' : 'card'})`,
+        description: `POS sale (${tn.method})${isSplit ? ' [split]' : ''}`,
         date: order.createdAt,
         createdBy: req.user.id,
         transaction: t,
