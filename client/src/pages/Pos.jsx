@@ -21,6 +21,7 @@ import PosReportReceipt from '../components/PosReportReceipt';
 import PosReturnModal from '../components/PosReturnModal';
 import PosReturnReceipt from '../components/PosReturnReceipt';
 import PosCustomerPicker from '../components/PosCustomerPicker';
+import PosDiscountModal from '../components/PosDiscountModal';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -35,6 +36,8 @@ export default function Pos() {
   const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation}
   const [variantPicker, setVariantPicker] = useState(null);  // product-search-result with hasVariants
   const [linkedCustomer, setLinkedCustomer] = useState(null);   // null = walk-in
+  const [discount, setDiscount] = useState(null);                // { manual?, coupon? } | null
+  const [discountOpen, setDiscountOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'card' | null
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -57,14 +60,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -153,7 +156,18 @@ export default function Pos() {
   const removeLine = (idx) => setCart((prev) => prev.filter((_, i) => i !== idx));
 
   const subTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
-  const total = +subTotal.toFixed(3);
+  // Compute discount preview the same way the server does. Manual
+  // discount applies to subtotal; coupon already carries its computed
+  // amount from the preview call (server re-validates on commit).
+  const manualOff = (() => {
+    if (!discount?.manual) return 0;
+    const v = parseFloat(discount.manual.value) || 0;
+    const calc = discount.manual.kind === 'percentage' ? (subTotal * v) / 100 : v;
+    return +Math.min(calc, subTotal).toFixed(3);
+  })();
+  const couponOff = discount?.coupon ? +(parseFloat(discount.coupon.discount) || 0).toFixed(3) : 0;
+  const discountTotal = +Math.min(manualOff + couponOff, subTotal).toFixed(3);
+  const total = +Math.max(0, subTotal - discountTotal).toFixed(3);
 
   // ─── On Enter in search box ──────────────────────────────────────
   const onSearchKey = (e) => {
@@ -170,6 +184,8 @@ export default function Pos() {
       const body = {
         items: cart.map((c) => ({ productId: c.productId, variantIndex: c.variantIndex, quantity: c.quantity })),
         userId: linkedCustomer?.id || undefined,
+        couponCode: discount?.coupon?.code || undefined,
+        manualDiscount: discount?.manual || undefined,
         payment: {
           method: payOpen,
           amountTendered: payOpen === 'cash' ? parseFloat(tendered) : total,
@@ -180,6 +196,7 @@ export default function Pos() {
       // Reset
       setCart([]);
       setLinkedCustomer(null);
+      setDiscount(null);
       setTendered('');
       setPayOpen(null);
       searchRef.current?.focus();
@@ -338,6 +355,20 @@ export default function Pos() {
           </div>
 
           <div className="cart-totals">
+            <button
+              className="discount-btn"
+              onClick={() => setDiscountOpen(true)}
+              disabled={cart.length === 0}>
+              {discount?.manual || discount?.coupon
+                ? `Discount applied · −${fmt(discountTotal)}`
+                : '+ Add discount'}
+            </button>
+            {discountTotal > 0 && (
+              <>
+                <div className="sub-row"><span>Subtotal</span><span>{fmt(subTotal)}</span></div>
+                <div className="sub-row discount-row"><span>Discount</span><span>−{fmt(discountTotal)}</span></div>
+              </>
+            )}
             <div className="total-row">
               <span>Total</span>
               <strong>{fmt(total)}</strong>
@@ -479,6 +510,19 @@ export default function Pos() {
         </div>
       )}
 
+      {/* ─── Discount modal ───────────────────── */}
+      {discountOpen && (
+        <PosDiscountModal
+          subtotal={subTotal}
+          cartItems={cart}
+          customer={linkedCustomer}
+          currency={CURRENCY}
+          current={discount}
+          onApply={setDiscount}
+          onClose={() => setDiscountOpen(false)}
+        />
+      )}
+
       {/* ─── Return flow + receipt ────────────── */}
       {returnOpen && (
         <PosReturnModal
@@ -582,6 +626,16 @@ export default function Pos() {
         .cart-totals { padding: 0.75rem 0; border-top: 1px solid #334155; }
         .total-row { display: flex; justify-content: space-between; font-size: 1.3rem; }
         .total-row strong { color: #c4784a; }
+        .discount-btn {
+          width: 100%; padding: 0.5rem 0.75rem; margin-bottom: 0.4rem;
+          background: transparent; border: 1px dashed #475569;
+          color: #cbd5e1; cursor: pointer; font-family: inherit;
+          font-size: 0.82rem; border-radius: 6px;
+        }
+        .discount-btn:hover:not(:disabled) { border-color: #c4784a; color: #f8fafc; }
+        .discount-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .sub-row { display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8; padding: 0.15rem 0; }
+        .sub-row.discount-row { color: #fbbf24; }
 
         .pay-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
         .pay-btn {

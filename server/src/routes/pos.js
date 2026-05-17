@@ -15,7 +15,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
-  Product, ProductStock, Order, CashierSession, Location, CashAccount, User,
+  Product, ProductStock, Order, CashierSession, Location, CashAccount, User, Coupon,
   recomputeProductStock, writeCashTxn,
 } from '../models/index.js';
 import { protectCashier } from '../middleware/auth.js';
@@ -120,6 +120,70 @@ router.get('/products', protectCashier, async (req, res) => {
   }
 });
 
+// ─── Coupon validation ────────────────────────────────────────────
+// Re-validates a code against current cart state. Returns the
+// computed discount but does NOT increment usedCount — that happens
+// when the sale commits.
+async function validateCoupon({ code, subtotal, items, userId, transaction = null }) {
+  if (!code) return { coupon: null, discount: 0 };
+  const coupon = await Coupon.findOne({
+    where: { code: code.toUpperCase().trim(), active: true },
+    transaction,
+  });
+  if (!coupon) throw new Error('Invalid coupon code');
+  const now = new Date();
+  if (coupon.startDate && now < new Date(coupon.startDate)) throw new Error('Coupon not active yet');
+  if (coupon.endDate && now > new Date(coupon.endDate)) throw new Error('Coupon has expired');
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new Error('Coupon usage limit reached');
+  if (subtotal < parseFloat(coupon.minOrderAmount || 0)) {
+    throw new Error(`Minimum order ${parseFloat(coupon.minOrderAmount).toFixed(3)} required`);
+  }
+  if (userId && coupon.perUserLimit) {
+    const used = await Order.count({ where: { userId, couponCode: coupon.code }, transaction });
+    if (used >= coupon.perUserLimit) throw new Error('Customer has already used this coupon');
+  }
+  if (coupon.applicableCategories?.length && items?.length) {
+    const cats = [...new Set(items.map((i) => i.category).filter(Boolean))];
+    if (!cats.some((c) => coupon.applicableCategories.includes(c))) {
+      throw new Error(`Coupon valid only for: ${coupon.applicableCategories.join(', ')}`);
+    }
+  }
+  if (coupon.applicableProducts?.length && items?.length) {
+    const pids = items.map((i) => i.productId);
+    if (!pids.some((id) => coupon.applicableProducts.includes(id))) {
+      throw new Error('Coupon not valid for the items in this cart');
+    }
+  }
+  let discount = 0;
+  if (coupon.type === 'percentage') {
+    discount = (subtotal * parseFloat(coupon.value)) / 100;
+    if (coupon.maxDiscount) discount = Math.min(discount, parseFloat(coupon.maxDiscount));
+  } else {
+    discount = parseFloat(coupon.value);
+  }
+  discount = Math.min(discount, subtotal);
+  discount = +discount.toFixed(3);
+  return { coupon, discount };
+}
+
+router.post('/preview-coupon', protectCashier, async (req, res) => {
+  try {
+    const { code, items = [], userId } = req.body || {};
+    if (!code) return res.status(400).json({ message: 'Coupon code required' });
+    const subtotal = items.reduce((s, l) => s + (parseFloat(l.price) || 0) * (parseInt(l.quantity, 10) || 0), 0);
+    const { coupon, discount } = await validateCoupon({ code, subtotal, items, userId });
+    res.json({
+      code: coupon.code,
+      type: coupon.type,
+      value: parseFloat(coupon.value),
+      description: coupon.description,
+      discount,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // ─── Customer picker (POS) ─────────────────────────────────────────
 // Search by phone (digit substring) or name. Cashier types into the
 // picker and gets up to 8 matches.
@@ -184,7 +248,7 @@ router.post('/customers', protectCashier, async (req, res) => {
 router.post('/sale', protectCashier, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { items, customer, payment, userId } = req.body || {};
+    const { items, customer, payment, userId, couponCode, manualDiscount } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
       await t.rollback();
       return res.status(400).json({ message: 'No items in sale' });
@@ -251,7 +315,43 @@ router.post('/sale', protectCashier, async (req, res) => {
       });
     }
 
-    const totalAmount = +subTotal.toFixed(3);
+    // Resolve linked customer first so the coupon's per-user limit
+    // check can see it.
+    let linkedUser = null;
+    if (userId) {
+      linkedUser = await User.findByPk(parseInt(userId, 10), { transaction: t });
+      if (!linkedUser || linkedUser.role !== 'customer') {
+        throw new Error('Invalid customer');
+      }
+    }
+
+    // Apply discounts. Manual discount applies to the cart subtotal,
+    // then the coupon applies to (subtotal − manual). Final total is
+    // capped at 0 in case both stack heavily.
+    let manualOff = 0;
+    if (manualDiscount && parseFloat(manualDiscount.value) > 0) {
+      const v = parseFloat(manualDiscount.value);
+      manualOff = manualDiscount.kind === 'percentage'
+        ? (subTotal * v) / 100
+        : v;
+      manualOff = Math.min(manualOff, subTotal);
+    }
+    let couponOff = 0;
+    let appliedCoupon = null;
+    if (couponCode) {
+      const result = await validateCoupon({
+        code: couponCode,
+        subtotal: +Math.max(0, subTotal - manualOff).toFixed(3),
+        items: orderItems,
+        userId: linkedUser?.id,
+        transaction: t,
+      });
+      couponOff = result.discount;
+      appliedCoupon = result.coupon;
+    }
+    const totalDiscount = +(manualOff + couponOff).toFixed(3);
+    const totalAmount = +(Math.max(0, subTotal - totalDiscount)).toFixed(3);
+
     const orderNumber = genOrderNumber();
     const paymentMethod = payment.method === 'cash' ? 'pos_cash' : 'pos_card';
     const amountTendered = payment.amountTendered != null ? parseFloat(payment.amountTendered) : totalAmount;
@@ -266,15 +366,6 @@ router.post('/sale', protectCashier, async (req, res) => {
       await stockRow.update({ quantity: stockRow.quantity - qty }, { transaction: t });
     }
 
-    // Resolve linked customer (if a picker was used).
-    let linkedUser = null;
-    if (userId) {
-      linkedUser = await User.findByPk(parseInt(userId, 10), { transaction: t });
-      if (!linkedUser || linkedUser.role !== 'customer') {
-        throw new Error('Invalid customer');
-      }
-    }
-
     const order = await Order.create({
       orderNumber,
       userId: linkedUser?.id || null,
@@ -284,7 +375,10 @@ router.post('/sale', protectCashier, async (req, res) => {
       shippingAddress: {
         fullName: linkedUser?.name || customer?.name || 'Walk-in',
         phone: linkedUser?.phone || customer?.phone || '',
-        notes: 'In-store sale (POS)',
+        notes: [
+          'In-store sale (POS)',
+          manualDiscount?.reason ? `Discount reason: ${manualDiscount.reason}` : null,
+        ].filter(Boolean).join(' · '),
       },
       paymentMethod,
       paymentStatus: 'paid',
@@ -292,9 +386,14 @@ router.post('/sale', protectCashier, async (req, res) => {
       locationId: req.cashierLocationId,
       cashierSessionId: req.cashierSessionId,
       shippingCharge: 0,
-      discount: 0,
+      discount: totalDiscount,
+      couponCode: appliedCoupon?.code || null,
       taxAmount: 0,
     }, { transaction: t });
+
+    if (appliedCoupon) {
+      await appliedCoupon.increment('usedCount', { transaction: t });
+    }
 
     // Write a CashTransaction against this location's drawer (cash) or
     // card-terminal account, so finance balances reconcile. Missing

@@ -97,6 +97,15 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
         <hr />
         <table>
           <tbody>
+            {parseFloat(order.discount || 0) > 0 && (() => {
+              const subtotal = (order.items || []).reduce((s, it) => s + (parseFloat(it.price) || 0) * (parseInt(it.quantity, 10) || 0), 0);
+              return (
+                <>
+                  <tr><td>Subtotal</td><td className="right">{fmt(subtotal)}</td></tr>
+                  <tr><td>Discount{order.couponCode ? ` (${order.couponCode})` : ''}</td><td className="right">−{fmt(order.discount)}</td></tr>
+                </>
+              );
+            })()}
             <tr className="total-row">
               <td>TOTAL</td>
               <td className="right">{fmt(order.totalAmount)}</td>
