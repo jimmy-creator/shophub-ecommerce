@@ -20,6 +20,7 @@ import PosReceipt from '../components/PosReceipt';
 import PosReportReceipt from '../components/PosReportReceipt';
 import PosReturnModal from '../components/PosReturnModal';
 import PosReturnReceipt from '../components/PosReturnReceipt';
+import PosCustomerPicker from '../components/PosCustomerPicker';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -33,8 +34,7 @@ export default function Pos() {
   const [searching, setSearching] = useState(false);
   const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation}
   const [variantPicker, setVariantPicker] = useState(null);  // product-search-result with hasVariants
-  const [customer, setCustomer] = useState({ name: '', phone: '', email: '' });
-  const [showCustomer, setShowCustomer] = useState(false);
+  const [linkedCustomer, setLinkedCustomer] = useState(null);   // null = walk-in
   const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'card' | null
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -169,7 +169,7 @@ export default function Pos() {
     try {
       const body = {
         items: cart.map((c) => ({ productId: c.productId, variantIndex: c.variantIndex, quantity: c.quantity })),
-        customer: (customer.name || customer.phone || customer.email) ? customer : undefined,
+        userId: linkedCustomer?.id || undefined,
         payment: {
           method: payOpen,
           amountTendered: payOpen === 'cash' ? parseFloat(tendered) : total,
@@ -179,10 +179,9 @@ export default function Pos() {
       setReceipt(data);
       // Reset
       setCart([]);
-      setCustomer({ name: '', phone: '', email: '' });
+      setLinkedCustomer(null);
       setTendered('');
       setPayOpen(null);
-      setShowCustomer(false);
       searchRef.current?.focus();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Sale failed');
@@ -331,16 +330,11 @@ export default function Pos() {
           </div>
 
           <div className="cart-customer">
-            <button className="link-btn" onClick={() => setShowCustomer((s) => !s)}>
-              {showCustomer ? '− Walk-in (no details)' : '+ Add customer (optional)'}
-            </button>
-            {showCustomer && (
-              <div className="customer-fields">
-                <input placeholder="Name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} />
-                <input placeholder="Phone" value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} />
-                <input placeholder="Email" type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} />
-              </div>
-            )}
+            <PosCustomerPicker
+              customer={linkedCustomer}
+              onSelect={setLinkedCustomer}
+              onClear={() => setLinkedCustomer(null)}
+            />
           </div>
 
           <div className="cart-totals">

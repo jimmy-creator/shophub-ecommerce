@@ -15,7 +15,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
-  Product, ProductStock, Order, CashierSession, Location, CashAccount,
+  Product, ProductStock, Order, CashierSession, Location, CashAccount, User,
   recomputeProductStock, writeCashTxn,
 } from '../models/index.js';
 import { protectCashier } from '../middleware/auth.js';
@@ -120,11 +120,71 @@ router.get('/products', protectCashier, async (req, res) => {
   }
 });
 
+// ─── Customer picker (POS) ─────────────────────────────────────────
+// Search by phone (digit substring) or name. Cashier types into the
+// picker and gets up to 8 matches.
+router.get('/customers', protectCashier, async (req, res) => {
+  try {
+    const q = (req.query.q || '').toString().trim();
+    if (!q) return res.json([]);
+    const digits = q.replace(/\D/g, '');
+    const where = { role: 'customer' };
+    const ors = [{ name: { [Op.like]: `%${q}%` } }];
+    if (digits.length >= 3) ors.push({ phone: { [Op.like]: `%${digits}%` } });
+    ors.push({ email: { [Op.like]: `%${q}%` } });
+    where[Op.or] = ors;
+    const rows = await User.findAll({
+      where,
+      attributes: ['id', 'name', 'email', 'phone'],
+      limit: 8,
+      order: [['name', 'ASC']],
+    });
+    res.json(rows);
+  } catch (err) {
+    console.error('[pos/customers]', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Create a phone-only POS customer.
+router.post('/customers', protectCashier, async (req, res) => {
+  try {
+    const name = (req.body.name || '').trim();
+    const phone = (req.body.phone || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase() || null;
+    if (!name) return res.status(400).json({ message: 'Name required' });
+    if (!phone && !email) return res.status(400).json({ message: 'Phone or email required' });
+
+    // If a customer with this phone already exists, return them rather
+    // than creating a duplicate.
+    if (phone) {
+      const existing = await User.findOne({ where: { role: 'customer', phone } });
+      if (existing) return res.json({ ...existing.toJSON(), _existing: true });
+    }
+    if (email) {
+      const existing = await User.findOne({ where: { email } });
+      if (existing) {
+        if (existing.role !== 'customer') return res.status(400).json({ message: 'Email is registered to a staff account' });
+        return res.json({ ...existing.toJSON(), _existing: true });
+      }
+    }
+
+    const user = await User.create({
+      name, phone: phone || null, email,
+      role: 'customer',
+    });
+    res.status(201).json(user.toJSON());
+  } catch (err) {
+    console.error('[pos/customers/create]', err);
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // ─── Create a sale ─────────────────────────────────────────────────
 router.post('/sale', protectCashier, async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { items, customer, payment } = req.body || {};
+    const { items, customer, payment, userId } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
       await t.rollback();
       return res.status(400).json({ message: 'No items in sale' });
@@ -206,15 +266,24 @@ router.post('/sale', protectCashier, async (req, res) => {
       await stockRow.update({ quantity: stockRow.quantity - qty }, { transaction: t });
     }
 
+    // Resolve linked customer (if a picker was used).
+    let linkedUser = null;
+    if (userId) {
+      linkedUser = await User.findByPk(parseInt(userId, 10), { transaction: t });
+      if (!linkedUser || linkedUser.role !== 'customer') {
+        throw new Error('Invalid customer');
+      }
+    }
+
     const order = await Order.create({
       orderNumber,
-      userId: null,
-      guestEmail: customer?.email?.toLowerCase()?.trim() || null,
+      userId: linkedUser?.id || null,
+      guestEmail: linkedUser ? null : (customer?.email?.toLowerCase()?.trim() || null),
       items: orderItems,
       totalAmount,
       shippingAddress: {
-        fullName: customer?.name || 'Walk-in',
-        phone: customer?.phone || '',
+        fullName: linkedUser?.name || customer?.name || 'Walk-in',
+        phone: linkedUser?.phone || customer?.phone || '',
         notes: 'In-store sale (POS)',
       },
       paymentMethod,

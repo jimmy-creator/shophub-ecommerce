@@ -14,13 +14,23 @@ const User = sequelize.define('User', {
   },
   email: {
     type: DataTypes.STRING,
-    allowNull: false,
+    // Nullable so POS-created customers can be phone-only. Online
+    // signups, admin, staff, and cashier all still require a value.
+    // MySQL treats multiple NULLs as distinct so the unique index
+    // still works on real addresses.
+    allowNull: true,
     unique: true,
-    validate: { isEmail: true },
+    validate: {
+      isEmail(v) { if (v) {
+        // Run the standard format check only when an email is supplied.
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw new Error('Invalid email');
+      } },
+    },
   },
   password: {
+    // Nullable for POS-created customers who never sign in online.
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true,
   },
   role: {
     type: DataTypes.ENUM('customer', 'admin', 'staff', 'cashier'),
@@ -62,11 +72,11 @@ const User = sequelize.define('User', {
 }, {
   hooks: {
     beforeCreate: async (user) => {
-      user.password = await bcrypt.hash(user.password, 12);
+      if (user.password) user.password = await bcrypt.hash(user.password, 12);
       if (user.pin) user.pin = await bcrypt.hash(user.pin, 10);
     },
     beforeUpdate: async (user) => {
-      if (user.changed('password')) {
+      if (user.changed('password') && user.password) {
         user.password = await bcrypt.hash(user.password, 12);
       }
       if (user.changed('pin') && user.pin) {
