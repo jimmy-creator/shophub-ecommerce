@@ -6,13 +6,30 @@
  * cart, or admin chrome.
  */
 import { useEffect } from 'react';
+import { isEnabled as thermalEnabled, printSale } from '../lib/thermalPrinter';
 
 export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   const { order, change, amountTendered, location, cashier } = payload;
 
   useEffect(() => {
-    const t = setTimeout(() => window.print(), 200);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    const tryDirect = async () => {
+      if (thermalEnabled()) {
+        try {
+          const openDrawer = payload.order.paymentMethod === 'pos_cash'
+            || payload.order.paymentMethod === 'pos_split';
+          await printSale(payload, currency, openDrawer);
+          if (!cancelled) onClose?.();
+          return;
+        } catch (err) {
+          console.warn('[thermal] direct print failed, falling back:', err.message);
+        }
+      }
+      if (!cancelled) setTimeout(() => window.print(), 200);
+    };
+    tryDirect();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;

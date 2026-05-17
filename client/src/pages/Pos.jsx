@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import {
   HiShoppingCart, HiClock, HiReply, HiChartBar,
   HiLogout, HiOutlineLogout, HiUserCircle, HiCash, HiCreditCard,
-  HiSearch, HiX,
+  HiSearch, HiX, HiPrinter,
 } from 'react-icons/hi';
 import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
@@ -30,6 +30,7 @@ import PosDiscountModal from '../components/PosDiscountModal';
 import PosManagerOverride from '../components/PosManagerOverride';
 import PosRecentSales from '../components/PosRecentSales';
 import PosSplitPayment from '../components/PosSplitPayment';
+import PosPrinterSettings from '../components/PosPrinterSettings';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -64,6 +65,7 @@ export default function Pos() {
   const [pendingOverride, setPendingOverride] = useState(null);  // { reason, retry } | null
   const [recentOpen, setRecentOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
+  const [printerOpen, setPrinterOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'card' | null
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -86,14 +88,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen || printerOpen) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen, printerOpen]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -353,6 +355,9 @@ export default function Pos() {
           <HiChartBar size={22} /><span>X-report</span>
         </button>
         <div className="rail-spacer" />
+        <button className="rail-btn" onClick={() => setPrinterOpen(true)} title="Printer">
+          <HiPrinter size={22} /><span>Printer</span>
+        </button>
         <button className="rail-btn rail-btn-warn" onClick={() => setCloseForm({ closingCash: '', notes: '' })} title="Close shift">
           <HiLogout size={22} /><span>Close</span>
         </button>
@@ -642,6 +647,11 @@ export default function Pos() {
         <div className="modal-backdrop">
           <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} />
         </div>
+      )}
+
+      {/* ─── Printer settings ─────────────────── */}
+      {printerOpen && (
+        <PosPrinterSettings onClose={() => setPrinterOpen(false)} />
       )}
 
       {/* ─── Split payment ────────────────────── */}
