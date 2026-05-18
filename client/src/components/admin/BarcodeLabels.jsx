@@ -18,6 +18,7 @@ import api from '../../api/axios';
 import {
   isSupported as thermalSupported,
   getDevice,
+  requestDevice as requestPrinter,
   printLabels as thermalPrintLabels,
 } from '../../lib/thermalPrinter';
 
@@ -147,6 +148,18 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
       .catch(() => setUsbReady(false));
   }, []);
 
+  const doPair = async () => {
+    try {
+      const handle = await requestPrinter('barcode');
+      setUsbReady(true);
+      toast.success(`Paired: ${handle.device.productName || 'label printer'}`);
+    } catch (err) {
+      if (err?.name !== 'NotFoundError') {
+        toast.error(err.message || 'Pairing cancelled');
+      }
+    }
+  };
+
   const doUsbPrint = async () => {
     setUsbBusy(true);
     try {
@@ -171,6 +184,11 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
       <div className="admin-section-header">
         <h2>Barcode Labels</h2>
         <div style={{ display: 'flex', gap: 8 }}>
+          {thermalSupported() && !usbReady && (
+            <button className="btn btn-secondary" onClick={doPair}>
+              <HiPrinter /> Connect label printer
+            </button>
+          )}
           {usbReady && (
             <button className="btn btn-primary" disabled={queue.length === 0 || usbBusy} onClick={doUsbPrint}>
               <HiPrinter /> {usbBusy ? 'Sending…' : `USB · ${totalLabels} label${totalLabels === 1 ? '' : 's'}`}
