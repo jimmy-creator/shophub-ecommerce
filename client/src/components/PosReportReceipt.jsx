@@ -4,13 +4,13 @@
  * PosReceipt: hides everything else, auto-fires window.print().
  */
 import { useEffect } from 'react';
-import { isEnabled as thermalEnabled, printReport } from '../lib/thermalPrinter';
+import { isEnabled, printReport } from '../lib/thermalPrinter';
 
 export default function PosReportReceipt({ report, currency = 'KWD', onClose }) {
   useEffect(() => {
     let cancelled = false;
     const tryDirect = async () => {
-      if (thermalEnabled()) {
+      if (isEnabled('receipt')) {
         try {
           await printReport(report, currency);
           if (!cancelled) onClose?.();

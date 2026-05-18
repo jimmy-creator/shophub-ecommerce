@@ -9,6 +9,7 @@ import { CURRENCY } from '../utils/currency';
 import PoModals from '../components/admin/PoModals';
 import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
 import FinanceTabs from '../components/admin/FinanceTabs';
+import BarcodeLabels from '../components/admin/BarcodeLabels';
 
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 
@@ -1182,11 +1183,12 @@ export default function Admin() {
   // `show` is computed per render so role/feature gating stays live.
   const NAV_SECTIONS = [
     { id: 'catalog', label: 'Catalog', items: [
-        { tab: 'products',   label: 'Products',        show: hasAccess('products') },
-        { tab: 'categories', label: 'Categories',      show: hasAccess('categories') },
-        { tab: 'inventory',  label: 'Inventory',       show: MULTILOC_ENABLED && hasAccess('products') },
-        { tab: 'locations',  label: 'Locations',       show: MULTILOC_ENABLED && hasAccess('products') },
-        { tab: 'transfers',  label: 'Stock Transfers', show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'products',         label: 'Products',        show: hasAccess('products') },
+        { tab: 'categories',       label: 'Categories',      show: hasAccess('categories') },
+        { tab: 'inventory',        label: 'Inventory',       show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'locations',        label: 'Locations',       show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'transfers',        label: 'Stock Transfers', show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'barcode-labels',   label: 'Barcode Labels',  show: MULTILOC_ENABLED && hasAccess('products') },
     ]},
     { id: 'purchasing', label: 'Purchasing', items: [
         { tab: 'suppliers',        label: 'Suppliers',        show: MULTILOC_ENABLED && hasAccess('products') },
@@ -2808,6 +2810,8 @@ export default function Admin() {
             )}
           </div>
         )}
+
+        {tab === 'barcode-labels' && <BarcodeLabels currency={CURRENCY} />}
 
         {tab === 'cashiers' && (
           <div>

@@ -3,13 +3,13 @@
  * PosReceipt. Auto-fires window.print() on mount.
  */
 import { useEffect } from 'react';
-import { isEnabled as thermalEnabled, printReturn } from '../lib/thermalPrinter';
+import { isEnabled, printReturn } from '../lib/thermalPrinter';
 
 export default function PosReturnReceipt({ payload, currency = 'KWD', onClose }) {
   useEffect(() => {
     let cancelled = false;
     const tryDirect = async () => {
-      if (thermalEnabled()) {
+      if (isEnabled('receipt')) {
         try {
           await printReturn(payload, currency);
           if (!cancelled) onClose?.();

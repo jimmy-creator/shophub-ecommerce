@@ -1,60 +1,82 @@
 /**
- * Direct ESC/POS printing over WebUSB.
+ * Direct ESC/POS printing over WebUSB — supports two independent
+ * printers: the receipt printer at the counter (80mm thermal, often
+ * with a cash-drawer port) and the barcode/label printer in the back
+ * room.
  *
- * The browser persists the USB authorisation after the first
- * `requestDevice()`, so subsequent sessions can re-grab the same
- * device with `getDevices()` — no re-pairing needed.
+ * navigator.usb.getDevices() returns every device the browser has
+ * authorised but doesn't say which one is "receipt" or "barcode", so
+ * we persist a {vendorId, productId, serialNumber} fingerprint per
+ * role in localStorage and match against it at print time.
  *
- * Encoder: @point-of-sale/receipt-printer-encoder (browser-native
- * ESC/POS byte generator, no Node deps).
- * Transport: navigator.usb.
+ * Encoder: @point-of-sale/receipt-printer-encoder
+ * Transport: navigator.usb
  *
- * Cashier opts in via PosPrinterSettings. If disabled OR no device
- * paired OR the browser doesn't support WebUSB, callers fall back to
- * `window.print()` automatically.
+ * Public API is now role-keyed:
+ *   isSupported()                  WebUSB available?
+ *   isEnabled(kind)                cashier has direct print on for this role?
+ *   setEnabled(kind, v)
+ *   getColumns(kind)               paper width in columns
+ *   setColumns(kind, n)
+ *   getDevice(kind)                lookup the paired physical device
+ *   requestDevice(kind)            open OS picker + store fingerprint
+ *   forget(kind)
+ *   testPrint(kind)
+ *   printSale(payload, ccy, kick)  -> receipt
+ *   printReturn(payload, ccy)      -> receipt
+ *   printReport(report, ccy)       -> receipt
+ *   printLabels(labels, opts)      -> barcode
+ *   kickDrawer()                   -> receipt
  *
- * Public API:
- *   isSupported()             — WebUSB available in this browser?
- *   isEnabled()               — cashier has direct print on?
- *   setEnabled(bool)          — toggle the preference
- *   getPairedDevice()         — try to get the previously-paired printer
- *   requestDevice()           — open the OS picker for first pairing
- *   forget()                  — drop the pairing (and disable)
- *   testPrint()               — small "OK" receipt to confirm
- *   printSale(payload)        — printed sale receipt
- *   printReturn(payload)      — return receipt (refund)
- *   printReport(report)       — X/Z report
- *   kickDrawer()              — pulse the cash-drawer port
+ *  kind ∈ 'receipt' | 'barcode'
  */
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
 
-const STORAGE_KEY = 'pos_thermal_enabled';
-const COLUMNS = 32;   // 58mm = 32 cols, 80mm = 48 cols. Most KW thermal carts ship 48.
-                      // Override per-paper-width via setColumns() if needed.
-let columns = parseInt(localStorage.getItem('pos_thermal_columns'), 10) || 48;
+const KINDS = ['receipt', 'barcode'];
+const DEFAULTS = { receipt: 48, barcode: 32 };
+
+const key = (kind, suffix) => `pos_${kind}_${suffix}`;
 
 export function isSupported() {
   return typeof navigator !== 'undefined' && !!navigator.usb;
 }
 
-export function isEnabled() {
-  return localStorage.getItem(STORAGE_KEY) === 'true';
+export function isEnabled(kind) {
+  return localStorage.getItem(key(kind, 'enabled')) === 'true';
 }
 
-export function setEnabled(v) {
-  if (v) localStorage.setItem(STORAGE_KEY, 'true');
-  else localStorage.removeItem(STORAGE_KEY);
+export function setEnabled(kind, v) {
+  if (v) localStorage.setItem(key(kind, 'enabled'), 'true');
+  else localStorage.removeItem(key(kind, 'enabled'));
 }
 
-export function getColumns() { return columns; }
-export function setColumns(n) {
-  columns = parseInt(n, 10) || 48;
-  localStorage.setItem('pos_thermal_columns', String(columns));
+export function getColumns(kind) {
+  return parseInt(localStorage.getItem(key(kind, 'columns')), 10) || DEFAULTS[kind] || 48;
+}
+
+export function setColumns(kind, n) {
+  localStorage.setItem(key(kind, 'columns'), String(parseInt(n, 10) || DEFAULTS[kind]));
+}
+
+function getFingerprint(kind) {
+  try { return JSON.parse(localStorage.getItem(key(kind, 'device')) || 'null'); }
+  catch { return null; }
+}
+function setFingerprint(kind, device) {
+  const fp = {
+    vendorId: device.vendorId,
+    productId: device.productId,
+    serialNumber: device.serialNumber || null,
+  };
+  localStorage.setItem(key(kind, 'device'), JSON.stringify(fp));
+}
+function clearFingerprint(kind) {
+  localStorage.removeItem(key(kind, 'device'));
 }
 
 // ── Device handling ────────────────────────────────────────────────
 async function pickEndpoint(device) {
-  await device.open();
+  if (!device.opened) await device.open();
   if (device.configuration === null) await device.selectConfiguration(1);
   const iface = device.configuration.interfaces[0];
   await device.claimInterface(iface.interfaceNumber);
@@ -64,34 +86,67 @@ async function pickEndpoint(device) {
   return { device, endpoint: out.endpointNumber, interface: iface.interfaceNumber };
 }
 
-export async function getPairedDevice() {
-  if (!isSupported()) return null;
-  const devs = await navigator.usb.getDevices();
-  if (devs.length === 0) return null;
-  return pickEndpoint(devs[0]);
+function matches(device, fp) {
+  if (!fp) return false;
+  if (device.vendorId !== fp.vendorId) return false;
+  if (device.productId !== fp.productId) return false;
+  // serialNumber is the strongest match but many cheap printers report
+  // empty/identical serials; fall back to vendor+product if so.
+  if (fp.serialNumber && device.serialNumber && device.serialNumber !== fp.serialNumber) return false;
+  return true;
 }
 
-export async function requestDevice() {
+export async function getDevice(kind) {
+  if (!isSupported()) return null;
+  const fp = getFingerprint(kind);
+  if (!fp) return null;
+  const devs = await navigator.usb.getDevices();
+  const found = devs.find((d) => matches(d, fp));
+  if (!found) return null;
+  return pickEndpoint(found);
+}
+
+export async function requestDevice(kind) {
   if (!isSupported()) throw new Error('WebUSB not supported in this browser');
-  // Empty filter = show all USB devices so the user can pick anything.
-  const device = await navigator.usb.requestDevice({ filters: [] });
-  setEnabled(true);
+  // If the OTHER kind is paired to a device, exclude it from the picker
+  // so the user can't accidentally re-pick it for this role.
+  const otherKind = kind === 'receipt' ? 'barcode' : 'receipt';
+  const otherFp = getFingerprint(otherKind);
+  const exclusionFilters = otherFp
+    ? [{ vendorId: otherFp.vendorId, productId: otherFp.productId }]
+    : [];
+  const device = await navigator.usb.requestDevice({
+    filters: [],
+    exclusionFilters,
+  }).catch(async () => {
+    // Older browsers reject `exclusionFilters` — retry without.
+    return navigator.usb.requestDevice({ filters: [] });
+  });
+  setFingerprint(kind, device);
+  setEnabled(kind, true);
   return pickEndpoint(device);
 }
 
-export async function forget() {
-  setEnabled(false);
-  if (!isSupported()) return;
+export async function forget(kind) {
+  setEnabled(kind, false);
+  const fp = getFingerprint(kind);
+  clearFingerprint(kind);
+  if (!isSupported() || !fp) return;
   const devs = await navigator.usb.getDevices();
-  for (const d of devs) {
-    try { await d.forget(); } catch { /* old browsers lack forget() */ }
+  const target = devs.find((d) => matches(d, fp));
+  if (target) {
+    // Only revoke the authorisation if no other kind still claims it.
+    const otherFp = getFingerprint(KINDS.find((k) => k !== kind));
+    if (!otherFp || !matches(target, otherFp)) {
+      try { await target.forget(); } catch { /* old browsers */ }
+    }
   }
 }
 
 // ── Low-level send ─────────────────────────────────────────────────
-async function send(bytes) {
-  const handle = await getPairedDevice();
-  if (!handle) throw new Error('No printer paired');
+async function send(kind, bytes) {
+  const handle = await getDevice(kind);
+  if (!handle) throw new Error(`No ${kind} printer paired`);
   await handle.device.transferOut(handle.endpoint, bytes);
 }
 
@@ -101,7 +156,8 @@ const fmt = (currency, n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
 function buildSale(payload, currency = 'KWD') {
   const { order, change, amountTendered, location, cashier } = payload;
   const breakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;
-  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns });
+  const cols = getColumns('receipt');
+  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
 
   enc.initialize()
     .align('center').bold(true).size('normal').line(location?.name || 'Anfal Sports').bold(false);
@@ -117,53 +173,50 @@ function buildSale(payload, currency = 'KWD') {
   }
   enc.rule();
 
-  const colW = Math.floor(columns * 0.65);
+  const colW = Math.floor(cols * 0.65);
   for (const it of (order.items || [])) {
     const lineTotal = fmt(currency, (parseFloat(it.price) || 0) * (parseInt(it.quantity, 10) || 0));
     enc.table(
-      [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
       [[it.name, lineTotal]]
     );
     enc.line(`  ${it.quantity} x ${fmt(currency, it.price)}`);
   }
   enc.rule();
 
-  // Totals
   if (parseFloat(order.discount || 0) > 0) {
     const subtotal = (order.items || []).reduce(
       (s, it) => s + (parseFloat(it.price) || 0) * (parseInt(it.quantity, 10) || 0), 0
     );
     enc.table(
-      [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
       [
         ['Subtotal', fmt(currency, subtotal)],
         [`Discount${order.couponCode ? ` (${order.couponCode})` : ''}`, `-${fmt(currency, order.discount)}`],
       ]
     );
   }
-  enc.bold(true)
-    .table(
-      [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
-      [['TOTAL', fmt(currency, order.totalAmount)]]
-    )
-    .bold(false);
+  enc.bold(true).table(
+    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
+    [['TOTAL', fmt(currency, order.totalAmount)]]
+  ).bold(false);
 
   if (breakdown) {
     for (const tn of breakdown) {
       enc.table(
-        [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+        [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
         [[`Paid (${tn.method === 'cash' ? 'Cash' : 'Card'})`, fmt(currency, tn.amount)]]
       );
     }
   } else {
     const method = order.paymentMethod === 'pos_cash' ? 'Cash' : 'Card';
     enc.table(
-      [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
       [[`Paid (${method})`, fmt(currency, amountTendered ?? order.totalAmount)]]
     );
     if (change > 0) {
       enc.table(
-        [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+        [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
         [['Change', fmt(currency, change)]]
       );
     }
@@ -176,7 +229,8 @@ function buildSale(payload, currency = 'KWD') {
 
 function buildReturn(payload, currency = 'KWD') {
   const sr = payload.salesReturn;
-  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns });
+  const cols = getColumns('receipt');
+  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
   enc.initialize()
     .align('center').bold(true).line('RETURN RECEIPT').bold(false);
   if (sr.Location?.name) enc.line(sr.Location.name);
@@ -190,23 +244,23 @@ function buildReturn(payload, currency = 'KWD') {
   if (sr.reason) enc.line(`Reason: ${sr.reason}`);
   enc.rule();
 
-  const colW = Math.floor(columns * 0.65);
+  const colW = Math.floor(cols * 0.65);
   for (const it of (sr.items || [])) {
     enc.table(
-      [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
       [[it.name, `-${fmt(currency, it.refundAmount)}`]]
     );
     enc.line(`  ${it.quantity} x ${fmt(currency, it.price)}`);
   }
   enc.rule();
   enc.bold(true).table(
-    [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
     [['REFUND TOTAL', `-${fmt(currency, sr.refundAmount)}`]]
   ).bold(false);
   const methodLabel = sr.refundMethod === 'cash' ? 'Cash'
     : sr.refundMethod === 'card' ? 'Card' : 'Store Credit';
   enc.table(
-    [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
     [['Method', methodLabel]]
   );
   enc.rule();
@@ -218,23 +272,22 @@ function buildReturn(payload, currency = 'KWD') {
 }
 
 function buildReport(report, currency = 'KWD') {
-  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns });
+  const cols = getColumns('receipt');
+  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
   const t = report.type === 'Z' ? 'Z-REPORT' : 'X-REPORT';
   const session = report.session || {};
   const opened = session.openedAt ? new Date(session.openedAt).toLocaleString() : '—';
   const closed = session.closedAt ? new Date(session.closedAt).toLocaleString() : '—';
-  const colW = Math.floor(columns * 0.65);
+  const colW = Math.floor(cols * 0.65);
   const row = (l, r) => enc.table(
-    [{ width: colW, marginRight: 1 }, { width: columns - colW - 1, align: 'right' }],
+    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
     [[l, r]]
   );
 
-  enc.initialize()
-    .align('center').bold(true).line(t).bold(false);
+  enc.initialize().align('center').bold(true).line(t).bold(false);
   if (report.location?.name) enc.line(report.location.name);
   if (report.location?.phone) enc.line(`Tel: ${report.location.phone}`);
-  enc.rule()
-    .align('left')
+  enc.rule().align('left')
     .line(`Cashier: ${report.cashier?.name || '—'}`)
     .line(`Opened: ${opened}`);
   if (report.type === 'Z') enc.line(`Closed: ${closed}`);
@@ -269,35 +322,69 @@ function buildReport(report, currency = 'KWD') {
 }
 
 // ── Public print entrypoints ───────────────────────────────────────
-export async function testPrint() {
-  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns });
-  const bytes = enc.initialize()
+export async function testPrint(kind) {
+  const cols = getColumns(kind);
+  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
+  enc.initialize()
     .align('center').bold(true).line('TEST PRINT').bold(false)
-    .line('Anfal Sports POS')
+    .line(kind === 'barcode' ? 'Label printer' : 'Receipt printer')
     .line(new Date().toLocaleString())
-    .rule()
-    .align('left').line('Direct print is working.')
-    .newline().newline().cut('partial').encode();
-  await send(bytes);
+    .rule();
+  if (kind === 'barcode') {
+    enc.align('center').barcode('TEST1234', 'code128', { height: 60, text: false })
+      .line('TEST1234');
+  } else {
+    enc.align('left').line('Direct print is working.');
+  }
+  enc.newline().newline().cut('partial');
+  await send(kind, enc.encode());
 }
 
 export async function printSale(payload, currency, openDrawer = false) {
-  await send(buildSale(payload, currency));
+  await send('receipt', buildSale(payload, currency));
   if (openDrawer) await kickDrawer();
 }
 
 export async function printReturn(payload, currency) {
-  await send(buildReturn(payload, currency));
+  await send('receipt', buildReturn(payload, currency));
 }
 
 export async function printReport(report, currency) {
-  await send(buildReport(report, currency));
+  await send('receipt', buildReport(report, currency));
 }
 
-// Cash drawer pulse (ESC p m t1 t2) — most thermals expose drawer
-// kicker as pin 2; encoder handles the byte sequence.
+// Cash drawer pulse via the receipt printer.
 export async function kickDrawer() {
-  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns });
+  const cols = getColumns('receipt');
+  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
   const bytes = enc.initialize().pulse(0, 60, 120).encode();
-  await send(bytes);
+  await send('receipt', bytes);
+}
+
+// Barcode-label printer entrypoint.
+export async function printLabels(labels, { currency = 'KWD' } = {}) {
+  const cols = getColumns('barcode');
+  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
+  enc.initialize();
+  for (const label of labels) {
+    const show = label.show || { name: true, barcode: true, sku: true, price: true };
+    enc.initialize();
+    if (show.name && label.name) {
+      enc.align('center').bold(true).line(label.name).bold(false);
+    }
+    if (show.barcode && (label.code || label.productId)) {
+      const value = label.code || `P${label.productId}`;
+      enc.align('center').barcode(value, 'code128', { height: 60, text: false });
+    }
+    if (show.sku && label.code) {
+      enc.align('center').size('small').line(label.code).size('normal');
+    }
+    if (show.price && label.price != null) {
+      enc.align('center').bold(true)
+        .line(`${currency} ${(parseFloat(label.price) || 0).toFixed(3)}`)
+        .bold(false);
+    }
+    enc.newline().cut('partial');
+  }
+  await send('barcode', enc.encode());
 }

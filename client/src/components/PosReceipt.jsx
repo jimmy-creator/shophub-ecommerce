@@ -6,7 +6,7 @@
  * cart, or admin chrome.
  */
 import { useEffect } from 'react';
-import { isEnabled as thermalEnabled, printSale } from '../lib/thermalPrinter';
+import { isEnabled, printSale } from '../lib/thermalPrinter';
 
 export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   const { order, change, amountTendered, location, cashier } = payload;
@@ -14,7 +14,7 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   useEffect(() => {
     let cancelled = false;
     const tryDirect = async () => {
-      if (thermalEnabled()) {
+      if (isEnabled('receipt')) {
         try {
           const openDrawer = payload.order.paymentMethod === 'pos_cash'
             || payload.order.paymentMethod === 'pos_split';
