@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { localizedCurrency } from '../utils/i18nHelpers';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { HiShieldCheck, HiLockClosed, HiUser } from 'react-icons/hi';
 import api from '../api/axios';
-import { CURRENCY } from '../utils/currency';
 import toast from 'react-hot-toast';
 
 const toastStyle = {
@@ -30,6 +31,9 @@ function loadScript(src) {
 }
 
 export default function Checkout() {
+  const { t } = useTranslation();
+  // Locale-aware currency symbol; re-evaluates per render when locale flips.
+  const cur = localizedCurrency();
   const { cart, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -559,9 +563,9 @@ export default function Checkout() {
 
             {isGuest && (
               <>
-                <h3>Contact Information</h3>
+                <h3>{t('checkout.email')}</h3>
                 <div className="form-group">
-                  <label>Email Address</label>
+                  <label>{t('checkout.email')}</label>
                   <input
                     type="email"
                     name="email"
@@ -574,13 +578,13 @@ export default function Checkout() {
               </>
             )}
 
-            <h3>Shipping Address</h3>
+            <h3>{t('checkout.shippingAddress')}</h3>
             <div className="form-group">
-              <label>Full Name</label>
+              <label>{t('checkout.fullName')}</label>
               <input name="fullName" value={form.fullName} onChange={handleChange} required />
             </div>
             <div className="form-group">
-              <label>{isStore4 ? 'Address (Area · Block · Street · Building · Floor / Flat)' : 'Address'}</label>
+              <label>{isStore4 ? t('checkout.shippingAddressKw') : t('checkout.address')}</label>
               <input
                 name="address"
                 value={form.address}
@@ -593,7 +597,7 @@ export default function Checkout() {
               // Kuwait: no postal code, no separate state — pick governorate.
               <div className="form-row">
                 <div className="form-group form-group-state">
-                  <label className="label-state">Governorate</label>
+                  <label className="label-state">{t('checkout.governorate')}</label>
                   <select name="state" value={form.state} onChange={handleChange} required>
                     {KUWAIT_GOVERNORATES.map((g) => (
                       <option key={g} value={g}>{g}</option>
@@ -601,18 +605,18 @@ export default function Checkout() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>City / Area</label>
+                  <label>{t('checkout.cityArea')}</label>
                   <input name="city" value={form.city} onChange={handleChange} required placeholder="Salmiya, Hawally…" />
                 </div>
               </div>
             ) : (
               <div className="form-row">
                 <div className="form-group">
-                  <label>City</label>
+                  <label>{t('checkout.city')}</label>
                   <input name="city" value={form.city} onChange={handleChange} required />
                 </div>
                 <div className="form-group form-group-state">
-                  <label className="label-state">{isStore2 ? 'Emirate' : 'State'}</label>
+                  <label className="label-state">{isStore2 ? 'Emirate' : t('checkout.state')}</label>
                   {isStore2 ? (
                     <select name="state" value={form.state} onChange={handleChange} required>
                       {UAE_EMIRATES.map((e) => (
@@ -624,7 +628,7 @@ export default function Checkout() {
                   )}
                 </div>
                 <div className="form-group form-group-zipcode">
-                  <label>{isStore3 ? 'Pincode' : 'ZIP Code'}</label>
+                  <label>{isStore3 ? 'Pincode' : t('checkout.zipCode')}</label>
                   <input
                     name="zipCode"
                     value={form.zipCode}
@@ -656,7 +660,7 @@ export default function Checkout() {
               </div>
             )}
             <div className="form-group">
-              <label>Phone</label>
+              <label>{t('checkout.phone')}</label>
               <input name="phone" value={form.phone} onChange={handleChange} required />
             </div>
           </div>
@@ -691,17 +695,17 @@ export default function Checkout() {
 
             <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
               {loading
-                ? 'Processing...'
+                ? t('checkout.placingOrder')
                 : isOnlinePayment
-                  ? `Pay ${CURRENCY}${grandTotal.toFixed(2)}`
-                  : 'Place Order'
+                  ? `${t('checkout.placeOrder')} — ${cur}${grandTotal.toFixed(2)}`
+                  : t('checkout.placeOrder')
               }
             </button>
           </div>
 
           {/* Section 3: Order Summary */}
           <div className="order-summary checkout-summary">
-            <h3>Order Summary</h3>
+            <h3>{t('checkout.orderSummary')}</h3>
             {cart.map((item) => (
               <div key={item.cartKey} className="summary-item">
                 <span>
@@ -709,7 +713,7 @@ export default function Checkout() {
                   {item.selectedVariant && ` (${Object.values(item.selectedVariant).join(', ')})`}
                   {' x '}{item.quantity}
                 </span>
-                <span>{CURRENCY}{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                <span>{cur}{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
               </div>
             ))}
             {/* Coupon Input */}
@@ -748,8 +752,8 @@ export default function Checkout() {
                     <ul className="coupon-list">
                       {availableCoupons.map((c) => {
                         const valueLabel = c.type === 'percentage'
-                          ? `${c.value}% off${c.maxDiscount ? ` (up to ${CURRENCY}${c.maxDiscount})` : ''}`
-                          : `${CURRENCY}${c.value} off`;
+                          ? `${c.value}% off${c.maxDiscount ? ` (up to ${cur}${c.maxDiscount})` : ''}`
+                          : `${cur}${c.value} off`;
                         const eligible = cartTotal >= c.minOrderAmount;
                         return (
                           <li key={c.code} className={`coupon-list-item ${!eligible ? 'is-locked' : ''}`}>
@@ -759,8 +763,8 @@ export default function Checkout() {
                               {c.description && <p className="coupon-list-desc">{c.description}</p>}
                               {c.minOrderAmount > 0 && (
                                 <p className="coupon-list-meta">
-                                  Min. order {CURRENCY}{c.minOrderAmount.toFixed(2)}
-                                  {!eligible && ` · add ${CURRENCY}${(c.minOrderAmount - cartTotal).toFixed(2)} more`}
+                                  Min. order {cur}{c.minOrderAmount.toFixed(2)}
+                                  {!eligible && ` · add ${cur}${(c.minOrderAmount - cartTotal).toFixed(2)} more`}
                                 </p>
                               )}
                             </div>
@@ -783,13 +787,13 @@ export default function Checkout() {
             </div>
 
             <div className="summary-row">
-              <span>Subtotal</span>
-              <span>{CURRENCY}{cartTotal.toFixed(2)}</span>
+              <span>{t('cart.subtotal')}</span>
+              <span>{cur}{cartTotal.toFixed(2)}</span>
             </div>
             {discountAmount > 0 && (
               <div className="summary-row discount-row">
-                <span>Discount</span>
-                <span>-{CURRENCY}{discountAmount.toFixed(2)}</span>
+                <span>{t('cart.discount')}</span>
+                <span>-{cur}{discountAmount.toFixed(2)}</span>
               </div>
             )}
             {taxAmount > 0 && (
@@ -799,13 +803,13 @@ export default function Checkout() {
                   {taxInfo.breakdown && (
                     <span style={{ fontSize: '0.72rem', display: 'block', marginTop: '2px' }}>
                       {taxInfo.breakdown.isSameState
-                        ? `CGST ${CURRENCY}${taxInfo.breakdown.cgst.toFixed(2)} + SGST ${CURRENCY}${taxInfo.breakdown.sgst.toFixed(2)}`
-                        : `IGST ${CURRENCY}${taxInfo.breakdown.igst.toFixed(2)}`
+                        ? `CGST ${cur}${taxInfo.breakdown.cgst.toFixed(2)} + SGST ${cur}${taxInfo.breakdown.sgst.toFixed(2)}`
+                        : `IGST ${cur}${taxInfo.breakdown.igst.toFixed(2)}`
                       }
                     </span>
                   )}
                 </span>
-                <span>{CURRENCY}{taxAmount.toFixed(2)}</span>
+                <span>{cur}{taxAmount.toFixed(2)}</span>
               </div>
             )}
             {shippingOptions && (
@@ -820,7 +824,7 @@ export default function Checkout() {
                     <span className="shipping-option-days">{shippingOptions.standard.days}</span>
                   </div>
                   <span className="shipping-option-price">
-                    {shippingOptions.standard.rate === 0 ? 'Free' : `${CURRENCY}${shippingOptions.standard.rate.toFixed(2)}`}
+                    {shippingOptions.standard.rate === 0 ? 'Free' : `${cur}${shippingOptions.standard.rate.toFixed(2)}`}
                   </span>
                 </label>
                 <label
@@ -832,18 +836,18 @@ export default function Checkout() {
                     <span className="shipping-option-name">{shippingOptions.express.label}</span>
                     <span className="shipping-option-days">{shippingOptions.express.days}</span>
                   </div>
-                  <span className="shipping-option-price">{CURRENCY}{shippingOptions.express.rate.toFixed(2)}</span>
+                  <span className="shipping-option-price">{cur}{shippingOptions.express.rate.toFixed(2)}</span>
                 </label>
                 {shippingOptions.amountForFree && (
                   <p className="shipping-free-hint">
-                    {`Add ${CURRENCY}${shippingOptions.amountForFree.toFixed(2)} more for free shipping`}
+                    {`Add ${cur}${shippingOptions.amountForFree.toFixed(2)} more for free shipping`}
                   </p>
                 )}
               </div>
             )}
             <div className="summary-row total">
-              <span>Total</span>
-              <span>{CURRENCY}{grandTotal.toFixed(2)}</span>
+              <span>{t('cart.total')}</span>
+              <span>{cur}{grandTotal.toFixed(2)}</span>
             </div>
 
             <div className="checkout-trust">

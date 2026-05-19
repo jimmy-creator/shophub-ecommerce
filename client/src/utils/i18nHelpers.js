@@ -3,6 +3,8 @@
  * When i18n is disabled, these fall through to the English fields.
  */
 const I18N_ON = import.meta.env.VITE_FEATURE_I18N === 'true';
+const CURRENCY_DEFAULT = import.meta.env.VITE_CURRENCY_SYMBOL || '₹';
+const CURRENCY_AR = import.meta.env.VITE_CURRENCY_SYMBOL_AR;
 
 function currentLocale() {
   if (!I18N_ON) return 'en';
@@ -24,4 +26,12 @@ export function localizedDescription(obj) {
   if (!obj) return '';
   if (currentLocale().startsWith('ar') && obj.descriptionAr) return obj.descriptionAr;
   return obj.description || '';
+}
+
+// Returns the right currency symbol/abbreviation for the active
+// locale. Set VITE_CURRENCY_SYMBOL_AR=د.ك in the env to override the
+// Arabic one; otherwise falls back to the default (VITE_CURRENCY_SYMBOL).
+export function localizedCurrency() {
+  if (currentLocale().startsWith('ar') && CURRENCY_AR) return CURRENCY_AR;
+  return CURRENCY_DEFAULT;
 }

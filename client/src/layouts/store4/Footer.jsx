@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../../api/axios';
+import { localizedName } from '../../utils/i18nHelpers';
 
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
 
 export default function Footer() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -16,42 +19,39 @@ export default function Footer() {
       <div className="s2-footer-grid">
         <div>
           <img src="/images/anfal-logo.png" alt="Anfal Sports" className="s2-footer-logo-img" />
-          <p className="s2-footer-brand-tag">
-            Anfal Sports — Kuwait's home for authentic athletic footwear, sportswear and equipment. In-store and online.
-          </p>
+          <p className="s2-footer-brand-tag">{t('home.seoDescription')}</p>
         </div>
         <div className="s2-footer-col">
-          <h4>Shop</h4>
-          <Link to="/products">All Products</Link>
+          <h4>{t('footer.shop')}</h4>
+          <Link to="/products">{t('products.allProducts')}</Link>
           {categories.map(cat => (
-            <Link key={cat.id} to={`/products?category=${encodeURIComponent(cat.name)}`}>{cat.name}</Link>
+            <Link key={cat.id} to={`/products?category=${encodeURIComponent(cat.name)}`}>{localizedName(cat)}</Link>
           ))}
         </div>
         <div className="s2-footer-col">
-          <h4>Account</h4>
-          <Link to="/cart">Cart</Link>
-          <Link to="/orders">Orders</Link>
-          <Link to="/profile">Profile</Link>
-          <Link to="/wishlist">Wishlist</Link>
+          <h4>{t('common.account')}</h4>
+          <Link to="/cart">{t('common.cart')}</Link>
+          <Link to="/orders">{t('common.products')}</Link>
+          <Link to="/profile">{t('common.profile')}</Link>
+          <Link to="/wishlist">{t('common.wishlist')}</Link>
         </div>
         <div className="s2-footer-col">
-          <h4>Company</h4>
-          <Link to="/about">About Us</Link>
-          <Link to="/contact">Contact</Link>
+          <h4>{t('footer.company')}</h4>
+          <Link to="/about">{t('footer.aboutUs')}</Link>
+          <Link to="/contact">{t('footer.contactUs')}</Link>
           {B2B_ENABLED && <Link to="/wholesale">Wholesale</Link>}
-          <Link to="/privacy-policy">Privacy Policy</Link>
-          <Link to="/terms">Terms of Service</Link>
+          <Link to="/privacy-policy">{t('footer.privacyPolicy')}</Link>
+          <Link to="/terms">{t('footer.terms')}</Link>
         </div>
         <div className="s2-footer-col">
-          <h4>Support</h4>
-          <Link to="/shipping-policy">Shipping Policy</Link>
-          <Link to="/refund-policy">Refund Policy</Link>
-          <Link to="/return-policy">Returns</Link>
+          <h4>{t('footer.support')}</h4>
+          <Link to="/shipping-policy">{t('footer.shippingPolicy')}</Link>
+          <Link to="/refund-policy">{t('footer.refundPolicy')}</Link>
+          <Link to="/return-policy">{t('footer.returnPolicy')}</Link>
         </div>
       </div>
       <div className="s2-footer-bottom">
-        <span>© {new Date().getFullYear()} Anfal Sports</span>
-        <span>Sport, played right</span>
+        <span>{t('footer.copyright', { year: new Date().getFullYear(), store: 'Anfal Sports' })}</span>
       </div>
     </footer>
   );

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, Footprints, Shirt, Dumbbell, ShoppingBag, Award, Watch } from 'lucide-react';
 import api from '../../api/axios';
 import SEO from '../../components/SEO';
@@ -17,6 +18,7 @@ const fallbackIcons = {
 };
 
 export default function Home() {
+  const { t } = useTranslation();
   const [featured, setFeatured] = useState([]);
   const [latest, setLatest] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,10 +144,7 @@ export default function Home() {
 
   return (
     <div className="s2-root">
-      <SEO
-        title="Anfal Sports"
-        description="Anfal Sports — Kuwait's home for authentic athletic footwear, sportswear, equipment and accessories. Shop in-store or online."
-      />
+      <SEO title={t('home.seoTitle')} description={t('home.seoDescription')} />
 
       {/* ── Banner carousel (with desktop + mobile variants) ─── */}
       {banners.length > 0 ? (
@@ -213,7 +212,7 @@ export default function Home() {
                 <div className="s2-cat-card-text">
                   <h3 className="s2-cat-card-title">{c.title}</h3>
                   <span className="s2-cat-card-cta">
-                    Shop Now <ArrowRight size={14} strokeWidth={2.4} />
+                    {t('common.shopNow')} <ArrowRight size={14} strokeWidth={2.4} />
                   </span>
                 </div>
                 <picture className="s2-cat-card-img">
@@ -229,11 +228,9 @@ export default function Home() {
       {/* ── Featured grid ────────────────────────────────── */}
       <section className="s2-section">
         <div className="s2-section-head">
-          <h2 className="s2-section-title">
-            Best <em>Sellers</em>
-          </h2>
+          <h2 className="s2-section-title">{t('home.bestSellersTitle')}</h2>
           <Link to="/products" className="s2-view-all">
-            See all <ArrowRight size={14} strokeWidth={2} />
+            {t('common.viewAll')} <ArrowRight size={14} strokeWidth={2} />
           </Link>
         </div>
         {loading ? (
@@ -268,11 +265,9 @@ export default function Home() {
       {latest.length > 0 && (
         <section className="s2-section">
           <div className="s2-section-head">
-            <h2 className="s2-section-title">
-              Latest <em>launches</em>
-            </h2>
+            <h2 className="s2-section-title">{t('home.latestLaunchesTitle')}</h2>
             <Link to="/products?sort=createdAt&order=DESC" className="s2-view-all">
-              See all <ArrowRight size={14} strokeWidth={2} />
+              {t('common.viewAll')} <ArrowRight size={14} strokeWidth={2} />
             </Link>
           </div>
           <div className="s2-scroll-row">

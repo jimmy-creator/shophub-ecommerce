@@ -4,6 +4,7 @@ import { Menu, Search, User, ShoppingBag, ChevronDown, X, Home, LayoutGrid, Hear
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../../components/LanguageSwitcher';
 import api from '../../api/axios';
 import AnnouncementBar from '../../components/AnnouncementBar';
@@ -12,6 +13,7 @@ import ProductImage from '../../components/ProductImage';
 import { CURRENCY } from '../../utils/currency';
 
 export default function Navbar() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { cartCount } = useCart();
   const { wishlistCount } = useWishlist();
@@ -163,7 +165,7 @@ export default function Navbar() {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             onKeyDown={onSearchKeyDown}
-            placeholder="What are you looking for?"
+            placeholder={t('common.searchPlaceholder')}
             className="s2-nav-searchinput"
           />
           <button type="submit" className="s2-nav-searchbtn" aria-label="Search">
@@ -219,29 +221,29 @@ export default function Navbar() {
         <div className="s2-mobile-drawer-overlay" onClick={() => setShowMobileMenu(false)}>
           <aside className="s2-mobile-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="s2-mobile-drawer-head">
-              <span className="s2-mobile-drawer-title">Menu</span>
-              <button type="button" onClick={() => setShowMobileMenu(false)} aria-label="Close menu">
+              <span className="s2-mobile-drawer-title">{t('common.menu')}</span>
+              <button type="button" onClick={() => setShowMobileMenu(false)} aria-label={t('common.close')}>
                 <X size={20} strokeWidth={2} />
               </button>
             </div>
             <nav className="s2-mobile-drawer-nav">
-              <Link to="/" onClick={() => setShowMobileMenu(false)}><Home size={18} /> Home</Link>
-              <Link to="/products" onClick={() => setShowMobileMenu(false)}><LayoutGrid size={18} /> Shop</Link>
+              <Link to="/" onClick={() => setShowMobileMenu(false)}><Home size={18} /> {t('common.home')}</Link>
+              <Link to="/products" onClick={() => setShowMobileMenu(false)}><LayoutGrid size={18} /> {t('common.products')}</Link>
               <Link to="/wishlist" onClick={() => setShowMobileMenu(false)}>
-                <Heart size={18} /> Wishlist {wishlistCount > 0 && <span className="s2-mobile-drawer-count">{wishlistCount}</span>}
+                <Heart size={18} /> {t('common.wishlist')} {wishlistCount > 0 && <span className="s2-mobile-drawer-count">{wishlistCount}</span>}
               </Link>
               <Link to="/cart" onClick={() => setShowMobileMenu(false)}>
-                <ShoppingBag size={18} /> Cart {cartCount > 0 && <span className="s2-mobile-drawer-count">{cartCount}</span>}
+                <ShoppingBag size={18} /> {t('common.cart')} {cartCount > 0 && <span className="s2-mobile-drawer-count">{cartCount}</span>}
               </Link>
               <Link to={user ? '/profile' : '/login'} onClick={() => setShowMobileMenu(false)}>
-                <User size={18} /> {user ? 'Account' : 'Sign in'}
+                <User size={18} /> {user ? t('common.account') : t('common.signIn')}
               </Link>
             </nav>
             {categories.length > 0 && (
               <>
-                <div className="s2-mobile-drawer-section-title">Browse</div>
+                <div className="s2-mobile-drawer-section-title">{t('common.categories')}</div>
                 <nav className="s2-mobile-drawer-cats">
-                  <Link to="/products" onClick={() => setShowMobileMenu(false)}>All Categories</Link>
+                  <Link to="/products" onClick={() => setShowMobileMenu(false)}>{t('common.all')} {t('common.categories').toLowerCase()}</Link>
                   {categories.map((c) => (
                     <Link
                       key={c.id || c.name}

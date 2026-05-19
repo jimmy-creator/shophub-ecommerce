@@ -1,10 +1,14 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Eye, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { CurrencySymbol } from '../../utils/currency';
+import { localizedName } from '../../utils/i18nHelpers';
 
 export default function ProductCard({ product, eager = false }) {
+  const { t } = useTranslation();
   const { addToCart } = useCart();
+  const displayName = localizedName(product);
   const imgFull = product.images?.[0];
   const img = imgFull?.replace(/\/uploads\/(.+?)\.webp$/, '/api/upload/thumb/$1.webp') || imgFull;
   const hasDiscount = product.comparePrice && product.comparePrice > product.price;
@@ -26,32 +30,31 @@ export default function ProductCard({ product, eager = false }) {
         {img ? (
           <img
             src={img}
-            alt={product.name}
+            alt={displayName}
             loading={eager ? 'eager' : 'lazy'}
             fetchpriority={eager ? 'high' : 'auto'}
           />
         ) : (
           <div className="s2-product-placeholder">
-            {product.name?.[0] || '·'}
+            {displayName?.[0] || '·'}
           </div>
         )}
         <span className="s2-product-quickview" aria-hidden="true">
           <Eye size={15} strokeWidth={1.8} />
         </span>
         {soldOut ? (
-          <span className="s2-product-badge s2-product-badge-soldout">SOLDOUT</span>
+          <span className="s2-product-badge s2-product-badge-soldout">{t('common.outOfStock')}</span>
         ) : discount > 0 ? (
-          <span className="s2-product-badge">{discount}% OFF</span>
+          <span className="s2-product-badge">{discount}% {t('product.off')}</span>
         ) : null}
       </Link>
       <div className="s2-product-body">
         <Link to={`/product/${product.slug}`} className="s2-product-name">
-          {product.name}
+          {displayName}
         </Link>
         <div className="s2-product-foot">
           <div className="s2-product-price">
             <span className="now">
-              {hasDiscount ? 'From ' : ''}
               <CurrencySymbol />{parseFloat(product.price).toFixed(0)}
             </span>
             {hasDiscount && (
@@ -63,7 +66,7 @@ export default function ProductCard({ product, eager = false }) {
             className="s2-product-cart-btn"
             onClick={handleAddToCart}
             disabled={soldOut}
-            aria-label={soldOut ? 'Out of stock' : 'Add to cart'}
+            aria-label={soldOut ? t('common.outOfStock') : t('common.addToCart')}
           >
             <ShoppingBag size={16} strokeWidth={2} />
           </button>

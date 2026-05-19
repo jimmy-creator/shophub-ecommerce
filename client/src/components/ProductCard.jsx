@@ -1,13 +1,15 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { HiShoppingCart, HiStar, HiHeart, HiOutlineHeart } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import ProductImage from './ProductImage';
 import { showToast } from '../utils/toast';
-import { CURRENCY } from '../utils/currency';
+import { CurrencySymbol } from '../utils/currency';
 import { localizedName } from '../utils/i18nHelpers';
 
 export default function ProductCard({ product }) {
+  const { t } = useTranslation();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
@@ -53,15 +55,15 @@ export default function ProductCard({ product }) {
           <span className="review-count">({product.numReviews})</span>
         </div>
         <div className="product-pricing">
-          <span className="price">{CURRENCY}{parseFloat(product.price).toFixed(2)}</span>
+          <span className="price"><CurrencySymbol /> {parseFloat(product.price).toFixed(2)}</span>
           {product.comparePrice && (
             <span className="compare-price">
-              {CURRENCY}{parseFloat(product.comparePrice).toFixed(2)}
+              <CurrencySymbol /> {parseFloat(product.comparePrice).toFixed(2)}
             </span>
           )}
         </div>
         <button className="add-to-cart-btn" onClick={handleAdd}>
-          <HiShoppingCart /> {hasVariants ? 'Select Options' : 'Add to Cart'}
+          <HiShoppingCart /> {hasVariants ? t('product.selectVariant') : t('common.addToCart')}
         </button>
       </div>
     </Link>

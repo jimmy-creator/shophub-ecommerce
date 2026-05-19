@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Filter, X, LayoutGrid, Grid2x2, List } from 'lucide-react';
 import api from '../../api/axios';
 import SEO from '../../components/SEO';
@@ -7,6 +8,7 @@ import ProductCard from './ProductCard';
 import { SkeletonGrid } from '../../components/Skeleton';
 
 export default function Products() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -55,7 +57,7 @@ export default function Products() {
   return (
     <div className="s2-root">
       <SEO
-        title={search ? `Search: ${search}` : category || 'All Products'}
+        title={search ? `${t('common.search')}: ${search}` : category || t('products.allProducts')}
         description={`Shop ${category ? category + ' at' : 'all products at'} Zayara Mobiles — smartphones, accessories & more. Fast delivery across Fujairah and the UAE.`}
       />
 
@@ -82,10 +84,10 @@ export default function Products() {
               setSearchParams(p);
             }}
           >
-            <option value="createdAt-DESC">Newest first</option>
-            <option value="price-ASC">Price · low to high</option>
-            <option value="price-DESC">Price · high to low</option>
-            <option value="name-ASC">Name · A–Z</option>
+            <option value="createdAt-DESC">{t('products.sortNewest')}</option>
+            <option value="price-ASC">{t('products.sortPriceLow')}</option>
+            <option value="price-DESC">{t('products.sortPriceHigh')}</option>
+            <option value="name-ASC">A–Z</option>
           </select>
           <div className="s2-view-toggle">
             <button
@@ -111,7 +113,7 @@ export default function Products() {
             </button>
           </div>
           <button type="button" className="s2-filter-toggle" onClick={() => setShowFilters(true)}>
-            <Filter size={14} strokeWidth={1.8} /> Filters
+            <Filter size={14} strokeWidth={1.8} /> {t('products.filters')}
           </button>
         </div>
       </div>
@@ -127,14 +129,14 @@ export default function Products() {
           >
             <X size={16} strokeWidth={1.8} />
           </button>
-          <h3>Filters</h3>
+          <h3>{t('products.filters')}</h3>
 
-          <h4>Category</h4>
+          <h4>{t('products.category')}</h4>
           <button
             className={!category ? 'active' : ''}
             onClick={() => { updateFilter('category', ''); setShowFilters(false); }}
           >
-            All categories
+            {t('common.all')} {t('products.category').toLowerCase()}
           </button>
           {categories.map((cat) => (
             <button
