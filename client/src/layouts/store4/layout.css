@@ -667,6 +667,12 @@
 .s2-banner-track {
   display: flex;
   transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Keep the carousel's slide order + translateX direction LTR even
+     under an Arabic <html dir="rtl">. Flex would otherwise reverse
+     slide order and translateX(-N%) would translate visually the
+     opposite way, leaving subsequent slides blank. The banner content
+     itself (overlay caption) inherits dir from the root for text. */
+  direction: ltr;
 }
 .s2-banner-slide {
   position: relative;
