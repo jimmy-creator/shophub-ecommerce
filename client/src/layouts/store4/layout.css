@@ -2339,9 +2339,10 @@ html, body {
      auroras + sticky bottom-nav) was letting the document compute wider
      than the viewport in iOS Safari, and overflow-x: clip alone wasn't
      enough. max-width: 100vw forces the document itself to viewport
-     width regardless of what positioned/absolute descendants do. */
+     width regardless of what positioned/absolute descendants do.
+     Using `hidden` not `clip` for iOS < 16 compatibility. */
   max-width: 100vw;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 body {
   background: var(--bg, #f8fafc) !important;
@@ -2350,7 +2351,7 @@ body {
   -webkit-font-smoothing: antialiased;
   position: relative;
 }
-.app { max-width: 100vw; overflow-x: clip; }
+.app { max-width: 100vw; overflow-x: hidden; }
 
 /* Aurora + noise removed — the flat Kalif cream bg doesn't want the
    cyan blobs or grain texture that worked on the cooler-toned palette. */
@@ -4055,4 +4056,53 @@ body:has(.cart-page)::after {
    keep their grid sizing. */
 .checkout-page .checkout-section > .form-group {
   max-width: 480px;
+}
+
+/* ── Mobile checkout overflow safety ──────────────────────────────
+   iOS Safari was letting the checkout cards compute wider than the
+   viewport even with minmax(0, 1fr) on the grid. Hard-cap every layer
+   to 100% of its parent and force the inner content to shrink. */
+@media (max-width: 720px) {
+  .checkout-page .container,
+  .cart-page .container {
+    max-width: 100%;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    overflow-x: hidden;
+  }
+  .checkout-page .checkout-layout,
+  .cart-page .cart-layout {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .checkout-page .checkout-section,
+  .checkout-page .order-summary,
+  .cart-page .cart-summary {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+    padding: 1.25rem;
+    box-sizing: border-box;
+  }
+  .checkout-page .form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .checkout-page .checkout-section > .form-group {
+    max-width: 100%;
+  }
+  .checkout-page .summary-row,
+  .checkout-page .summary-item,
+  .checkout-page .coupon-input {
+    min-width: 0;
+  }
+  .checkout-page .coupon-input input {
+    min-width: 0;
+  }
+  /* Shrink the shipping option layout so the price column doesn't
+     get pushed off the right edge on narrow phones. */
+  .checkout-page .shipping-option {
+    gap: 0.4rem;
+    padding: 0.6rem 0.65rem;
+  }
 }
