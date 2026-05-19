@@ -63,30 +63,64 @@ function toShiprocketProduct(p) {
   const obj = p.toJSON ? p.toJSON() : p;
   const baseImage = obj.images?.[0] ? absUrl(obj.images[0]) : '';
   const hasVariants = Array.isArray(obj.variants) && obj.variants.length > 0;
+  const cmpPrice = obj.comparePrice ? num(obj.comparePrice).toFixed(2) : null;
+
+  // options[] is built from variantOptions ({ "Size": ["S","M"], "Color": [...] })
+  // or — when only variants[] is set — from the unique values in each option key.
+  let optionsArr = [];
+  if (obj.variantOptions && typeof obj.variantOptions === 'object') {
+    optionsArr = Object.entries(obj.variantOptions).map(([name, values]) => ({
+      name,
+      values: Array.isArray(values) ? values : [],
+    }));
+  } else if (hasVariants) {
+    const keys = new Set();
+    obj.variants.forEach((v) => Object.keys(v.options || {}).forEach((k) => keys.add(k)));
+    optionsArr = [...keys].map((name) => ({
+      name,
+      values: [...new Set(obj.variants.map((v) => v.options?.[name]).filter(Boolean))],
+    }));
+  }
 
   const variantPayload = hasVariants
-    ? obj.variants.map((v, idx) => ({
-        id: encodeVariantId(obj.id, idx),
-        title: Object.values(v.options || {}).join(' / ') || `Variant ${idx + 1}`,
-        price: num(v.price, obj.price).toFixed(2),
-        quantity: parseInt(num(v.stock, obj.stock, 0), 10),
-        sku: v.sku || obj.code || `P${obj.id}-V${idx}`,
-        updated_at: obj.updatedAt,
-        image: { src: baseImage },
-        // Variant weight: prefer explicit numeric on the variant, else parse
-        // "500g"/"1kg" out of the option string, else fall back to product.
-        weight: num(v.weight, parseWeightFromOptions(v.options), obj.weight, DEFAULT_WEIGHT_KG),
-      }))
-    : [{
-        id: encodeVariantId(obj.id, null),
-        title: obj.name,
-        price: num(obj.price).toFixed(2),
-        quantity: parseInt(num(obj.stock, 0), 10),
-        sku: obj.code || `P${obj.id}`,
-        updated_at: obj.updatedAt,
-        image: { src: baseImage },
-        weight: num(obj.weight, DEFAULT_WEIGHT_KG),
-      }];
+    ? obj.variants.map((v, idx) => {
+        const wKg = num(v.weight, parseWeightFromOptions(v.options), obj.weight, DEFAULT_WEIGHT_KG);
+        return {
+          id: encodeVariantId(obj.id, idx),
+          title: Object.values(v.options || {}).join(' / ') || `Variant ${idx + 1}`,
+          price: num(v.price, obj.price).toFixed(2),
+          compare_at_price: cmpPrice,
+          sku: v.sku || obj.code || `P${obj.id}-V${idx}`,
+          quantity: parseInt(num(v.stock, obj.stock, 0), 10),
+          created_at: obj.createdAt,
+          updated_at: obj.updatedAt,
+          taxable: !!obj.taxable,
+          option_values: v.options || {},
+          grams: Math.round(wKg * 1000),
+          image: { src: baseImage },
+          weight: wKg,
+          weight_unit: 'kg',
+        };
+      })
+    : [(() => {
+        const wKg = num(obj.weight, DEFAULT_WEIGHT_KG);
+        return {
+          id: encodeVariantId(obj.id, null),
+          title: obj.name,
+          price: num(obj.price).toFixed(2),
+          compare_at_price: cmpPrice,
+          sku: obj.code || `P${obj.id}`,
+          quantity: parseInt(num(obj.stock, 0), 10),
+          created_at: obj.createdAt,
+          updated_at: obj.updatedAt,
+          taxable: !!obj.taxable,
+          option_values: {},
+          grams: Math.round(wKg * 1000),
+          image: { src: baseImage },
+          weight: wKg,
+          weight_unit: 'kg',
+        };
+      })()];
 
   return {
     id: obj.id,
@@ -94,10 +128,14 @@ function toShiprocketProduct(p) {
     body_html: obj.description || '',
     vendor: obj.brand || '',
     product_type: obj.category || '',
+    created_at: obj.createdAt,
+    handle: obj.slug || `product-${obj.id}`,
     updated_at: obj.updatedAt,
+    tags: '',
     status: obj.active ? 'active' : 'draft',
     variants: variantPayload,
     image: { src: baseImage },
+    options: optionsArr,
   };
 }
 
@@ -132,11 +170,13 @@ router.get('/products', async (req, res) => {
       limit,
     });
     res.json({
-      products: rows.map(toShiprocketProduct),
-      page,
-      limit,
-      total: count,
-      has_more: offset + rows.length < count,
+      data: {
+        total: count,
+        products: rows.map(toShiprocketProduct),
+        page,
+        limit,
+        has_more: offset + rows.length < count,
+      },
     });
   } catch (err) {
     console.error('[shiprocket] /products:', err.message);
@@ -151,7 +191,7 @@ router.get('/products/by-collection', async (req, res) => {
     if (!collectionId) return res.status(400).json({ message: 'collection_id required' });
 
     const cat = await Category.findByPk(collectionId);
-    if (!cat) return res.json({ products: [], page, limit, total: 0, has_more: false });
+    if (!cat) return res.json({ data: { total: 0, products: [], page, limit, has_more: false } });
 
     const { rows, count } = await Product.findAndCountAll({
       where: { active: true, category: cat.name },
@@ -160,11 +200,13 @@ router.get('/products/by-collection', async (req, res) => {
       limit,
     });
     res.json({
-      products: rows.map(toShiprocketProduct),
-      page,
-      limit,
-      total: count,
-      has_more: offset + rows.length < count,
+      data: {
+        total: count,
+        products: rows.map(toShiprocketProduct),
+        page,
+        limit,
+        has_more: offset + rows.length < count,
+      },
     });
   } catch (err) {
     console.error('[shiprocket] /products/by-collection:', err.message);
@@ -182,11 +224,13 @@ router.get('/collections', async (req, res) => {
       limit,
     });
     res.json({
-      collections: rows.map(toShiprocketCollection),
-      page,
-      limit,
-      total: count,
-      has_more: offset + rows.length < count,
+      data: {
+        total: count,
+        collections: rows.map(toShiprocketCollection),
+        page,
+        limit,
+        has_more: offset + rows.length < count,
+      },
     });
   } catch (err) {
     console.error('[shiprocket] /collections:', err.message);
