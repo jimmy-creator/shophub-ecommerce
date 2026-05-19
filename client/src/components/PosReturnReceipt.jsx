@@ -3,7 +3,7 @@
  * PosReceipt. Auto-fires window.print() on mount.
  */
 import { useEffect } from 'react';
-import { isEnabled, printReturn } from '../lib/thermalPrinter';
+import { isEnabled, printReturn, getReceiptLocale } from '../lib/thermalPrinter';
 
 export default function PosReturnReceipt({ payload, currency = 'KWD', onClose }) {
   useEffect(() => {
@@ -26,7 +26,12 @@ export default function PosReturnReceipt({ payload, currency = 'KWD', onClose })
   }, []);
 
   const sr = payload.salesReturn;
-  const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
+  const receiptLoc = getReceiptLocale();
+  const displayCurrency = (receiptLoc === 'ar' || receiptLoc === 'bi')
+    ? (import.meta.env.VITE_CURRENCY_SYMBOL_AR || 'د.ك')
+    : currency;
+  const fmt = (n) => `${displayCurrency} ${(parseFloat(n) || 0).toFixed(3)}`;
+  const pickName = (it) => (receiptLoc === 'ar' && it.nameAr) ? it.nameAr : it.name;
   const when = sr.createdAt ? new Date(sr.createdAt).toLocaleString() : '';
   const method = sr.refundMethod === 'cash' ? 'Cash'
     : sr.refundMethod === 'card' ? 'Card'
@@ -86,10 +91,14 @@ export default function PosReturnReceipt({ payload, currency = 'KWD', onClose })
           <tbody>
             {(sr.items || []).map((it, i) => {
               const sku = it.sku || it.variant?.sku || null;
+              const dispName = pickName(it);
               return (
                 <tr key={i}>
                   <td>
-                    {it.name}
+                    {dispName}
+                    {receiptLoc === 'bi' && it.nameAr && it.nameAr !== it.name && (
+                      <div style={{ fontSize: 11, color: '#444', direction: 'rtl' }}>{it.nameAr}</div>
+                    )}
                     <div style={{ fontSize: 11, color: '#444' }}>
                       {sku && <span style={{ fontFamily: 'monospace' }}>{sku} · </span>}
                       {it.quantity} × {fmt(it.price)}

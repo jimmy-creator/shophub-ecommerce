@@ -184,10 +184,6 @@ export default function ProductDetail() {
               {discount > 0 && <span className="save">Save {discount}%</span>}
             </div>
 
-            <p className="s2-detail-taxes">
-              Taxes included. <a href="/shipping-policy">Shipping</a> calculated at checkout.
-            </p>
-
             {hasVariants && product.variantOptions && (
               <div className="s2-variants">
                 {Object.entries(product.variantOptions).map(([type, values]) => (

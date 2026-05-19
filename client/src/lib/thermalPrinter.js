@@ -58,6 +58,30 @@ export function setColumns(kind, n) {
   localStorage.setItem(key(kind, 'columns'), String(parseInt(n, 10) || DEFAULTS[kind]));
 }
 
+// Receipt language: 'en' (default), 'ar' (Arabic only), 'bi' (bilingual
+// — print English then Arabic on each item line). Stored per-browser.
+export function getReceiptLocale() {
+  return localStorage.getItem('pos_receipt_locale') || 'en';
+}
+export function setReceiptLocale(loc) {
+  if (['en', 'ar', 'bi'].includes(loc)) localStorage.setItem('pos_receipt_locale', loc);
+}
+
+// Returns the localised name for a line item per the receipt locale
+// setting. Falls back to English when nameAr isn't snapshotted.
+function pickName(item, loc) {
+  if (loc === 'ar') return item.nameAr || item.name;
+  return item.name;
+}
+// "د.ك" for Arabic receipts, the configured KWD/etc. otherwise.
+function pickCurrency(defaultCurrency, loc) {
+  if (loc === 'ar' || loc === 'bi') {
+    return (typeof window !== 'undefined' && import.meta.env.VITE_CURRENCY_SYMBOL_AR)
+      || 'د.ك';
+  }
+  return defaultCurrency;
+}
+
 function getFingerprint(kind) {
   try { return JSON.parse(localStorage.getItem(key(kind, 'device')) || 'null'); }
   catch { return null; }
@@ -157,6 +181,10 @@ function buildSale(payload, currency = 'KWD') {
   const { order, change, amountTendered, location, cashier } = payload;
   const breakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;
   const cols = getColumns('receipt');
+  const loc = getReceiptLocale();
+  // Override the param so every fmt(currency, …) call below renders the
+  // locale-correct symbol without touching each line.
+  currency = pickCurrency(currency, loc);
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
 
   enc.initialize()
@@ -176,10 +204,15 @@ function buildSale(payload, currency = 'KWD') {
   const colW = Math.floor(cols * 0.65);
   for (const it of (order.items || [])) {
     const lineTotal = fmt(currency, (parseFloat(it.price) || 0) * (parseInt(it.quantity, 10) || 0));
+    const displayName = pickName(it, loc);
     enc.table(
       [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-      [[it.name, lineTotal]]
+      [[displayName, lineTotal]]
     );
+    // Bilingual mode: print Arabic name as a second line under English.
+    if (loc === 'bi' && it.nameAr && it.nameAr !== it.name) {
+      enc.line(`  ${it.nameAr}`);
+    }
     const sku = it.sku || it.variant?.sku || null;
     enc.line(`  ${sku ? `${sku} · ` : ''}${it.quantity} x ${fmt(currency, it.price)}`);
   }
@@ -233,6 +266,8 @@ function buildSale(payload, currency = 'KWD') {
 function buildReturn(payload, currency = 'KWD') {
   const sr = payload.salesReturn;
   const cols = getColumns('receipt');
+  const loc = getReceiptLocale();
+  currency = pickCurrency(currency, loc);
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
   enc.initialize()
     .align('center').bold(true).line('RETURN RECEIPT').bold(false);
@@ -249,10 +284,14 @@ function buildReturn(payload, currency = 'KWD') {
 
   const colW = Math.floor(cols * 0.65);
   for (const it of (sr.items || [])) {
+    const displayName = pickName(it, loc);
     enc.table(
       [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-      [[it.name, `-${fmt(currency, it.refundAmount)}`]]
+      [[displayName, `-${fmt(currency, it.refundAmount)}`]]
     );
+    if (loc === 'bi' && it.nameAr && it.nameAr !== it.name) {
+      enc.line(`  ${it.nameAr}`);
+    }
     const sku = it.sku || it.variant?.sku || null;
     enc.line(`  ${sku ? `${sku} · ` : ''}${it.quantity} x ${fmt(currency, it.price)}`);
   }
@@ -277,6 +316,8 @@ function buildReturn(payload, currency = 'KWD') {
 
 function buildReport(report, currency = 'KWD') {
   const cols = getColumns('receipt');
+  const loc = getReceiptLocale();
+  currency = pickCurrency(currency, loc);
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
   const t = report.type === 'Z' ? 'Z-REPORT' : 'X-REPORT';
   const session = report.session || {};

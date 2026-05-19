@@ -265,6 +265,7 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
         productId: it.productId,
         variantIndex: vIdx,
         name: it.name,
+        nameAr: it.nameAr || null,
         sku: it.sku || it.variant?.sku || null,
         price: parseFloat(it.price) || 0,
         quantity: remainingQty,
@@ -453,9 +454,11 @@ router.post('/sales/:id/append', protectCashier, async (req, res) => {
       const unitPrice = parseFloat(variant?.price ?? product.price) || 0;
       const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
       delta += unitPrice * qty;
+      const appendSuffix = variant ? ` (${Object.values(variant.options || {}).join('/')})` : '';
       newLines.push({
         productId,
-        name: product.name + (variant ? ` (${Object.values(variant.options || {}).join('/')})` : ''),
+        name: product.name + appendSuffix,
+        nameAr: product.nameAr ? product.nameAr + appendSuffix : null,
         sku: variant?.sku || product.code || null,
         category: product.category,
         price: unitPrice,
@@ -770,9 +773,11 @@ router.post('/sale', protectCashier, async (req, res) => {
       const unitPrice = parseFloat(variant?.price ?? product.price) || 0;
       const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
       subTotal += unitPrice * qty;
+      const variantSuffix = variant ? ` (${Object.values(variant.options || {}).join('/')})` : '';
       orderItems.push({
         productId,
-        name: product.name + (variant ? ` (${Object.values(variant.options || {}).join('/')})` : ''),
+        name: product.name + variantSuffix,
+        nameAr: product.nameAr ? product.nameAr + variantSuffix : null,
         sku: variant?.sku || product.code || null,   // snapshot SKU for receipt
         category: product.category,
         price: unitPrice,

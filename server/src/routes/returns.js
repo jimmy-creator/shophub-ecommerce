@@ -203,6 +203,7 @@ router.post('/', authEither, async (req, res) => {
         productId,
         variantIndex: vIdx,
         name: original.name,
+        nameAr: original.nameAr || null,
         sku: original.sku || original.variant?.sku || null,
         price: unitPrice,
         quantity: qty,

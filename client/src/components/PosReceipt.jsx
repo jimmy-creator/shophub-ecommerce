@@ -6,7 +6,7 @@
  * cart, or admin chrome.
  */
 import { useEffect } from 'react';
-import { isEnabled, printSale } from '../lib/thermalPrinter';
+import { isEnabled, printSale, getReceiptLocale } from '../lib/thermalPrinter';
 
 export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   const { order, change, amountTendered, location, cashier } = payload;
@@ -32,7 +32,12 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
+  const receiptLoc = getReceiptLocale();
+  const displayCurrency = (receiptLoc === 'ar' || receiptLoc === 'bi')
+    ? (import.meta.env.VITE_CURRENCY_SYMBOL_AR || 'د.ك')
+    : currency;
+  const fmt = (n) => `${displayCurrency} ${(parseFloat(n) || 0).toFixed(3)}`;
+  const pickName = (it) => (receiptLoc === 'ar' && it.nameAr) ? it.nameAr : it.name;
   const when = order.createdAt ? new Date(order.createdAt).toLocaleString() : '';
   const breakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;
   const methodLabel = (pm) => pm === 'pos_cash' ? 'Cash'
@@ -105,10 +110,14 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
           <tbody>
             {(order.items || []).map((it, i) => {
               const sku = it.sku || it.variant?.sku || null;
+              const dispName = pickName(it);
               return (
                 <tr key={i}>
                   <td>
-                    {it.name}
+                    {dispName}
+                    {receiptLoc === 'bi' && it.nameAr && it.nameAr !== it.name && (
+                      <div style={{ fontSize: 11, color: '#444', direction: 'rtl' }}>{it.nameAr}</div>
+                    )}
                     <div style={{ fontSize: 11, color: '#444' }}>
                       {sku && <span style={{ fontFamily: 'monospace' }}>{sku} · </span>}
                       {it.quantity} × {fmt(it.price)}

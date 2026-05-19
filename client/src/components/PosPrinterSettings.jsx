@@ -15,6 +15,7 @@ import {
   isSupported, isEnabled, setEnabled,
   getDevice, requestDevice, forget,
   testPrint, getColumns, setColumns,
+  getReceiptLocale, setReceiptLocale,
 } from '../lib/thermalPrinter';
 
 const KINDS = [
@@ -146,6 +147,41 @@ function PrinterCard({ kind }) {
   );
 }
 
+function ReceiptLanguageCard() {
+  const [locale, setLocale] = useState(getReceiptLocale());
+  const opts = [
+    { id: 'en', label: 'English', sub: 'Latin product names + KWD' },
+    { id: 'ar', label: 'العربية', sub: 'Arabic names + د.ك' },
+    { id: 'bi', label: 'Bilingual', sub: 'Both names · د.ك' },
+  ];
+  return (
+    <div style={{ marginTop: '0.75rem', padding: '1rem', background: '#0f172a', borderRadius: 12, border: '1px solid #334155' }}>
+      <h4 style={{ margin: '0 0 4px', color: '#f8fafc' }}>Receipt language</h4>
+      <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#94a3b8' }}>
+        Applies to printed receipts (sale, return, X/Z). Uses the product&apos;s Arabic name when available, falls back to English.
+      </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        {opts.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => { setReceiptLocale(o.id); setLocale(o.id); }}
+            style={{
+              padding: '0.6rem',
+              background: locale === o.id ? '#c4784a' : '#1e293b',
+              border: locale === o.id ? 'none' : '1px solid #334155',
+              color: locale === o.id ? '#fff' : '#cbd5e1',
+              borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+              fontWeight: 600, fontSize: 14,
+            }}>
+            {o.label}
+            <div style={{ fontSize: 10, opacity: 0.7, fontWeight: 400, marginTop: 2 }}>{o.sub}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function PosPrinterSettings({ onClose }) {
   const supported = isSupported();
 
@@ -170,6 +206,8 @@ export default function PosPrinterSettings({ onClose }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
               {KINDS.map((k) => <PrinterCard key={k.id} kind={k} />)}
             </div>
+
+            <ReceiptLanguageCard />
 
             <p style={{ fontSize: 11, color: '#64748b', marginTop: '1rem' }}>
               Pairings are per-browser. The OS picker excludes the other paired
