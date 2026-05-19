@@ -80,10 +80,13 @@ function PageWrapper({ children }) {
 
 // Hide the storefront navbar + footer on POS routes — the POS is a
 // full-screen kiosk experience and the marketing chrome doesn't
-// belong there.
+// belong there. On store4 also hide them on /admin so the back-office
+// has its own dedicated chrome.
+const IS_STORE4 = import.meta.env.VITE_LAYOUT === 'store4';
 function PosAware({ children }) {
   const { pathname } = useLocation();
   if (pathname === '/pos' || pathname === '/pos/login') return null;
+  if (IS_STORE4 && pathname.startsWith('/admin')) return null;
   return children;
 }
 
