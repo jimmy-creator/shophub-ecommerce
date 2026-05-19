@@ -14,36 +14,37 @@
  */
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
 import en from './en.json';
 import ar from './ar.json';
 
 export const SUPPORTED = ['en', 'ar'];
 export const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
 
-// URL-prefix locale detection: /ar/* always wins. This guarantees a
-// crawlable, sharable Arabic URL — Googlebot can hit /ar/products/foo
-// and see Arabic regardless of any user prefs.
+// Locale is driven purely by the URL — /ar/* serves Arabic, anything
+// else is English. No localStorage cache, no navigator-language sniff.
+// Keeping the URL as the only source of truth means a crawlable,
+// shareable Arabic URL works deterministically (Googlebot on
+// /ar/products/foo gets Arabic; on /products/foo it gets English) and
+// users never get auto-redirected into a locale they didn't ask for.
+//
+// Clean up any cached pos_locale from older builds so existing
+// browsers stop being routed by stale localStorage.
+try { localStorage.removeItem('pos_locale'); } catch { /* sandbox */ }
+
 const pathLocale = (() => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined') return 'en';
   const p = window.location.pathname;
-  return (p === '/ar' || p.startsWith('/ar/')) ? 'ar' : null;
+  return (p === '/ar' || p.startsWith('/ar/')) ? 'ar' : 'en';
 })();
 
 i18n
-  .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources: { en: { translation: en }, ar: { translation: ar } },
-    lng: pathLocale || undefined,
+    lng: pathLocale,
     fallbackLng: 'en',
     supportedLngs: SUPPORTED,
     interpolation: { escapeValue: false },
-    detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      lookupLocalStorage: 'pos_locale',
-      caches: ['localStorage'],
-    },
   });
 
 // Apply dir + lang to <html> whenever the locale changes. Doing this

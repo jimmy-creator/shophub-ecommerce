@@ -35,30 +35,34 @@ const SHIPROCKET_CHECKOUT = import.meta.env.VITE_FEATURE_SHIPROCKET_CHECKOUT ===
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 const I18N_ENABLED = import.meta.env.VITE_FEATURE_I18N === 'true';
 
-// LocaleManager keeps i18next in sync with the URL (path-based locale)
-// and auto-prefixes navigations that lose the /ar/ prefix from
-// internal `<Link to="/...">` calls.
+// LocaleManager couples i18next with the URL.
+//   - URL has /ar/ prefix → set i18n to 'ar'.
+//   - URL has no prefix but i18n is still 'ar' → an internal absolute
+//     <Link to="/..."> navigated us away from the locale. Restore the
+//     /ar/ prefix.
+//   - URL has no prefix and i18n is 'en' → English. No-op.
+//
+// LanguageSwitcher MUST call i18n.changeLanguage('en') before
+// navigating to a non-/ar URL, otherwise we'd bounce back to /ar.
 function LocaleManager() {
   const { pathname, search, hash } = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
     if (!I18N_ENABLED) return;
     const isArUrl = pathname === '/ar' || pathname.startsWith('/ar/');
-    // Sync i18next + <html lang/dir> with whatever the URL says.
     import('./i18n').then(({ default: i18n }) => {
-      const want = isArUrl ? 'ar' : 'en';
-      if (i18n.language !== want) i18n.changeLanguage(want);
-    });
-    // If we're "in Arabic" but routed to a non-/ar URL (because a
-    // <Link to="/cart"> stripped the prefix), restore it.
-    if (isArUrl) return;
-    try {
-      const stored = localStorage.getItem('pos_locale');
-      if (stored === 'ar' && !pathname.startsWith('/ar')) {
+      if (isArUrl) {
+        if (i18n.language !== 'ar') i18n.changeLanguage('ar');
+        return;
+      }
+      if (i18n.language === 'ar') {
+        // Internal Link stripped the /ar prefix — put it back.
         const newPath = '/ar' + (pathname === '/' ? '' : pathname);
         navigate(newPath + search + hash, { replace: true });
+        return;
       }
-    } catch { /* localStorage may be blocked */ }
+      if (i18n.language !== 'en') i18n.changeLanguage('en');
+    });
   }, [pathname, search, hash, navigate]);
   return null;
 }

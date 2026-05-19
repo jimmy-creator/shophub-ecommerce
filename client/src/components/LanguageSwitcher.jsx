@@ -6,6 +6,7 @@
  * Only rendered when VITE_FEATURE_I18N is on (store4).
  */
 import { useLocation, useNavigate } from 'react-router-dom';
+import i18n from '../i18n';
 
 const I18N_ON = import.meta.env.VITE_FEATURE_I18N === 'true';
 
@@ -17,6 +18,10 @@ export default function LanguageSwitcher({ compact = false }) {
   const label = isAr ? 'English' : 'العربية';
 
   const switchTo = () => {
+    // Flip i18n FIRST so LocaleManager doesn't see a mismatch on the
+    // next render and bounce us back. Then navigate to the new URL.
+    const nextLang = isAr ? 'en' : 'ar';
+    i18n.changeLanguage(nextLang);
     const target = isAr
       ? (pathname.replace(/^\/ar/, '') || '/')
       : ('/ar' + (pathname === '/' ? '' : pathname));
