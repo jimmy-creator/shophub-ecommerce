@@ -330,10 +330,14 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
               <strong style={{ fontSize: 20, color: '#fbbf24' }}>{fmt(addTotal)}</strong>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: '0.5rem' }}>
               <button onClick={() => setPayMethod('cash')}
                 style={payMethodBtn(payMethod === 'cash')}>
                 <HiCash size={18} /> Cash
+              </button>
+              <button onClick={() => setPayMethod('knet')}
+                style={payMethodBtn(payMethod === 'knet')}>
+                KNET
               </button>
               <button onClick={() => setPayMethod('card')}
                 style={payMethodBtn(payMethod === 'card')}>

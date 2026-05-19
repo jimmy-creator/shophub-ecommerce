@@ -35,9 +35,11 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
   const when = order.createdAt ? new Date(order.createdAt).toLocaleString() : '';
   const breakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;
-  const method = breakdown
-    ? 'Split'
-    : order.paymentMethod === 'pos_cash' ? 'Cash' : 'Card';
+  const methodLabel = (pm) => pm === 'pos_cash' ? 'Cash'
+    : pm === 'pos_knet' ? 'KNET'
+    : pm === 'pos_card' ? 'Card' : 'Card';
+  const method = breakdown ? 'Split' : methodLabel(order.paymentMethod);
+  const tenderLabel = (m) => m === 'cash' ? 'Cash' : m === 'knet' ? 'KNET' : 'Card';
 
   return (
     <>
@@ -136,7 +138,7 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
             </tr>
             {breakdown ? breakdown.map((tn, i) => (
               <tr key={i}>
-                <td>Paid ({tn.method === 'cash' ? 'Cash' : 'Card'})</td>
+                <td>Paid ({tenderLabel(tn.method)})</td>
                 <td className="right">{fmt(tn.amount)}</td>
               </tr>
             )) : (

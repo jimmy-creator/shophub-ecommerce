@@ -290,6 +290,7 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
     // Refund via the same rail the customer paid through.
     const refundMethod = order.paymentMethod === 'pos_cash' ? 'cash'
       : order.paymentMethod === 'pos_card' ? 'card'
+      : order.paymentMethod === 'pos_knet' ? 'knet'
       : 'cash';
 
     // Decrement stock back to this location.
@@ -327,7 +328,9 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
       refundAmount: +(alreadyRefunded + refundTotal).toFixed(3),
     }, { transaction: t });
 
-    const acctType = refundMethod === 'cash' ? 'drawer' : 'card_terminal';
+    const acctType = refundMethod === 'cash' ? 'drawer'
+      : refundMethod === 'knet' ? 'knet_terminal'
+      : 'card_terminal';
     const acct = await CashAccount.findOne({
       where: { locationId: req.cashierLocationId, type: acctType, active: true },
       transaction: t,
@@ -714,15 +717,15 @@ router.post('/sale', protectCashier, async (req, res) => {
         method: t.method,
         amount: parseFloat(t.amount),
       }));
-    } else if (payment?.method && ['cash', 'card'].includes(payment.method)) {
+    } else if (payment?.method && ['cash', 'card', 'knet'].includes(payment.method)) {
       tenders = [{ method: payment.method, amount: null }];   // amount filled after total
     } else {
       await t.rollback();
       return res.status(400).json({ message: 'payment.method or payment.tenders required' });
     }
-    if (tenders.some((t) => !['cash', 'card'].includes(t.method))) {
+    if (tenders.some((t) => !['cash', 'card', 'knet'].includes(t.method))) {
       await t.rollback();
-      return res.status(400).json({ message: 'Each tender must be cash or card' });
+      return res.status(400).json({ message: 'Each tender must be cash, card or knet' });
     }
 
     // Validate shift is still open.
@@ -863,7 +866,8 @@ router.post('/sale', protectCashier, async (req, res) => {
         if (amountTendered < totalAmount) throw new Error('Amount tendered is less than total');
         single.amount = totalAmount;       // retained, not tendered
       } else {
-        if (change > 0) throw new Error('Card payment cannot exceed total');
+        // Card and KNET terminals charge exactly the bill amount.
+        if (change > 0) throw new Error(`${single.method.toUpperCase()} payment cannot exceed total`);
         single.amount = totalAmount;
       }
     } else {
@@ -873,8 +877,7 @@ router.post('/sale', protectCashier, async (req, res) => {
       }
     }
     const isSplit = tenders.length > 1;
-    const paymentMethod = isSplit ? 'pos_split'
-      : tenders[0].method === 'cash' ? 'pos_cash' : 'pos_card';
+    const paymentMethod = isSplit ? 'pos_split' : `pos_${tenders[0].method}`;
 
     // Decrement stock at this location.
     for (const { stockRow, qty } of stockDecrements) {
@@ -938,10 +941,11 @@ router.post('/sale', protectCashier, async (req, res) => {
     // drawer; card hits its card-terminal account. Missing account is
     // non-fatal — POS keeps working, the sale just doesn't hit the
     // ledger for that tender until the account is created.
+    const methodToAcct = { cash: 'drawer', card: 'card_terminal', knet: 'knet_terminal' };
     const acctCache = {};   // type -> CashAccount
     for (const tn of tenders) {
       if (!tn.amount || tn.amount <= 0) continue;
-      const acctType = tn.method === 'cash' ? 'drawer' : 'card_terminal';
+      const acctType = methodToAcct[tn.method] || 'card_terminal';
       if (!(acctType in acctCache)) {
         acctCache[acctType] = await CashAccount.findOne({
           where: { locationId: req.cashierLocationId, type: acctType, active: true },

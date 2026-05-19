@@ -108,9 +108,9 @@ router.post('/', authEither, async (req, res) => {
       await t.rollback();
       return res.status(400).json({ message: 'orderId and items[] required' });
     }
-    if (!['cash', 'card', 'store_credit'].includes(refundMethod)) {
+    if (!['cash', 'card', 'knet', 'store_credit'].includes(refundMethod)) {
       await t.rollback();
-      return res.status(400).json({ message: 'refundMethod must be cash, card or store_credit' });
+      return res.status(400).json({ message: 'refundMethod must be cash, card, knet or store_credit' });
     }
 
     const order = await Order.findByPk(orderId, { transaction: t });
@@ -274,10 +274,12 @@ router.post('/', authEither, async (req, res) => {
     const newRefundAmount = +((parseFloat(order.refundAmount) || 0) + refundTotal).toFixed(3);
     await order.update({ refundAmount: newRefundAmount }, { transaction: t });
 
-    // Cash/card refunds are money OUT of the corresponding location
+    // Cash/card/KNET refunds are money OUT of the corresponding location
     // account. Store credit doesn't move cash, so no ledger entry.
-    if (refundMethod === 'cash' || refundMethod === 'card') {
-      const acctType = refundMethod === 'cash' ? 'drawer' : 'card_terminal';
+    if (['cash', 'card', 'knet'].includes(refundMethod)) {
+      const acctType = refundMethod === 'cash' ? 'drawer'
+        : refundMethod === 'knet' ? 'knet_terminal'
+        : 'card_terminal';
       const acct = await CashAccount.findOne({
         where: { locationId, type: acctType, active: true },
         transaction: t,

@@ -3151,13 +3151,13 @@ export default function Admin() {
                   onClick={() => {
                     const rows = reportData.rows || [];
                     const headers = reportType === 'cashier'
-                      ? ['Cashier', 'Orders', 'Cash sales', 'Card sales', 'Refunds', 'Net sales']
-                      : ['Location', 'Orders', 'Cash sales', 'Card sales', 'Refunds', 'Net sales'];
+                      ? ['Cashier', 'Orders', 'Cash', 'KNET', 'Card', 'Refunds', 'Net sales']
+                      : ['Location', 'Orders', 'Cash', 'KNET', 'Card', 'Refunds', 'Net sales'];
                     const lines = [headers.join(',')];
                     for (const r of rows) {
                       const label = reportType === 'cashier' ? r.cashierName : r.locationName;
-                      const refunds = (r.cashRefunds + r.cardRefunds).toFixed(3);
-                      lines.push([`"${label}"`, r.orderCount, r.cashSales, r.cardSales, refunds, r.netSales].join(','));
+                      const refunds = ((r.cashRefunds || 0) + (r.cardRefunds || 0) + (r.knetRefunds || 0)).toFixed(3);
+                      lines.push([`"${label}"`, r.orderCount, r.cashSales, r.knetSales || 0, r.cardSales, refunds, r.netSales].join(','));
                     }
                     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
                     const a = document.createElement('a');
@@ -3176,7 +3176,7 @@ export default function Admin() {
 
             {reportData && (
               <>
-                <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
                   <div className="dash-card">
                     <div className="dash-card-label">Total orders</div>
                     <div className="dash-card-value">{reportData.totals.orderCount}</div>
@@ -3184,6 +3184,10 @@ export default function Admin() {
                   <div className="dash-card">
                     <div className="dash-card-label">Cash sales</div>
                     <div className="dash-card-value">{CURRENCY}{reportData.totals.cashSales.toFixed(3)}</div>
+                  </div>
+                  <div className="dash-card">
+                    <div className="dash-card-label">KNET sales</div>
+                    <div className="dash-card-value">{CURRENCY}{(reportData.totals.knetSales || 0).toFixed(3)}</div>
                   </div>
                   <div className="dash-card">
                     <div className="dash-card-label">Card sales</div>
@@ -3202,6 +3206,7 @@ export default function Admin() {
                         <th>{reportType === 'cashier' ? 'Cashier' : 'Location'}</th>
                         <th style={{ textAlign: 'right' }}>Orders</th>
                         <th style={{ textAlign: 'right' }}>Cash</th>
+                        <th style={{ textAlign: 'right' }}>KNET</th>
                         <th style={{ textAlign: 'right' }}>Card</th>
                         <th style={{ textAlign: 'right' }}>Refunds</th>
                         <th style={{ textAlign: 'right' }}>Net</th>
@@ -3209,15 +3214,16 @@ export default function Admin() {
                     </thead>
                     <tbody>
                       {reportData.rows.length === 0 && (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No sales in this range</td></tr>
+                        <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No sales in this range</td></tr>
                       )}
                       {reportData.rows.map((r, i) => (
                         <tr key={i}>
                           <td>{reportType === 'cashier' ? r.cashierName : r.locationName}</td>
                           <td style={{ textAlign: 'right' }}>{r.orderCount}</td>
                           <td style={{ textAlign: 'right' }}>{CURRENCY}{r.cashSales.toFixed(3)}</td>
+                          <td style={{ textAlign: 'right' }}>{CURRENCY}{(r.knetSales || 0).toFixed(3)}</td>
                           <td style={{ textAlign: 'right' }}>{CURRENCY}{r.cardSales.toFixed(3)}</td>
-                          <td style={{ textAlign: 'right' }}>{CURRENCY}{(r.cashRefunds + r.cardRefunds).toFixed(3)}</td>
+                          <td style={{ textAlign: 'right' }}>{CURRENCY}{((r.cashRefunds || 0) + (r.cardRefunds || 0) + (r.knetRefunds || 0)).toFixed(3)}</td>
                           <td style={{ textAlign: 'right', fontWeight: 600 }}>{CURRENCY}{r.netSales.toFixed(3)}</td>
                         </tr>
                       ))}
@@ -3285,6 +3291,7 @@ export default function Admin() {
                 <select value={returnsFilter.refundMethod} onChange={(e) => setReturnsFilter({ ...returnsFilter, refundMethod: e.target.value })}>
                   <option value="">All</option>
                   <option value="cash">Cash</option>
+                  <option value="knet">KNET</option>
                   <option value="card">Card</option>
                   <option value="store_credit">Store credit</option>
                 </select>
@@ -3301,13 +3308,15 @@ export default function Admin() {
                 s.total += amt;
                 if (r.refundMethod === 'cash') s.cash += amt;
                 if (r.refundMethod === 'card') s.card += amt;
+                if (r.refundMethod === 'knet') s.knet += amt;
                 if (r.refundMethod === 'store_credit') s.credit += amt;
                 return s;
-              }, { total: 0, cash: 0, card: 0, credit: 0 });
+              }, { total: 0, cash: 0, card: 0, knet: 0, credit: 0 });
               return (
                 <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
                   <div className="dash-card"><div className="dash-card-label">Total refunded</div><div className="dash-card-value">{CURRENCY}{totals.total.toFixed(3)}</div></div>
                   <div className="dash-card"><div className="dash-card-label">Cash refunds</div><div className="dash-card-value">{CURRENCY}{totals.cash.toFixed(3)}</div></div>
+                  <div className="dash-card"><div className="dash-card-label">KNET refunds</div><div className="dash-card-value">{CURRENCY}{totals.knet.toFixed(3)}</div></div>
                   <div className="dash-card"><div className="dash-card-label">Card refunds</div><div className="dash-card-value">{CURRENCY}{totals.card.toFixed(3)}</div></div>
                   <div className="dash-card"><div className="dash-card-label">Store credit</div><div className="dash-card-value">{CURRENCY}{totals.credit.toFixed(3)}</div></div>
                 </div>
