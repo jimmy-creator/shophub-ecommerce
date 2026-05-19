@@ -2778,12 +2778,16 @@ input, textarea, select { font-family: var(--font-body); }
   .product-info { padding: 1rem; }
   .product-name { font-size: 1rem; }
   .product-detail-grid { grid-template-columns: 1fr; gap: 2rem; }
-  .cart-layout, .checkout-layout { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr) — without the 0 min, any wide min-content descendant
+     (e.g. a form row with side-by-side inputs) pushes the grid column
+     past the viewport, which only shows up on real mobile and not in
+     desktop responsive mode. */
+  .cart-layout, .checkout-layout { grid-template-columns: minmax(0, 1fr); }
   /* Mobile checkout order: Address → Summary → Payment */
-  .checkout-address { order: 1; grid-column: 1; grid-row: auto; }
-  .checkout-summary { order: 2; grid-column: 1; grid-row: auto; position: static; }
-  .checkout-payment { order: 3; grid-column: 1; grid-row: auto; }
-  .checkout-section { padding: 1.5rem; }
+  .checkout-address { order: 1; grid-column: 1; grid-row: auto; min-width: 0; }
+  .checkout-summary { order: 2; grid-column: 1; grid-row: auto; position: static; min-width: 0; }
+  .checkout-payment { order: 3; grid-column: 1; grid-row: auto; min-width: 0; }
+  .checkout-section, .order-summary { padding: 1.25rem; max-width: 100%; }
   .footer-content { grid-template-columns: 1fr 1fr; gap: 2rem; }
   .search-bar { display: none; }
   .desktop-search { display: none; }
