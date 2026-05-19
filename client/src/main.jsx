@@ -3,10 +3,11 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 
-// Initialise i18next + RTL handling for stores that opt in.
-// Side-effect import: setting up i18next here means useTranslation()
-// works anywhere in the tree without a Suspense fallback. Render is
-// deferred until i18n finishes loading so first paint isn't keys.
+// Always boot i18next so useTranslation() returns real strings in every
+// store, not bare keys like "cart.total". Stores without
+// VITE_FEATURE_I18N just stay on English — the /ar route + locale
+// switcher are still gated by I18N_ENABLED in App.jsx so other stores
+// can't navigate into Arabic.
 function render() {
   createRoot(document.getElementById('root')).render(
     <StrictMode>
@@ -15,11 +16,7 @@ function render() {
   )
 }
 
-if (import.meta.env.VITE_FEATURE_I18N === 'true') {
-  import('./i18n').then(render).catch((err) => {
-    console.error('[i18n] failed to load, rendering anyway:', err);
-    render();
-  });
-} else {
+import('./i18n').then(render).catch((err) => {
+  console.error('[i18n] failed to load, rendering anyway:', err);
   render();
-}
+});
