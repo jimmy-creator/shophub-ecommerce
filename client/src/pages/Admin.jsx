@@ -14,7 +14,8 @@ import BarcodeLabels from '../components/admin/BarcodeLabels';
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 
 const emptyProduct = {
-  name: '', code: '', description: '', price: '', comparePrice: '', costPrice: '',
+  name: '', nameAr: '', code: '', description: '', descriptionAr: '',
+  price: '', comparePrice: '', costPrice: '',
   category: '', brand: '', stock: '', featured: false, images: [],
   variantOptions: null, variants: null,
 };
@@ -1220,7 +1221,7 @@ export default function Admin() {
     ]},
     { id: 'settings', label: 'Settings', items: [
         { tab: 'coupons',  label: 'Coupons',  show: hasAccess('coupons') },
-        { tab: 'pincodes', label: 'Pincodes', show: hasAccess('settings') },
+        { tab: 'pincodes', label: 'Pincodes', show: hasAccess('settings') && import.meta.env.VITE_LAYOUT !== 'store4' },
         { tab: 'theme',    label: 'Theme',    show: hasAccess('settings') },
     ]},
   ];
@@ -1606,6 +1607,29 @@ export default function Admin() {
                       <label>Description</label>
                       <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
                     </div>
+                    {import.meta.env.VITE_FEATURE_I18N === 'true' && (
+                      <>
+                        <div className="form-group">
+                          <label>Name (Arabic) <span style={{ color: 'var(--text-light)', fontSize: '0.78rem' }}>الاسم بالعربية</span></label>
+                          <input
+                            dir="rtl" lang="ar"
+                            value={form.nameAr || ''}
+                            onChange={(e) => setForm({ ...form, nameAr: e.target.value })}
+                            placeholder="اسم المنتج بالعربية"
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Description (Arabic) <span style={{ color: 'var(--text-light)', fontSize: '0.78rem' }}>الوصف بالعربية</span></label>
+                          <textarea
+                            dir="rtl" lang="ar"
+                            value={form.descriptionAr || ''}
+                            onChange={(e) => setForm({ ...form, descriptionAr: e.target.value })}
+                            rows={3}
+                            placeholder="وصف المنتج بالعربية"
+                          />
+                        </div>
+                      </>
+                    )}
                     <div className="form-row">
                       <div className="form-group">
                         <label>Price</label>

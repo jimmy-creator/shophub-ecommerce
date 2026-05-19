@@ -29,6 +29,7 @@ let DEFAULT_OG = '';
 let DEFAULT_DESC = '';
 
 const CURRENCY_CODE = process.env.CURRENCY_CODE || 'INR';
+const I18N_ON = process.env.FEATURE_I18N === 'true';
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map();   // url → { html, ts }
 
@@ -62,11 +63,23 @@ function escapeAttr(s) {
     .replace(/>/g, '&gt;');
 }
 
+// Convert /ar/foo to /foo (or '/' for the Arabic home), so we can run
+// the same route lookup whatever the locale.
+function stripLocalePrefix(p) {
+  if (p === '/ar') return '/';
+  if (p.startsWith('/ar/')) return p.slice(3);
+  return p;
+}
+
 /**
  * Take the loaded template and rewrite the per-page meta tags.
  * `jsonLd` — optional array of extra JSON-LD blocks to inject before </head>.
+ * `locale` — 'en' | 'ar'. Drives <html lang/dir>, hreflang alternates,
+ * and rtl-direction for SEO crawlers.
+ * `alternates` — { en, ar } URLs for the same logical page so we can
+ * emit <link rel="alternate" hreflang="...">.
  */
-function renderHtml({ title, description, image, url, type = 'website', jsonLd = [] }) {
+function renderHtml({ title, description, image, url, type = 'website', jsonLd = [], locale = 'en', alternates = null }) {
   let html = loadTemplate();
   if (!html) return '';
 
@@ -76,8 +89,11 @@ function renderHtml({ title, description, image, url, type = 'website', jsonLd =
   // For per-product `image`, callers pass a relative path so we prepend SITE_URL above.
   const i = escapeAttr(image || DEFAULT_OG);
   const u = escapeAttr(url);
+  const lang = locale === 'ar' ? 'ar' : 'en';
+  const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
   html = html
+    .replace(/<html([^>]*)\blang="[^"]*"/, `<html$1 lang="${lang}" dir="${dir}"`)
     .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/?>/, `<meta name="description" content="${d}" />`)
     .replace(/<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${u}" />`)
@@ -88,7 +104,22 @@ function renderHtml({ title, description, image, url, type = 'website', jsonLd =
     .replace(/<meta property="og:image" content="[^"]*"\s*\/?>/, `<meta property="og:image" content="${i}" />`)
     .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, `<meta name="twitter:title" content="${t}" />`)
     .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, `<meta name="twitter:description" content="${d}" />`)
-    .replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${i}" />`);
+    .replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/, `<meta name="twitter:image" content="${i}" />`)
+    // og:locale follows the page locale so Facebook/LinkedIn pick the right one.
+    .replace(/<meta property="og:locale" content="[^"]*"\s*\/?>/, `<meta property="og:locale" content="${locale === 'ar' ? 'ar_KW' : 'en_US'}" />`);
+
+  // hreflang alternates — emitted next to canonical so crawlers see them.
+  if (alternates) {
+    const hreflangBlock = [
+      `<link rel="alternate" hreflang="en" href="${escapeAttr(alternates.en)}" />`,
+      `<link rel="alternate" hreflang="ar" href="${escapeAttr(alternates.ar)}" />`,
+      `<link rel="alternate" hreflang="x-default" href="${escapeAttr(alternates.en)}" />`,
+    ].join('\n    ');
+    html = html.replace(
+      /(<link rel="canonical"[^>]*\/?>)/,
+      `$1\n    ${hreflangBlock}`,
+    );
+  }
 
   if (jsonLd.length) {
     const blocks = jsonLd
@@ -100,19 +131,23 @@ function renderHtml({ title, description, image, url, type = 'website', jsonLd =
   return html;
 }
 
-async function renderProduct(slug, requestUrl) {
+async function renderProduct(slug, requestUrl, locale, alternates) {
   const product = await Product.findOne({ where: { slug, active: true } });
   if (!product) return null;
 
-  const title = `${product.name} | ${STORE_NAME}`;
-  const description = (product.description || `${product.name} at ${product.price}`).replace(/\s+/g, ' ').slice(0, 160);
+  // Use Arabic name/description when serving the Arabic URL and the
+  // product has them; otherwise fall through to the English fields.
+  const name = (locale === 'ar' && product.nameAr) ? product.nameAr : product.name;
+  const desc = (locale === 'ar' && product.descriptionAr) ? product.descriptionAr : product.description;
+  const title = `${name} | ${STORE_NAME}`;
+  const description = (desc || `${name} at ${product.price}`).replace(/\s+/g, ' ').slice(0, 160);
   const image = product.images?.[0] ? (SITE_URL + product.images[0]) : (SITE_URL + DEFAULT_OG);
 
   const productSchema = {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: product.name,
-    description: (product.description || '').slice(0, 5000),
+    name,
+    description: (desc || '').slice(0, 5000),
     image: product.images?.length ? product.images.map(img => SITE_URL + img) : image,
     sku: product.code || product.slug,
     ...(product.brand ? { brand: { '@type': 'Brand', name: product.brand } } : {}),
@@ -141,34 +176,37 @@ async function renderProduct(slug, requestUrl) {
       ...(product.category
         ? [{ '@type': 'ListItem', position: 3, name: product.category, item: `${SITE_URL}/products?category=${encodeURIComponent(product.category)}` }]
         : []),
-      { '@type': 'ListItem', position: product.category ? 4 : 3, name: product.name, item: requestUrl },
+      { '@type': 'ListItem', position: product.category ? 4 : 3, name, item: requestUrl },
     ],
   };
 
-  return renderHtml({ title, description, image, url: requestUrl, type: 'product', jsonLd: [productSchema, breadcrumb] });
+  return renderHtml({ title, description, image, url: requestUrl, type: 'product', jsonLd: [productSchema, breadcrumb], locale, alternates });
 }
 
-function renderCategory(category, requestUrl) {
+function renderCategory(category, requestUrl, locale, alternates) {
   return renderHtml({
     title: `${category} | ${STORE_NAME}`,
     description: `Shop ${category} at ${STORE_NAME}. ${DEFAULT_DESC}`.slice(0, 160),
     url: requestUrl,
+    locale, alternates,
   });
 }
 
-function renderProductsList(requestUrl) {
+function renderProductsList(requestUrl, locale, alternates) {
   return renderHtml({
     title: `All Products | ${STORE_NAME}`,
     description: `Browse the full ${STORE_NAME} catalogue. ${DEFAULT_DESC}`.slice(0, 160),
     url: requestUrl,
+    locale, alternates,
   });
 }
 
-function renderHome(requestUrl) {
+function renderHome(requestUrl, locale, alternates) {
   return renderHtml({
     title: SITE_TITLE || STORE_NAME || 'Home',
     description: DEFAULT_DESC,
     url: requestUrl,
+    locale, alternates,
   });
 }
 
@@ -219,28 +257,43 @@ export default async function htmlInject(req, res, next) {
     return res.type('text/html').send(cached.html);
   }
 
+  // Locale-from-URL: /ar/* serves Arabic. Only active on stores that
+  // opt in via FEATURE_I18N — otherwise we treat the request as
+  // single-locale English with no alternates, so we don't advertise
+  // /ar/... URLs to crawlers on stores that don't have an Arabic site.
+  const isAr = I18N_ON && (req.path === '/ar' || req.path.startsWith('/ar/'));
+  const locale = isAr ? 'ar' : 'en';
+  const canonicalPath = I18N_ON ? stripLocalePrefix(req.path) : req.path;
+  const origin = `${proto}://${host}`;
+  const qs = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+  const alternates = I18N_ON ? {
+    en: `${origin}${canonicalPath}${qs}`,
+    ar: `${origin}/ar${canonicalPath === '/' ? '' : canonicalPath}${qs}`,
+  } : null;
+
   try {
     let html;
-    if (req.path.startsWith('/product/')) {
-      const slug = decodeURIComponent(req.path.slice('/product/'.length));
-      html = await renderProduct(slug, requestUrl);
-    } else if (req.path === '/products') {
+    if (canonicalPath.startsWith('/product/')) {
+      const slug = decodeURIComponent(canonicalPath.slice('/product/'.length));
+      html = await renderProduct(slug, requestUrl, locale, alternates);
+    } else if (canonicalPath === '/products') {
       html = req.query.category
-        ? renderCategory(String(req.query.category), requestUrl)
-        : renderProductsList(requestUrl);
-    } else if (req.path === '/') {
-      html = renderHome(requestUrl);
-    } else if (STATIC_TITLES[req.path]) {
+        ? renderCategory(String(req.query.category), requestUrl, locale, alternates)
+        : renderProductsList(requestUrl, locale, alternates);
+    } else if (canonicalPath === '/') {
+      html = renderHome(requestUrl, locale, alternates);
+    } else if (STATIC_TITLES[canonicalPath]) {
       html = renderHtml({
-        title: `${STATIC_TITLES[req.path]} | ${STORE_NAME}`,
+        title: `${STATIC_TITLES[canonicalPath]} | ${STORE_NAME}`,
         description: DEFAULT_DESC,
         url: requestUrl,
+        locale, alternates,
       });
     }
 
     if (!html) {
       // Unknown route or missing product — fall back to home shell so the SPA router still renders something.
-      html = renderHome(requestUrl);
+      html = renderHome(requestUrl, locale, alternates);
     }
 
     cache.set(cacheKey, { html, ts: Date.now() });

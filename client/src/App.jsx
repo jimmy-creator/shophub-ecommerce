@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { useEffect, Fragment } from 'react';
 import { useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -33,6 +33,35 @@ import Pos from './pages/Pos';
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
 const SHIPROCKET_CHECKOUT = import.meta.env.VITE_FEATURE_SHIPROCKET_CHECKOUT === 'true';
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
+const I18N_ENABLED = import.meta.env.VITE_FEATURE_I18N === 'true';
+
+// LocaleManager keeps i18next in sync with the URL (path-based locale)
+// and auto-prefixes navigations that lose the /ar/ prefix from
+// internal `<Link to="/...">` calls.
+function LocaleManager() {
+  const { pathname, search, hash } = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!I18N_ENABLED) return;
+    const isArUrl = pathname === '/ar' || pathname.startsWith('/ar/');
+    // Sync i18next + <html lang/dir> with whatever the URL says.
+    import('./i18n').then(({ default: i18n }) => {
+      const want = isArUrl ? 'ar' : 'en';
+      if (i18n.language !== want) i18n.changeLanguage(want);
+    });
+    // If we're "in Arabic" but routed to a non-/ar URL (because a
+    // <Link to="/cart"> stripped the prefix), restore it.
+    if (isArUrl) return;
+    try {
+      const stored = localStorage.getItem('pos_locale');
+      if (stored === 'ar' && !pathname.startsWith('/ar')) {
+        const newPath = '/ar' + (pathname === '/' ? '' : pathname);
+        navigate(newPath + search + hash, { replace: true });
+      }
+    } catch { /* localStorage may be blocked */ }
+  }, [pathname, search, hash, navigate]);
+  return null;
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -73,6 +102,7 @@ export default function App() {
     <HelmetProvider>
     <BrowserRouter>
       <ScrollToTop />
+      <LocaleManager />
       <AuthProvider>
         <CartProvider>
         <WishlistProvider>
@@ -84,34 +114,50 @@ export default function App() {
             <main className="main">
               <PageWrapper>
               <Routes>
-                <Route path="/" element={<StaffGate><Home /></StaffGate>} />
-                <Route path="/products" element={<Products />} />
-                <Route path="/product/:slug" element={<ProductDetail />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/checkout" element={SHIPROCKET_CHECKOUT ? <ShiprocketCheckout /> : <Checkout />} />
-                <Route path="/login" element={<StaffGate><Login /></StaffGate>} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/orders" element={<Orders />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/order-success" element={<OrderSuccess />} />
-                <Route path="/wishlist" element={<Wishlist />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/contact" element={<ContactUs />} />
-                <Route path="/shipping-info" element={<ShippingInfo />} />
-                <Route path="/return-policy" element={<ReturnPolicy />} />
-                <Route path="/about" element={<AboutUs />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/refund-policy" element={<RefundPolicy />} />
-                <Route path="/shipping-policy" element={<ShippingPolicy />} />
-                <Route path="/terms" element={<TermsOfService />} />
-                {B2B_ENABLED && <Route path="/wholesale" element={<Wholesale />} />}
-                {B2B_ENABLED && <Route path="/wholesale/request" element={<WholesaleRequest />} />}
-                {B2B_ENABLED && <Route path="/wholesale/my-quotes" element={<WholesaleQuotes />} />}
-                {B2B_ENABLED && <Route path="/wholesale/my-quotes/:id" element={<WholesaleQuoteDetail />} />}
-                {MULTILOC_ENABLED && <Route path="/pos/login" element={<PosLogin />} />}
-                {MULTILOC_ENABLED && <Route path="/pos" element={<Pos />} />}
+                {/* Storefront + admin routes, mounted twice for path-based
+                    locale: bare paths are English (default), /ar/* serves
+                    the Arabic-locale version. The LocaleManager above
+                    syncs i18next + dir/lang from the URL on every change.
+                    Same elements are reused — the locale lives in the URL
+                    and i18n state, not in the component tree. */}
+                {/* Only mount the /ar/* mirror routes when i18n is on
+                    for this store. Other stores get the original
+                    single-locale route table — no extra crawlable URLs. */}
+                {(I18N_ENABLED ? [null, 'ar'] : [null]).map((loc) => {
+                  const p = (path) => (loc ? `/${loc}${path === '/' ? '' : path}` : path);
+                  return (
+                    <Fragment key={loc || 'en'}>
+                      <Route path={p('/')} element={<StaffGate><Home /></StaffGate>} />
+                      <Route path={p('/products')} element={<Products />} />
+                      <Route path={p('/product/:slug')} element={<ProductDetail />} />
+                      <Route path={p('/cart')} element={<Cart />} />
+                      <Route path={p('/checkout')} element={SHIPROCKET_CHECKOUT ? <ShiprocketCheckout /> : <Checkout />} />
+                      <Route path={p('/login')} element={<StaffGate><Login /></StaffGate>} />
+                      <Route path={p('/register')} element={<Register />} />
+                      <Route path={p('/orders')} element={<Orders />} />
+                      <Route path={p('/profile')} element={<Profile />} />
+                      <Route path={p('/admin')} element={<Admin />} />
+                      <Route path={p('/order-success')} element={<OrderSuccess />} />
+                      <Route path={p('/wishlist')} element={<Wishlist />} />
+                      <Route path={p('/forgot-password')} element={<ForgotPassword />} />
+                      <Route path={p('/reset-password')} element={<ResetPassword />} />
+                      <Route path={p('/contact')} element={<ContactUs />} />
+                      <Route path={p('/shipping-info')} element={<ShippingInfo />} />
+                      <Route path={p('/return-policy')} element={<ReturnPolicy />} />
+                      <Route path={p('/about')} element={<AboutUs />} />
+                      <Route path={p('/privacy-policy')} element={<PrivacyPolicy />} />
+                      <Route path={p('/refund-policy')} element={<RefundPolicy />} />
+                      <Route path={p('/shipping-policy')} element={<ShippingPolicy />} />
+                      <Route path={p('/terms')} element={<TermsOfService />} />
+                      {B2B_ENABLED && <Route path={p('/wholesale')} element={<Wholesale />} />}
+                      {B2B_ENABLED && <Route path={p('/wholesale/request')} element={<WholesaleRequest />} />}
+                      {B2B_ENABLED && <Route path={p('/wholesale/my-quotes')} element={<WholesaleQuotes />} />}
+                      {B2B_ENABLED && <Route path={p('/wholesale/my-quotes/:id')} element={<WholesaleQuoteDetail />} />}
+                      {MULTILOC_ENABLED && <Route path={p('/pos/login')} element={<PosLogin />} />}
+                      {MULTILOC_ENABLED && <Route path={p('/pos')} element={<Pos />} />}
+                    </Fragment>
+                  );
+                })}
               </Routes>
               </PageWrapper>
             </main>

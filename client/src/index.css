@@ -3082,3 +3082,36 @@ input, textarea, select { font-family: var(--font-body); }
     font-size: 16px !important;
   }
 }
+
+/* ── RTL overrides (Arabic locale) ───────────────────────────────── */
+/* Most layout flips automatically thanks to flexbox + logical CSS.
+   These rules patch the remaining cases. */
+html[dir="rtl"] {
+  font-family: 'Cairo', 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+}
+html[dir="rtl"] body { text-align: right; }
+/* Currency + numbers stay LTR even inside RTL paragraphs so prices
+   read correctly. */
+html[dir="rtl"] .price,
+html[dir="rtl"] .product-price,
+html[dir="rtl"] .s2-price,
+html[dir="rtl"] [data-numeric] {
+  direction: ltr;
+  unicode-bidi: embed;
+  display: inline-block;
+}
+/* Common icon-prefix patterns. */
+html[dir="rtl"] .icon-prefix { margin-left: 8px; margin-right: 0; }
+html[dir="rtl"] .icon-suffix { margin-right: 8px; margin-left: 0; }
+/* Inputs that came with an icon overlay (search bars, etc.) — flip
+   the icon to the right edge. */
+html[dir="rtl"] .search-icon,
+html[dir="rtl"] .s2-search-icon {
+  left: auto !important;
+  right: 12px;
+}
+html[dir="rtl"] .search-input,
+html[dir="rtl"] .s2-search-input {
+  padding-right: 38px;
+  padding-left: 12px;
+}

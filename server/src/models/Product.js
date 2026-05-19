@@ -26,6 +26,16 @@ const Product = sequelize.define('Product', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  // Optional Arabic translations — used by store4 (Anfal Kuwait).
+  // Storefront falls back to `name` / `description` if these are null.
+  nameAr: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  descriptionAr: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,

@@ -6,6 +6,7 @@ const router = Router();
 router.get('/sitemap.xml', async (req, res) => {
   try {
     const baseUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+    const I18N_ON = process.env.FEATURE_I18N === 'true';   // stores that mirror /ar/*
 
     const products = await Product.findAll({
       where: { active: true },
@@ -18,10 +19,43 @@ router.get('/sitemap.xml', async (req, res) => {
       attributes: ['name'],
     });
 
+    // For i18n stores, emit each URL as one <url> with two
+    // <xhtml:link rel="alternate" hreflang> entries (canonical + AR).
+    // The xhtml namespace is the standard way to declare alternates
+    // inside a sitemap.
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"';
+    if (I18N_ON) xml += ' xmlns:xhtml="http://www.w3.org/1999/xhtml"';
+    xml += '>\n';
 
-    // Static pages
+    const emit = (path, { changefreq, priority, lastmod } = {}) => {
+      const en = `${baseUrl}${path}`;
+      const ar = `${baseUrl}/ar${path === '/' ? '' : path}`;
+      xml += `  <url>\n`;
+      xml += `    <loc>${en}</loc>\n`;
+      if (lastmod) xml += `    <lastmod>${lastmod}</lastmod>\n`;
+      if (changefreq) xml += `    <changefreq>${changefreq}</changefreq>\n`;
+      if (priority) xml += `    <priority>${priority}</priority>\n`;
+      if (I18N_ON) {
+        xml += `    <xhtml:link rel="alternate" hreflang="en" href="${en}" />\n`;
+        xml += `    <xhtml:link rel="alternate" hreflang="ar" href="${ar}" />\n`;
+        xml += `    <xhtml:link rel="alternate" hreflang="x-default" href="${en}" />\n`;
+      }
+      xml += `  </url>\n`;
+      // Emit the Arabic URL as its own entry too so it gets crawled.
+      if (I18N_ON) {
+        xml += `  <url>\n`;
+        xml += `    <loc>${ar}</loc>\n`;
+        if (lastmod) xml += `    <lastmod>${lastmod}</lastmod>\n`;
+        if (changefreq) xml += `    <changefreq>${changefreq}</changefreq>\n`;
+        if (priority) xml += `    <priority>${priority}</priority>\n`;
+        xml += `    <xhtml:link rel="alternate" hreflang="en" href="${en}" />\n`;
+        xml += `    <xhtml:link rel="alternate" hreflang="ar" href="${ar}" />\n`;
+        xml += `    <xhtml:link rel="alternate" hreflang="x-default" href="${en}" />\n`;
+        xml += `  </url>\n`;
+      }
+    };
+
     const staticPages = [
       { loc: '/', priority: '1.0', changefreq: 'daily' },
       { loc: '/products', priority: '0.9', changefreq: 'daily' },
@@ -31,32 +65,18 @@ router.get('/sitemap.xml', async (req, res) => {
       { loc: '/login', priority: '0.3', changefreq: 'yearly' },
       { loc: '/register', priority: '0.3', changefreq: 'yearly' },
     ];
+    for (const p of staticPages) emit(p.loc, p);
 
-    for (const page of staticPages) {
-      xml += `  <url>\n`;
-      xml += `    <loc>${baseUrl}${page.loc}</loc>\n`;
-      xml += `    <changefreq>${page.changefreq}</changefreq>\n`;
-      xml += `    <priority>${page.priority}</priority>\n`;
-      xml += `  </url>\n`;
-    }
-
-    // Category pages
     for (const cat of categories) {
-      xml += `  <url>\n`;
-      xml += `    <loc>${baseUrl}/products?category=${encodeURIComponent(cat.name)}</loc>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.8</priority>\n`;
-      xml += `  </url>\n`;
+      emit(`/products?category=${encodeURIComponent(cat.name)}`, { priority: '0.8', changefreq: 'weekly' });
     }
 
-    // Product pages
     for (const product of products) {
-      xml += `  <url>\n`;
-      xml += `    <loc>${baseUrl}/product/${product.slug}</loc>\n`;
-      xml += `    <lastmod>${product.updatedAt.toISOString().split('T')[0]}</lastmod>\n`;
-      xml += `    <changefreq>weekly</changefreq>\n`;
-      xml += `    <priority>0.7</priority>\n`;
-      xml += `  </url>\n`;
+      emit(`/product/${product.slug}`, {
+        priority: '0.7',
+        changefreq: 'weekly',
+        lastmod: product.updatedAt.toISOString().split('T')[0],
+      });
     }
 
     xml += '</urlset>';

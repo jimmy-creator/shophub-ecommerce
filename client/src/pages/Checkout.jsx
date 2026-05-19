@@ -55,6 +55,7 @@ export default function Checkout() {
 
   const isStore2 = import.meta.env.VITE_LAYOUT === 'store2';
   const isStore3 = import.meta.env.VITE_LAYOUT === 'store3';
+  const isStore4 = import.meta.env.VITE_LAYOUT === 'store4';   // Kuwait — no postal codes, no state
 
   // Pincode check (store3 only)
   const [pincodeCheck, setPincodeCheck] = useState(null);   // null | {available, message, city, state, deliveryDays, codAvailable}
@@ -69,13 +70,21 @@ export default function Checkout() {
     'Umm Al-Quwain',
     'Ras Al-Khaimah',
   ];
+  const KUWAIT_GOVERNORATES = [
+    'Al Asimah (Capital)',
+    'Hawally',
+    'Farwaniya',
+    'Mubarak Al-Kabeer',
+    'Ahmadi',
+    'Jahra',
+  ];
 
   const [form, setForm] = useState({
     fullName: user?.name || '',
     email: user?.email || '',
     address: '',
     city: '',
-    state: isStore2 ? 'Fujairah' : '',
+    state: isStore2 ? 'Fujairah' : isStore4 ? 'Al Asimah (Capital)' : '',
     zipCode: '',
     phone: user?.phone || '',
     paymentMethod: 'cod',
@@ -571,57 +580,81 @@ export default function Checkout() {
               <input name="fullName" value={form.fullName} onChange={handleChange} required />
             </div>
             <div className="form-group">
-              <label>Address</label>
-              <input name="address" value={form.address} onChange={handleChange} required />
+              <label>{isStore4 ? 'Address (Area · Block · Street · Building · Floor / Flat)' : 'Address'}</label>
+              <input
+                name="address"
+                value={form.address}
+                onChange={handleChange}
+                placeholder={isStore4 ? 'Salmiya, Block 2, Street 5, Building 12, Floor 3 / Flat 7' : undefined}
+                required
+              />
             </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>City</label>
-                <input name="city" value={form.city} onChange={handleChange} required />
-              </div>
-              <div className="form-group form-group-state">
-                <label className="label-state">{isStore2 ? 'Emirate' : 'State'}</label>
-                {isStore2 ? (
+            {isStore4 ? (
+              // Kuwait: no postal code, no separate state — pick governorate.
+              <div className="form-row">
+                <div className="form-group form-group-state">
+                  <label className="label-state">Governorate</label>
                   <select name="state" value={form.state} onChange={handleChange} required>
-                    {UAE_EMIRATES.map((e) => (
-                      <option key={e} value={e}>{e}</option>
+                    {KUWAIT_GOVERNORATES.map((g) => (
+                      <option key={g} value={g}>{g}</option>
                     ))}
                   </select>
-                ) : (
-                  <input name="state" value={form.state} onChange={handleChange} required />
-                )}
+                </div>
+                <div className="form-group">
+                  <label>City / Area</label>
+                  <input name="city" value={form.city} onChange={handleChange} required placeholder="Salmiya, Hawally…" />
+                </div>
               </div>
-              <div className="form-group form-group-zipcode">
-                <label>{isStore3 ? 'Pincode' : 'ZIP Code'}</label>
-                <input
-                  name="zipCode"
-                  value={form.zipCode}
-                  onChange={(e) => {
-                    const v = isStore3 ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value;
-                    setForm((f) => ({ ...f, zipCode: v }));
-                    if (isStore3) setPincodeCheck(null);
-                  }}
-                  inputMode={isStore3 ? 'numeric' : undefined}
-                  maxLength={isStore3 ? 6 : undefined}
-                  placeholder={isStore3 ? '6-digit pincode' : ''}
-                  required={isStore3}
-                />
-                {isStore3 && pincodeChecking && (
-                  <p className="pincode-feedback checking">Checking delivery…</p>
-                )}
-                {isStore3 && !pincodeChecking && pincodeCheck && (
-                  pincodeCheck.available ? (
-                    <p className="pincode-feedback available">
-                      ✓ {pincodeCheck.message}
-                      {pincodeCheck.city && ` · ${pincodeCheck.city}${pincodeCheck.state ? ', ' + pincodeCheck.state : ''}`}
-                      {pincodeCheck.codAvailable && ' · COD available'}
-                    </p>
+            ) : (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>City</label>
+                  <input name="city" value={form.city} onChange={handleChange} required />
+                </div>
+                <div className="form-group form-group-state">
+                  <label className="label-state">{isStore2 ? 'Emirate' : 'State'}</label>
+                  {isStore2 ? (
+                    <select name="state" value={form.state} onChange={handleChange} required>
+                      {UAE_EMIRATES.map((e) => (
+                        <option key={e} value={e}>{e}</option>
+                      ))}
+                    </select>
                   ) : (
-                    <p className="pincode-feedback unavailable">✗ {pincodeCheck.message}</p>
-                  )
-                )}
+                    <input name="state" value={form.state} onChange={handleChange} required />
+                  )}
+                </div>
+                <div className="form-group form-group-zipcode">
+                  <label>{isStore3 ? 'Pincode' : 'ZIP Code'}</label>
+                  <input
+                    name="zipCode"
+                    value={form.zipCode}
+                    onChange={(e) => {
+                      const v = isStore3 ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value;
+                      setForm((f) => ({ ...f, zipCode: v }));
+                      if (isStore3) setPincodeCheck(null);
+                    }}
+                    inputMode={isStore3 ? 'numeric' : undefined}
+                    maxLength={isStore3 ? 6 : undefined}
+                    placeholder={isStore3 ? '6-digit pincode' : ''}
+                    required={isStore3}
+                  />
+                  {isStore3 && pincodeChecking && (
+                    <p className="pincode-feedback checking">Checking delivery…</p>
+                  )}
+                  {isStore3 && !pincodeChecking && pincodeCheck && (
+                    pincodeCheck.available ? (
+                      <p className="pincode-feedback available">
+                        ✓ {pincodeCheck.message}
+                        {pincodeCheck.city && ` · ${pincodeCheck.city}${pincodeCheck.state ? ', ' + pincodeCheck.state : ''}`}
+                        {pincodeCheck.codAvailable && ' · COD available'}
+                      </p>
+                    ) : (
+                      <p className="pincode-feedback unavailable">✗ {pincodeCheck.message}</p>
+                    )
+                  )}
+                </div>
               </div>
-            </div>
+            )}
             <div className="form-group">
               <label>Phone</label>
               <input name="phone" value={form.phone} onChange={handleChange} required />

@@ -4,6 +4,7 @@ import { Menu, Search, User, ShoppingBag, ChevronDown, X, Home, LayoutGrid, Hear
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import LanguageSwitcher from '../../components/LanguageSwitcher';
 import api from '../../api/axios';
 import AnnouncementBar from '../../components/AnnouncementBar';
 import ScrollToTopButton from '../../components/ScrollToTopButton';
@@ -198,6 +199,7 @@ export default function Navbar() {
         </form>
 
         <div className="s2-nav-actions s2-nav-actions-desktop">
+          <LanguageSwitcher compact />
           <Link
             to={user ? '/profile' : '/login'}
             className={`s2-icon-btn ${isAccount ? 'is-active' : ''}`}

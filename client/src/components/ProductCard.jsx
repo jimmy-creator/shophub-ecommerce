@@ -5,6 +5,7 @@ import { useWishlist } from '../context/WishlistContext';
 import ProductImage from './ProductImage';
 import { showToast } from '../utils/toast';
 import { CURRENCY } from '../utils/currency';
+import { localizedName } from '../utils/i18nHelpers';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
@@ -45,7 +46,7 @@ export default function ProductCard({ product }) {
       </div>
       <div className="product-info">
         <span className="product-category">{product.category}</span>
-        <h3 className="product-name">{product.name}</h3>
+        <h3 className="product-name">{localizedName(product)}</h3>
         <div className="product-rating">
           <HiStar className="star" />
           <span>{product.ratings || '0.0'}</span>

@@ -7,11 +7,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useRecentlyViewed } from '../../context/RecentlyViewedContext';
 import ProductImage from '../../components/ProductImage';
-import PincodeChecker from '../../components/PincodeChecker';
 import SEO from '../../components/SEO';
 import api from '../../api/axios';
 import { showToast } from '../../utils/toast';
 import { CURRENCY, CurrencySymbol } from '../../utils/currency';
+import { localizedName, localizedDescription } from '../../utils/i18nHelpers';
 import ProductCard from './ProductCard';
 import { SkeletonGrid } from '../../components/Skeleton';
 
@@ -167,7 +167,7 @@ export default function ProductDetail() {
           {/* Info */}
           <div className="s2-detail-info">
             <span className="s2-detail-cat">{product.category}</span>
-            <h1 className="s2-detail-name">{product.name}</h1>
+            <h1 className="s2-detail-name">{localizedName(product)}</h1>
             {product.brand && <p className="s2-detail-brand">by {product.brand}</p>}
 
             <div className="s2-rating">
@@ -229,13 +229,14 @@ export default function ProductDetail() {
             )}
 
             {(() => {
-              const lines = (product.description || '').split('\n').map((l) => l.trim()).filter(Boolean);
+              const desc = localizedDescription(product);
+              const lines = (desc || '').split('\n').map((l) => l.trim()).filter(Boolean);
               return lines.length > 1 ? (
                 <ul className="s2-description-list">
                   {lines.map((line, i) => <li key={i}>{line}</li>)}
                 </ul>
               ) : (
-                <p className="s2-description">{product.description}</p>
+                <p className="s2-description">{desc}</p>
               );
             })()}
 
@@ -244,8 +245,6 @@ export default function ProductDetail() {
                 ? `In stock · ${displayStock} available`
                 : 'Out of stock'}
             </div>
-
-            <PincodeChecker />
 
             {displayStock > 0 ? (
               <div className="s2-add-to-cart">

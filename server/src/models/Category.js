@@ -12,6 +12,11 @@ const Category = sequelize.define('Category', {
     allowNull: false,
     unique: true,
   },
+  // Optional Arabic translation. Falls back to `name` when not set.
+  nameAr: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   image: {
     type: DataTypes.STRING,
     allowNull: true,
