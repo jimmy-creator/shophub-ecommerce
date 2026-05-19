@@ -180,7 +180,8 @@ function buildSale(payload, currency = 'KWD') {
       [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
       [[it.name, lineTotal]]
     );
-    enc.line(`  ${it.quantity} x ${fmt(currency, it.price)}`);
+    const sku = it.sku || it.variant?.sku || null;
+    enc.line(`  ${sku ? `${sku} · ` : ''}${it.quantity} x ${fmt(currency, it.price)}`);
   }
   enc.rule();
 
@@ -250,7 +251,8 @@ function buildReturn(payload, currency = 'KWD') {
       [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
       [[it.name, `-${fmt(currency, it.refundAmount)}`]]
     );
-    enc.line(`  ${it.quantity} x ${fmt(currency, it.price)}`);
+    const sku = it.sku || it.variant?.sku || null;
+    enc.line(`  ${sku ? `${sku} · ` : ''}${it.quantity} x ${fmt(currency, it.price)}`);
   }
   enc.rule();
   enc.bold(true).table(

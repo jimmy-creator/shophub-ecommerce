@@ -7,9 +7,10 @@
  */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { HiPrinter } from 'react-icons/hi';
 import api from '../api/axios';
 
-export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverride }) {
+export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverride, onEdit, onPrint }) {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -93,7 +94,37 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {onPrint && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data } = await api.get(`/pos/sales/${s.id}/receipt`);
+                            onPrint(data);
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || 'Could not load receipt');
+                          }
+                        }}
+                        title="Reprint receipt"
+                        style={{
+                          padding: '0.4rem 0.55rem', background: '#1e293b', color: '#cbd5e1',
+                          border: '1px solid #334155', borderRadius: 6, cursor: 'pointer',
+                          fontFamily: 'inherit', display: 'grid', placeItems: 'center',
+                        }}>
+                        <HiPrinter size={14} />
+                      </button>
+                    )}
+                    {!fullyVoid && onEdit && (
+                      <button
+                        onClick={() => onEdit(s.orderNumber)}
+                        style={{
+                          padding: '0.4rem 0.7rem', background: '#1e293b', color: '#cbd5e1',
+                          border: '1px solid #334155', borderRadius: 6, cursor: 'pointer',
+                          fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600,
+                        }}>
+                        Edit
+                      </button>
+                    )}
                     {!fullyVoid && (
                       <button
                         onClick={() => {

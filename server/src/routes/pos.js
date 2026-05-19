@@ -160,6 +160,39 @@ router.get('/recent-sales', protectCashier, async (req, res) => {
   }
 });
 
+// ─── Reprint receipt payload ─────────────────────────────────────
+// Returns the same shape /sale returns on creation — used to reprint
+// any past sale from the cashier's shift (or from admin).
+router.get('/sales/:id/receipt', protectCashier, async (req, res) => {
+  try {
+    const order = await Order.findByPk(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Sale not found' });
+    if (order.cashierSessionId !== req.cashierSessionId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Sale is not in your current shift' });
+    }
+    const location = order.locationId
+      ? await Location.findByPk(order.locationId, { attributes: ['id', 'name', 'code', 'address', 'phone'] })
+      : null;
+    // Use the cashier from the session, not the actor on each row.
+    let cashier = { id: req.user.id, name: req.user.name };
+    if (order.cashierSessionId) {
+      const session = await CashierSession.findByPk(order.cashierSessionId, {
+        include: [{ model: User, attributes: ['id', 'name'] }],
+      });
+      if (session?.User) cashier = { id: session.User.id, name: session.User.name };
+    }
+    res.json({
+      order: order.toJSON(),
+      change: 0,                                  // reprint — no fresh change
+      amountTendered: order.totalAmount,
+      location,
+      cashier,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── Void a sale (manager-gated) ─────────────────────────────────
 // Runs through the SalesReturn pipeline at full original amount,
 // returns all items to stock at this location, refunds via the
@@ -232,6 +265,7 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
         productId: it.productId,
         variantIndex: vIdx,
         name: it.name,
+        sku: it.sku || it.variant?.sku || null,
         price: parseFloat(it.price) || 0,
         quantity: remainingQty,
         refundAmount: lineRefund,
@@ -339,6 +373,201 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
   } catch (err) {
     if (!t.finished) await t.rollback().catch(() => {});
     console.error('[pos/sales/void]', err);
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// ─── Append items to an existing paid sale ────────────────────────
+// Used for the "add to bill" path when a customer is still at the
+// counter and the cashier forgot an item. Always manager-gated.
+//
+// Body:
+//   items: [{ productId, variantIndex, quantity }]
+//   payment: { method, amountTendered? }  OR  { tenders: [...] }
+//   managerOverride: { userId, pin, reason }
+router.post('/sales/:id/append', protectCashier, async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const order = await Order.findByPk(req.params.id, { transaction: t });
+    if (!order) { await t.rollback(); return res.status(404).json({ message: 'Sale not found' }); }
+    if (order.cashierSessionId !== req.cashierSessionId && req.user.role !== 'admin') {
+      await t.rollback();
+      return res.status(403).json({ message: 'Can only edit sales from your current shift' });
+    }
+    if (order.orderStatus === 'cancelled') {
+      await t.rollback();
+      return res.status(400).json({ message: 'Cannot edit a cancelled sale' });
+    }
+
+    const { items, payment, managerOverride } = req.body || {};
+    if (!Array.isArray(items) || items.length === 0) {
+      await t.rollback();
+      return res.status(400).json({ message: 'items[] required' });
+    }
+    if (!managerOverride?.userId || !managerOverride?.pin) {
+      await t.rollback();
+      return res.status(403).json({
+        message: 'Editing a paid bill needs a manager override',
+        requires: 'manager_override',
+        reason: `append_${order.orderNumber}`,
+      });
+    }
+    let managerUser;
+    try {
+      managerUser = await verifyManagerPin({
+        userId: managerOverride.userId, pin: managerOverride.pin, transaction: t,
+      });
+    } catch (err) {
+      await t.rollback();
+      return res.status(403).json({ message: err.message, requires: 'manager_override' });
+    }
+
+    // Resolve product details + stock at this location.
+    const productIds = [...new Set(items.map((i) => parseInt(i.productId, 10)).filter(Boolean))];
+    const products = await Product.findAll({ where: { id: { [Op.in]: productIds } }, transaction: t });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    const newLines = [];
+    const stockDecrements = [];
+    let delta = 0;
+    for (const it of items) {
+      const productId = parseInt(it.productId, 10);
+      const product = productMap.get(productId);
+      if (!product) throw new Error(`Product ${productId} not found`);
+      const vIdx = it.variantIndex == null || it.variantIndex === '' ? null : parseInt(it.variantIndex, 10);
+      const variant = vIdx != null && Array.isArray(product.variants) ? product.variants[vIdx] : null;
+      const qty = parseInt(it.quantity, 10);
+      if (!qty || qty < 1) throw new Error(`Invalid quantity for ${product.name}`);
+
+      const stock = await ProductStock.findOne({
+        where: { productId, variantIndex: vIdx, locationId: req.cashierLocationId },
+        transaction: t,
+      });
+      const have = stock?.quantity || 0;
+      if (have < qty) throw new Error(`Not enough stock for ${product.name} — have ${have}, need ${qty}`);
+      stockDecrements.push({ stockRow: stock, qty });
+
+      const unitPrice = parseFloat(variant?.price ?? product.price) || 0;
+      const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
+      delta += unitPrice * qty;
+      newLines.push({
+        productId,
+        name: product.name + (variant ? ` (${Object.values(variant.options || {}).join('/')})` : ''),
+        sku: variant?.sku || product.code || null,
+        category: product.category,
+        price: unitPrice,
+        costPrice: unitCost,
+        quantity: qty,
+        image: product.images?.[0] || null,
+        variant: variant ? { ...variant.options, sku: variant.sku } : null,
+        taxable: product.taxable || false,
+        taxRate: product.taxable ? parseFloat(product.taxRate || 0) : 0,
+        hsnCode: product.hsnCode || null,
+        appendedAt: new Date().toISOString(),
+      });
+    }
+    delta = +delta.toFixed(3);
+
+    // Resolve new tender(s) — same shape as /sale's payment.
+    let newTenders = [];
+    if (Array.isArray(payment?.tenders) && payment.tenders.length > 0) {
+      newTenders = payment.tenders.map((tn) => ({ method: tn.method, amount: parseFloat(tn.amount) }));
+      const sum = +newTenders.reduce((s, tn) => s + (tn.amount || 0), 0).toFixed(3);
+      if (sum !== delta) throw new Error(`Tenders sum to ${sum} but added line total is ${delta}`);
+    } else if (payment?.method && ['cash', 'card'].includes(payment.method)) {
+      const tendered = payment.amountTendered != null ? parseFloat(payment.amountTendered) : delta;
+      if (payment.method === 'cash' && tendered < delta) throw new Error('Cash tendered less than line total');
+      if (payment.method === 'card' && tendered > delta) throw new Error('Card cannot exceed line total');
+      newTenders = [{ method: payment.method, amount: delta }];
+    } else {
+      throw new Error('payment.method or payment.tenders required');
+    }
+
+    // Decrement stock.
+    for (const { stockRow, qty } of stockDecrements) {
+      await stockRow.update({ quantity: stockRow.quantity - qty }, { transaction: t });
+    }
+
+    // Update Order — append items, bump total, merge tenders.
+    const updatedItems = [...(order.items || []), ...newLines];
+    const newTotal = +((parseFloat(order.totalAmount) || 0) + delta).toFixed(3);
+    const priorBreakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;
+    let mergedBreakdown;
+    if (priorBreakdown) {
+      mergedBreakdown = [...priorBreakdown, ...newTenders];
+    } else {
+      // Convert legacy single-tender to breakdown so we can stack on it.
+      const priorMethod = order.paymentMethod === 'pos_cash' ? 'cash'
+        : order.paymentMethod === 'pos_card' ? 'card' : null;
+      if (priorMethod) {
+        mergedBreakdown = [
+          { method: priorMethod, amount: parseFloat(order.totalAmount) },
+          ...newTenders,
+        ];
+      } else {
+        mergedBreakdown = newTenders;
+      }
+    }
+    const newPaymentMethod = mergedBreakdown.length > 1 ? 'pos_split'
+      : `pos_${mergedBreakdown[0].method}`;
+
+    await order.update({
+      items: updatedItems,
+      totalAmount: newTotal,
+      paymentBreakdown: mergedBreakdown.length > 1 ? mergedBreakdown : null,
+      paymentMethod: newPaymentMethod,
+    }, { transaction: t });
+
+    // Write CashTransaction(s) for the new tender(s).
+    for (const tn of newTenders) {
+      if (!tn.amount || tn.amount <= 0) continue;
+      const acctType = tn.method === 'cash' ? 'drawer' : 'card_terminal';
+      const acct = await CashAccount.findOne({
+        where: { locationId: req.cashierLocationId, type: acctType, active: true },
+        transaction: t,
+      });
+      if (!acct) continue;
+      await writeCashTxn({
+        cashAccountId: acct.id,
+        amount: tn.amount,
+        source: 'sale',
+        sourceType: 'Order',
+        sourceId: order.id,
+        reference: order.orderNumber,
+        description: `Bill edit: appended ${tn.method}`,
+        date: new Date(),
+        createdBy: req.user.id,
+        transaction: t,
+      });
+    }
+
+    await logActivity({
+      userId: req.user.id,
+      action: 'pos_sale_append',
+      entityType: 'Order',
+      entityId: order.id,
+      details: {
+        orderNumber: order.orderNumber,
+        delta,
+        addedLineCount: newLines.length,
+        addedQty: newLines.reduce((s, l) => s + l.quantity, 0),
+        newTotal,
+        newPaymentMethod,
+      },
+      managerOverrideBy: managerUser.id,
+      reason: managerOverride.reason || `Added ${newLines.length} line(s) to ${order.orderNumber}`,
+      locationId: req.cashierLocationId,
+      cashierSessionId: req.cashierSessionId,
+      ip: req.ip,
+      transaction: t,
+    });
+
+    await t.commit();
+    for (const pid of productIds) await recomputeProductStock(pid);
+    res.status(201).json({ order: await Order.findByPk(order.id) });
+  } catch (err) {
+    if (!t.finished) await t.rollback().catch(() => {});
+    console.error('[pos/sales/append]', err);
     res.status(400).json({ message: err.message });
   }
 });
@@ -541,6 +770,7 @@ router.post('/sale', protectCashier, async (req, res) => {
       orderItems.push({
         productId,
         name: product.name + (variant ? ` (${Object.values(variant.options || {}).join('/')})` : ''),
+        sku: variant?.sku || product.code || null,   // snapshot SKU for receipt
         category: product.category,
         price: unitPrice,
         costPrice: unitCost,                 // snapshot for COGS

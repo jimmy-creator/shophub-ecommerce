@@ -101,17 +101,21 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
         <hr />
         <table>
           <tbody>
-            {(order.items || []).map((it, i) => (
-              <tr key={i}>
-                <td>
-                  {it.name}
-                  <div style={{ fontSize: 11, color: '#444' }}>
-                    {it.quantity} × {fmt(it.price)}
-                  </div>
-                </td>
-                <td className="right">{fmt(it.price * it.quantity)}</td>
-              </tr>
-            ))}
+            {(order.items || []).map((it, i) => {
+              const sku = it.sku || it.variant?.sku || null;
+              return (
+                <tr key={i}>
+                  <td>
+                    {it.name}
+                    <div style={{ fontSize: 11, color: '#444' }}>
+                      {sku && <span style={{ fontFamily: 'monospace' }}>{sku} · </span>}
+                      {it.quantity} × {fmt(it.price)}
+                    </div>
+                  </td>
+                  <td className="right">{fmt(it.price * it.quantity)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <hr />

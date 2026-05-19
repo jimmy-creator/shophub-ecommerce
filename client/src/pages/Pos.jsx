@@ -31,6 +31,7 @@ import PosManagerOverride from '../components/PosManagerOverride';
 import PosRecentSales from '../components/PosRecentSales';
 import PosSplitPayment from '../components/PosSplitPayment';
 import PosPrinterSettings from '../components/PosPrinterSettings';
+import PosBillEditor from '../components/PosBillEditor';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -66,6 +67,7 @@ export default function Pos() {
   const [recentOpen, setRecentOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const [printerOpen, setPrinterOpen] = useState(false);
+  const [editBill, setEditBill] = useState(null);   // orderNumber | null
   const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'card' | null
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -88,14 +90,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen || printerOpen) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen || printerOpen || editBill) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen, printerOpen]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen, printerOpen, editBill]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -671,6 +673,19 @@ export default function Pos() {
           currency={CURRENCY}
           onClose={() => setRecentOpen(false)}
           onNeedOverride={(req) => setPendingOverride(req)}
+          onEdit={(orderNumber) => { setRecentOpen(false); setEditBill(orderNumber); }}
+          onPrint={(payload) => { setRecentOpen(false); setReceipt(payload); }}
+        />
+      )}
+
+      {/* ─── Bill editor (add / remove lines) ──── */}
+      {editBill && (
+        <PosBillEditor
+          orderNumber={editBill}
+          currency={CURRENCY}
+          onClose={() => setEditBill(null)}
+          onNeedOverride={(req) => setPendingOverride(req)}
+          onUpdated={() => { /* parent refresh hook — bill editor reloads itself */ }}
         />
       )}
 

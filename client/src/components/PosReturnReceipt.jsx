@@ -84,17 +84,21 @@ export default function PosReturnReceipt({ payload, currency = 'KWD', onClose })
         <hr />
         <table>
           <tbody>
-            {(sr.items || []).map((it, i) => (
-              <tr key={i}>
-                <td>
-                  {it.name}
-                  <div style={{ fontSize: 11, color: '#444' }}>
-                    {it.quantity} × {fmt(it.price)}
-                  </div>
-                </td>
-                <td className="right">−{fmt(it.refundAmount)}</td>
-              </tr>
-            ))}
+            {(sr.items || []).map((it, i) => {
+              const sku = it.sku || it.variant?.sku || null;
+              return (
+                <tr key={i}>
+                  <td>
+                    {it.name}
+                    <div style={{ fontSize: 11, color: '#444' }}>
+                      {sku && <span style={{ fontFamily: 'monospace' }}>{sku} · </span>}
+                      {it.quantity} × {fmt(it.price)}
+                    </div>
+                  </td>
+                  <td className="right">−{fmt(it.refundAmount)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <hr />
