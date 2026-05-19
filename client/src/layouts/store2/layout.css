@@ -59,7 +59,7 @@
   font-family: var(--s2-font-body);
   font-feature-settings: 'ss01', 'cv11';
   -webkit-font-smoothing: antialiased;
-  overflow-x: clip;
+  overflow-x: hidden;
   isolation: isolate;
 }
 
@@ -2267,7 +2267,7 @@ body {
   font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   position: relative;
-  overflow-x: clip;
+  overflow-x: hidden;
 }
 
 body::before {
@@ -2947,4 +2947,52 @@ body:has(.admin-page) .s2-footer {
   .s2-grid-list .s2-product-img { flex-basis: 110px; width: 110px; }
   .s2-grid-list .s2-product-body { padding: 0.75rem 0.85rem; flex-wrap: wrap; }
   .s2-grid-list .s2-product-name { -webkit-line-clamp: 2; font-size: 0.9rem; }
+}
+
+/* ── Mobile checkout overflow safety ──────────────────────────────
+   Same hard-cap pattern as store4. iOS Safari < 16 silently falls
+   back overflow-x:clip to visible, letting checkout cards compute
+   wider than viewport. Explicit max-width: 100% on every layer of
+   the checkout layout keeps every card inside the visible area. */
+@media (max-width: 720px) {
+  .checkout-page .container,
+  .cart-page .container {
+    max-width: 100%;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    overflow-x: hidden;
+  }
+  .checkout-page .checkout-layout,
+  .cart-page .cart-layout {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .checkout-page .checkout-section,
+  .checkout-page .order-summary,
+  .cart-page .cart-summary {
+    max-width: 100%;
+    width: 100%;
+    min-width: 0;
+    padding: 1.25rem;
+    box-sizing: border-box;
+  }
+  .checkout-page .form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .checkout-page .checkout-section > .form-group {
+    max-width: 100%;
+  }
+  .checkout-page .summary-row,
+  .checkout-page .summary-item,
+  .checkout-page .coupon-input {
+    min-width: 0;
+  }
+  .checkout-page .coupon-input input {
+    min-width: 0;
+  }
+  .checkout-page .shipping-option {
+    gap: 0.4rem;
+    padding: 0.6rem 0.65rem;
+  }
 }
