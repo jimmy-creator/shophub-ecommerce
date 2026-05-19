@@ -10,6 +10,7 @@ import PoModals from '../components/admin/PoModals';
 import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
 import FinanceTabs from '../components/admin/FinanceTabs';
 import BarcodeLabels from '../components/admin/BarcodeLabels';
+import StockCounts from '../components/admin/StockCounts';
 
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 
@@ -1007,6 +1008,7 @@ export default function Admin() {
   const [activityLog, setActivityLog] = useState([]);
   const [activityFilter, setActivityFilter] = useState({ from: '', to: '', action: '', managerOnly: false });
   const [activityDetail, setActivityDetail] = useState(null);
+  const [activeStockCountId, setActiveStockCountId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('admin_collapsed_sections') || '[]')); }
@@ -1114,6 +1116,10 @@ export default function Admin() {
       if (poFilter.supplierId) params.supplierId = poFilter.supplierId;
       if (poFilter.locationId) params.locationId = poFilter.locationId;
       api.get('/purchase-orders', { params }).then((res) => setPurchaseOrders(res.data)).catch(() => {});
+    } else if (tab === 'stock-counts' || tab === 'stock-count-detail' || tab === 'variance-report') {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      api.get('/finance/cash-accounts?active=true').then((res) => setCashAccounts(res.data)).catch(() => {});
+      api.get('/finance/expense-categories').then((res) => setExpenseCategories(res.data)).catch(() => {});
     } else if (tab === 'cash-accounts') {
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
       api.get('/finance/cash-accounts').then((res) => setCashAccounts(res.data)).catch(() => {});
@@ -1189,6 +1195,7 @@ export default function Admin() {
         { tab: 'inventory',        label: 'Inventory',       show: MULTILOC_ENABLED && hasAccess('products') },
         { tab: 'locations',        label: 'Locations',       show: MULTILOC_ENABLED && hasAccess('products') },
         { tab: 'transfers',        label: 'Stock Transfers', show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'stock-counts',     label: 'Stock Counts',    show: MULTILOC_ENABLED && hasAccess('products') },
         { tab: 'barcode-labels',   label: 'Barcode Labels',  show: MULTILOC_ENABLED && hasAccess('products') },
     ]},
     { id: 'purchasing', label: 'Purchasing', items: [
@@ -3741,6 +3748,15 @@ export default function Admin() {
               refresh={() => api.get('/purchase-returns', { params: prFilter }).then((res) => setPurchaseReturns(res.data))}
             />
           </div>
+        )}
+
+        {(['stock-counts','stock-count-detail','variance-report'].includes(tab)) && (
+          <StockCounts
+            tab={tab} currency={CURRENCY} locations={locations}
+            setTab={setTab}
+            activeStockCountId={activeStockCountId} setActiveStockCountId={setActiveStockCountId}
+            expenseCategories={expenseCategories} cashAccounts={cashAccounts}
+          />
         )}
 
         {(['cash-accounts','expenses','cash-transfers','daily-cash','daybook','pnl','stock-value'].includes(tab)) && (

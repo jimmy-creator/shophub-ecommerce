@@ -24,6 +24,8 @@ import ExpenseCategory from './ExpenseCategory.js';
 import Expense from './Expense.js';
 import CashTransfer from './CashTransfer.js';
 import ActivityLog from './ActivityLog.js';
+import StockCount from './StockCount.js';
+import StockCountLine from './StockCountLine.js';
 
 // ── Existing associations ────────────────────────────────────────
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -126,6 +128,18 @@ ActivityLog.belongsTo(User, { as: 'actor', foreignKey: 'userId' });
 ActivityLog.belongsTo(User, { as: 'approver', foreignKey: 'managerOverrideBy' });
 ActivityLog.belongsTo(Location, { foreignKey: 'locationId' });
 
+// ── Stock Counts ────────────────────────────────────────────────
+StockCount.belongsTo(Location, { foreignKey: 'locationId' });
+Location.hasMany(StockCount, { foreignKey: 'locationId' });
+StockCount.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+StockCount.belongsTo(User, { as: 'poster',  foreignKey: 'postedBy' });
+StockCount.belongsTo(User, { as: 'approver', foreignKey: 'managerOverrideBy' });
+StockCount.belongsTo(Expense, { as: 'shrinkageExpense', foreignKey: 'shrinkageExpenseId' });
+
+StockCount.hasMany(StockCountLine, { as: 'lines', foreignKey: 'stockCountId', onDelete: 'CASCADE' });
+StockCountLine.belongsTo(StockCount, { foreignKey: 'stockCountId' });
+StockCountLine.belongsTo(Product, { foreignKey: 'productId' });
+
 // ── Keep Product.stock in sync with SUM(ProductStock.quantity) ───
 // Called explicitly by routes after they mutate ProductStock (and after
 // any transaction has committed). An earlier version did this via
@@ -183,6 +197,7 @@ export {
   Supplier, PurchaseOrder, PurchaseReceipt, PurchaseReturn, SupplierPayment,
   CashAccount, CashTransaction, ExpenseCategory, Expense, CashTransfer,
   ActivityLog,
+  StockCount, StockCountLine,
 };
 
 // ── Activity log + manager-override helpers ─────────────────────
