@@ -177,11 +177,18 @@ function PoEditor({ form, setForm, suppliers, locations, products, currency, onS
 
         <div className="admin-table-wrap" style={{ marginBottom: '0.75rem' }}>
           <table className="admin-table">
-            <thead><tr><th>Item</th><th style={{ width: 70 }}>Qty</th><th style={{ width: 110 }}>Unit cost</th><th style={{ width: 80 }}>Tax %</th><th style={{ width: 110, textAlign: 'right' }}>Line total</th><th style={{ width: 40 }}></th></tr></thead>
+            <thead><tr><th>Item</th><th style={{ width: 70 }}>Qty</th><th style={{ width: 110 }}>Unit cost</th><th style={{ width: 80 }}>Tax %</th><th style={{ width: 110, textAlign: 'right' }}>Line total</th><th style={{ width: 110, textAlign: 'right' }}>Landed / unit</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
-              {(form.items || []).length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-light)' }}>No items yet</td></tr>}
+              {(form.items || []).length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-light)' }}>No items yet</td></tr>}
               {(form.items || []).map((l, i) => {
-                const lineTotal = (parseFloat(l.unitCost) || 0) * (parseInt(l.orderedQty, 10) || 0) * (1 + (parseFloat(l.taxRate) || 0) / 100);
+                const qty = parseInt(l.orderedQty, 10) || 0;
+                const uc = parseFloat(l.unitCost) || 0;
+                const tr = parseFloat(l.taxRate) || 0;
+                const lineValue = uc * qty;
+                const lineTotal = lineValue * (1 + tr / 100);
+                // Landed unit cost = unit + per-line tax + proportional shipping share / qty
+                const shippingShare = subtotal > 0 ? ((parseFloat(form.shippingCost) || 0) * lineValue / subtotal) : 0;
+                const landedUnit = qty > 0 ? (lineTotal + shippingShare) / qty : 0;
                 return (
                   <tr key={i}>
                     <td>{l.name}</td>
@@ -189,6 +196,7 @@ function PoEditor({ form, setForm, suppliers, locations, products, currency, onS
                     <td><input type="number" step="0.001" value={l.unitCost} onChange={(e) => setLine(i, { unitCost: parseFloat(e.target.value) || 0 })} style={{ width: '100%' }} /></td>
                     <td><input type="number" step="0.01" value={l.taxRate} onChange={(e) => setLine(i, { taxRate: parseFloat(e.target.value) || 0 })} style={{ width: '100%' }} /></td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(lineTotal)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-light)' }}>{fmt(landedUnit)}</td>
                     <td><button type="button" className="icon-btn" onClick={() => removeLine(i)}>×</button></td>
                   </tr>
                 );
@@ -249,17 +257,19 @@ function PoDetail({ po, currency, onClose, onReceive, onPay, onSend, onCancel })
 
         <div className="admin-table-wrap" style={{ marginTop: '1rem' }}>
           <table className="admin-table">
-            <thead><tr><th>Item</th><th style={{ textAlign: 'right' }}>Ordered</th><th style={{ textAlign: 'right' }}>Received</th><th style={{ textAlign: 'right' }}>Unit</th><th style={{ textAlign: 'right' }}>Line total</th></tr></thead>
+            <thead><tr><th>Item</th><th style={{ textAlign: 'right' }}>Ordered</th><th style={{ textAlign: 'right' }}>Received</th><th style={{ textAlign: 'right' }}>Unit</th><th style={{ textAlign: 'right' }}>Landed / unit</th><th style={{ textAlign: 'right' }}>Line total</th></tr></thead>
             <tbody>
               {(po.items || []).map((l, i) => {
                 const lineTotal = (parseFloat(l.unitCost) || 0) * (parseInt(l.orderedQty, 10) || 0) * (1 + (parseFloat(l.taxRate) || 0) / 100);
                 const fullyReceivedLine = (l.receivedQty || 0) >= (l.orderedQty || 0);
+                const landed = l.landedUnitCost != null ? parseFloat(l.landedUnitCost) : parseFloat(l.unitCost) || 0;
                 return (
                   <tr key={i}>
                     <td>{l.name}</td>
                     <td style={{ textAlign: 'right' }}>{l.orderedQty}</td>
                     <td style={{ textAlign: 'right', color: fullyReceivedLine ? 'var(--success)' : 'var(--copper)', fontWeight: 600 }}>{l.receivedQty || 0}</td>
                     <td style={{ textAlign: 'right' }}>{fmt(l.unitCost)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-light)' }} title="Includes per-line tax + proportional share of shipping">{fmt(landed)}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(lineTotal)}</td>
                   </tr>
                 );

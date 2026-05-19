@@ -129,6 +129,26 @@ function computeTotals(items, shippingCost = 0, discount = 0) {
   };
 }
 
+// Allocate shipping cost across lines by line value (qty × unitCost) and
+// add it to each line's per-line tax to produce a landed unit cost. The
+// landed unit cost is what hits Product.costPrice on receive so cost-of-
+// goods reports reflect the true price paid per unit.
+function applyLandedCost(items, shippingCost = 0) {
+  const shipping = parseFloat(shippingCost) || 0;
+  const subtotal = items.reduce((s, i) => s + (i.unitCost * i.orderedQty), 0);
+  for (const it of items) {
+    const lineValue = it.unitCost * it.orderedQty;
+    const lineTax = lineValue * (it.taxRate / 100);
+    const lineShipping = subtotal > 0 ? (shipping * lineValue / subtotal) : 0;
+    const landedTotal = lineValue + lineTax + lineShipping;
+    const qty = it.orderedQty > 0 ? it.orderedQty : 1;
+    it.shippingShare = +lineShipping.toFixed(3);
+    it.landedLineTotal = +landedTotal.toFixed(3);
+    it.landedUnitCost = +(landedTotal / qty).toFixed(3);
+  }
+  return items;
+}
+
 // ─── Create ────────────────────────────────────────────────────────
 router.post('/', protect, async (req, res) => {
   try {
@@ -141,6 +161,7 @@ router.post('/', protect, async (req, res) => {
     }
     const normalized = normalizeItems(items);
     const totals = computeTotals(normalized, shippingCost, discount);
+    applyLandedCost(normalized, shippingCost);
 
     // Enrich names from Product table if not supplied.
     const productIds = [...new Set(normalized.map((i) => i.productId))];
@@ -187,7 +208,13 @@ router.put('/:id', protect, async (req, res) => {
     if (items) {
       const normalized = normalizeItems(items);
       const totals = computeTotals(normalized, shippingCost, discount);
+      applyLandedCost(normalized, shippingCost);
       Object.assign(updates, { items: normalized, ...totals });
+    } else if (shippingCost !== undefined && shippingCost !== po.shippingCost) {
+      // Shipping changed but items didn't — re-distribute existing lines.
+      const existing = [...(po.items || [])];
+      applyLandedCost(existing, shippingCost);
+      updates.items = existing;
     }
     if (supplierId) updates.supplierId = parseInt(supplierId, 10);
     if (locationId) updates.locationId = parseInt(locationId, 10);
@@ -271,7 +298,12 @@ router.post('/:id/receive', protect, async (req, res) => {
         return res.status(400).json({ message: `Cannot receive ${qty} of "${line.name}" — only ${outstanding} outstanding` });
       }
       poItems[lineIdx] = { ...line, receivedQty: (line.receivedQty || 0) + qty };
-      grnItems.push({ productId, variantIndex: vIdx, quantity: qty, unitCost: line.unitCost, name: line.name });
+      grnItems.push({
+        productId, variantIndex: vIdx, quantity: qty,
+        unitCost: line.unitCost,
+        landedUnitCost: line.landedUnitCost ?? line.unitCost,
+        name: line.name,
+      });
       productIds.add(productId);
     }
 
@@ -298,8 +330,12 @@ router.post('/:id/receive', protect, async (req, res) => {
           quantity: g.quantity,
         }, { transaction: t });
       }
-      if (g.unitCost && g.unitCost > 0) {
-        await Product.update({ costPrice: g.unitCost }, { where: { id: g.productId }, transaction: t });
+      // Use landed unit cost (unit cost + per-line tax + proportional
+      // share of PO shipping) so Product.costPrice reflects the true
+      // landed price per unit.
+      const cost = parseFloat(g.landedUnitCost ?? g.unitCost) || 0;
+      if (cost > 0) {
+        await Product.update({ costPrice: cost }, { where: { id: g.productId }, transaction: t });
       }
     }
 
