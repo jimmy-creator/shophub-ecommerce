@@ -1567,10 +1567,19 @@ export default function Admin() {
               </label>
               <button
                 className="btn btn-secondary"
-                onClick={() => window.open('/api/bulk-products/template', '_blank')}
+                onClick={() => window.open('/api/bulk-products/template?style=full', '_blank')}
                 style={{ fontSize: '0.75rem' }}
+                title="Full template with variants, Arabic and per-location stock"
               >
-                Download Template
+                Template (full)
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => window.open('/api/bulk-products/template?style=simple', '_blank')}
+                style={{ fontSize: '0.75rem' }}
+                title="Single-row legacy template — no variants, no Arabic"
+              >
+                Template (simple)
               </button>
             </div>
 
