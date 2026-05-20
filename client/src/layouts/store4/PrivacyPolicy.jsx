@@ -1,11 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import StaticPage from './StaticPage';
 
-export default function PrivacyPolicy() {
+function EnglishBody() {
   return (
-    <StaticPage
-      title="Privacy Policy"
-      description="Privacy Policy for Anfal Sports (Anfal Sports W.L.L.). How we collect, use, and protect your personal information."
-    >
+    <>
       <p className="s2-static-date">Last updated: May 2026</p>
 
       <section className="s2-static-section">
@@ -20,7 +18,7 @@ export default function PrivacyPolicy() {
         <ul>
           <li><strong>Account & contact details:</strong> Name, email address, phone number, and shipping address you provide at checkout, signup, or when raising a wholesale request.</li>
           <li><strong>Order information:</strong> Items purchased, order amount, delivery address.</li>
-          <li><strong>Payment data:</strong> Processed by our payment gateway partners (such as Razorpay). We do not see or store your full card or UPI credentials.</li>
+          <li><strong>Payment data:</strong> Processed by our payment gateway partners (such as Tap Payments). We do not see or store your full card or KNET credentials.</li>
           <li><strong>Device & usage data:</strong> Browser type, IP address, pages visited, and basic analytics — collected automatically to keep the site working and improve it.</li>
           <li><strong>Communications:</strong> Messages you send via our contact form, WhatsApp, or email.</li>
         </ul>
@@ -42,7 +40,7 @@ export default function PrivacyPolicy() {
         <h2>4. Data Sharing</h2>
         <p>We do not sell or rent your personal data. We share it only with:</p>
         <ul>
-          <li><strong>Payment processors:</strong> Razorpay (and any other gateways we enable) for secure payment handling.</li>
+          <li><strong>Payment processors:</strong> Tap Payments (and any other gateways we enable) for secure payment handling.</li>
           <li><strong>Logistics partners:</strong> Courier and shipping providers that deliver your order.</li>
           <li><strong>Service providers:</strong> Email, hosting, and analytics vendors operating on our behalf under appropriate confidentiality terms.</li>
           <li><strong>Legal authorities:</strong> When required by Kuwaiti law, court order, or to protect our rights.</li>
@@ -88,8 +86,114 @@ export default function PrivacyPolicy() {
           Email: <a href="mailto:info@anfalsports.com">info@anfalsports.com</a><br />
           Phone / WhatsApp: <a href="tel:+96500000000">+965 0000 0000</a>
         </p>
-        <p>We will acknowledge complaints within 24 hours and aim to resolve them within 15 days, in line with applicable applicable Kuwait regulations.</p>
+        <p>We will acknowledge complaints within 24 hours and aim to resolve them within 15 days, in line with applicable Kuwait regulations.</p>
       </section>
+    </>
+  );
+}
+
+function ArabicBody() {
+  return (
+    <>
+      <p className="s2-static-date">آخر تحديث: مايو 2026</p>
+
+      <section className="s2-static-section">
+        <h2>1. من نحن</h2>
+        <p>
+          صادرة هذه السياسة عن <strong>شركة أنفال سبورتس ذ.م.م</strong>، المالكة لعلامة <strong>أنفال سبورتس</strong>، ومقرّها المسجَّل في يال مول، مدينة الكويت، دولة الكويت ("أنفال سبورتس"، "نحن"، "لدينا"). توضّح هذه السياسة كيف نقوم بجمع ومعالجة المعلومات الشخصية عند زيارتك لموقعنا الإلكتروني أو إجراء طلب لدينا.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>2. المعلومات التي نجمعها</h2>
+        <ul>
+          <li><strong>بيانات الحساب والتواصل:</strong> الاسم، البريد الإلكتروني، رقم الهاتف، وعنوان التوصيل التي تقدّمها عند الدفع أو التسجيل أو عند تقديم طلب جملة.</li>
+          <li><strong>معلومات الطلب:</strong> المنتجات المُشتراة، قيمة الطلب، وعنوان التوصيل.</li>
+          <li><strong>بيانات الدفع:</strong> تُعالَج عن طريق شركاء بوابات الدفع لدينا (مثل Tap Payments). لا نطّلع على بيانات بطاقتك أو KNET الكاملة ولا نخزّنها.</li>
+          <li><strong>بيانات الجهاز والاستخدام:</strong> نوع المتصفح، عنوان IP، الصفحات التي تتم زيارتها، وبيانات تحليلية أساسية — تُجمَع تلقائيًا لتشغيل الموقع وتحسينه.</li>
+          <li><strong>المراسلات:</strong> الرسائل التي ترسلها عبر نموذج التواصل، واتساب، أو البريد الإلكتروني.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>3. كيف نستخدم معلوماتك</h2>
+        <ul>
+          <li>لمعالجة طلباتك وتنفيذ عروض البيع بالجملة (B2B).</li>
+          <li>لإرسال تأكيدات الطلب، تحديثات الشحن، الفواتير، ورسائل عروض الأسعار.</li>
+          <li>للرد على استفساراتك وتقديم خدمة العملاء.</li>
+          <li>لإرسال رسائل ترويجية فقط في حال موافقتك المسبقة.</li>
+          <li>لتحسين موقعنا، تغليفنا، وتشكيلة منتجاتنا.</li>
+          <li>للامتثال للقوانين الكويتية المعمول بها والاستجابة للطلبات القانونية.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>4. مشاركة البيانات</h2>
+        <p>لا نبيع بياناتك الشخصية أو نؤجّرها. نشاركها فقط مع:</p>
+        <ul>
+          <li><strong>معالِجات الدفع:</strong> Tap Payments (وأي بوابات أخرى نقوم بتفعيلها) لمعالجة الدفع بشكل آمن.</li>
+          <li><strong>شركاء التوصيل:</strong> شركات الشحن والتوصيل التي توصِّل طلبك.</li>
+          <li><strong>مزوّدو الخدمات:</strong> مزوّدو البريد والاستضافة والتحليلات الذين يعملون نيابةً عنّا وفق التزامات سرّية مناسبة.</li>
+          <li><strong>الجهات القانونية:</strong> عند الاقتضاء بموجب القانون الكويتي أو أمر قضائي أو لحماية حقوقنا.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>5. الاحتفاظ بالبيانات</h2>
+        <p>
+          نحتفظ ببياناتك الشخصية فقط طوال الفترة اللازمة لتقديم خدماتنا، والامتثال للالتزامات الضريبية والمحاسبية بموجب القانون الكويتي، ولحل النزاعات. يمكنك طلب حذف حسابك والبيانات المرتبطة به في أي وقت بمراسلتنا على <a href="mailto:info@anfalsports.com">info@anfalsports.com</a>.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>6. ملفات تعريف الارتباط (الكوكيز)</h2>
+        <p>يستخدم موقعنا ملفات تعريف الارتباط وتقنيات مشابهة للحفاظ على تسجيل دخولك، وتذكُّر سلتك، وقياس حركة المرور الأساسية. يمكنك تعطيل ملفات تعريف الارتباط من إعدادات متصفحك، ولكن بعض الميزات (السلة، الدفع، الحساب) قد تتوقف عن العمل.</p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>7. حقوقك</h2>
+        <p>
+          مع مراعاة القانون الكويتي (بما في ذلك قانون حماية البيانات المعمول به متى انطبق)، يحقّ لك الوصول إلى بياناتك الشخصية لدينا أو تصحيحها أو حذفها، وسحب موافقتك في أي وقت. لممارسة هذه الحقوق، يرجى المراسلة على <a href="mailto:info@anfalsports.com">info@anfalsports.com</a>.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>8. الأطفال</h2>
+        <p>موقعنا غير موجَّه للأطفال دون سن 18 عامًا. ولا نقوم عن علم بجمع بيانات شخصية من القاصرين.</p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>9. تعديلات على هذه السياسة</h2>
+        <p>قد نقوم بتحديث هذه السياسة من وقت لآخر. سيتم إبراز التغييرات الجوهرية على هذه الصفحة مع تاريخها أعلاه. استمرارك في استخدام موقعنا بعد التحديث يُعدّ موافقةً عليه.</p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>10. التواصل / مسؤول الشكاوى</h2>
+        <p>لأي أسئلة تتعلق بالخصوصية أو لتقديم شكوى:</p>
+        <p>
+          <strong>أنفال سبورتس</strong> (شركة أنفال سبورتس ذ.م.م)<br />
+          يال مول<br />
+          مدينة الكويت، الكويت<br />
+          البريد الإلكتروني: <a href="mailto:info@anfalsports.com">info@anfalsports.com</a><br />
+          الهاتف / واتساب: <a href="tel:+96500000000">+965 0000 0000</a>
+        </p>
+        <p>سنُقرّ باستلام الشكاوى خلال 24 ساعة ونسعى إلى حلّها خلال 15 يومًا، وفقًا للأنظمة الكويتية المعمول بها.</p>
+      </section>
+    </>
+  );
+}
+
+export default function PrivacyPolicy() {
+  const { i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+  return (
+    <StaticPage
+      title="Privacy Policy"
+      titleAr="سياسة الخصوصية"
+      description="Privacy Policy for Anfal Sports (Anfal Sports W.L.L.). How we collect, use, and protect your personal information."
+      descriptionAr="سياسة الخصوصية لأنفال سبورتس (شركة أنفال سبورتس ذ.م.م). كيف نقوم بجمع معلوماتك الشخصية واستخدامها وحمايتها."
+    >
+      {isAr ? <ArabicBody /> : <EnglishBody />}
     </StaticPage>
   );
 }

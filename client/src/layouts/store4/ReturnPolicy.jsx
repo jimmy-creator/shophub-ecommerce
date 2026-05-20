@@ -1,11 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import StaticPage from './StaticPage';
 
-export default function ReturnPolicy() {
+function EnglishBody() {
   return (
-    <StaticPage
-      title="Return Policy"
-      description="Anfal Sports return policy. 14-day returns on unused items in original packaging across our two stores and online."
-    >
+    <>
       <p className="s2-static-date">Last updated: May 2026</p>
 
       <section className="s2-static-section">
@@ -76,6 +74,98 @@ export default function ReturnPolicy() {
           📞 / WhatsApp: <a href="tel:+96500000000">+965 0000 0000</a>
         </p>
       </section>
+    </>
+  );
+}
+
+function ArabicBody() {
+  return (
+    <>
+      <p className="s2-static-date">آخر تحديث: مايو 2026</p>
+
+      <section className="s2-static-section">
+        <h2>إرجاع خلال 14 يومًا بدون متاعب</h2>
+        <p>
+          لديك <strong>14 يومًا</strong> من تاريخ الشراء من المعرض أو التسليم لإرجاع أي منتج غير مستعمَل في تغليفه الأصلي لاسترداد المبلغ أو الاستبدال. مع وجود البطاقات، وعدم تلف العلبة، وألا يكون الحذاء قد استُخدم خارج المنزل.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>1. ما نقبله</h2>
+        <ul>
+          <li>الأحذية في علبتها الأصلية، دون أي خدوش أو علامات استعمال على النعل الخارجي.</li>
+          <li>الملابس بجميع بطاقاتها وبحالة لم تُرتدَ.</li>
+          <li>المعدّات والإكسسوارات في تغليفها الأصلي وغير مستعمَلة.</li>
+          <li>يجب أن يشمل المنتج أي هدايا مجانية أو كتيّبات أو بطاقات ضمان مرفقة به.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>2. ما لا نقبله</h2>
+        <ul>
+          <li>الأحذية المستعمَلة (نفحص النعل الخارجي).</li>
+          <li>الجوارب وملابس الداخلية وملابس السباحة وواقيات الفم المستعمَلة أو المفتوحة — منتجات النظافة الشخصية.</li>
+          <li>المنتجات المخصَّصة (طباعة أسماء/أرقام، مضارب مشدودة حسب الطلب، إلخ).</li>
+          <li>منتجات التخفيضات أو التصفية الموسومة بـ "بيع نهائي".</li>
+          <li>المنتجات المُرجَعة بعد انتهاء مهلة 14 يومًا.</li>
+          <li>المنتجات التالفة بسبب الاستعمال أو سوء المعاملة أو الغسيل بشكل مخالف لتعليمات الملصق.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>3. كيف تتمّ عملية الإرجاع</h2>
+        <ol>
+          <li><strong>من المعرض</strong>: توجَّه إلى أي من فروعنا مع المنتج وفاتورتك أو رقم طلبك. يتمّ استرداد المبلغ أو الاستبدال فورًا.</li>
+          <li><strong>عن طريق الشحن</strong>: تواصل معنا بالبريد الإلكتروني أو واتساب مع رقم طلبك، وسنرسل لك تعليمات الإرجاع. في حالة الإرجاع بسبب تغيير الرأي يتحمّل العميل تكلفة الشحن العائد؛ أما في حالة المنتجات التالفة أو الخاطئة فنحن نتحمّلها.</li>
+          <li><strong>الفحص</strong>: يتمّ فحص المنتجات قبل صرف الاسترداد. في حال لم يجتَز المنتج الفحص (مثلًا علامات استعمال واضحة)، سنتواصل معك لمناقشة الخيارات.</li>
+        </ol>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>4. الاستبدال</h2>
+        <p>
+          مقاس خاطئ؟ لون خاطئ؟ أعِد المنتج خلال 14 يومًا لاستبداله. يخضع ذلك لتوفر المخزون في الفرع الذي تزوره — وإذا كان المقاس الذي تريده في الفرع الآخر، يمكننا عادةً نقله خلال 1–2 يوم عمل.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>5. التالف أو المعيب عند الاستلام</h2>
+        <p>
+          أبلِغنا خلال <strong>7 أيام من الاستلام</strong> مع الصور. سنرتّب استلامًا مجانيًا ونقدّم استبدالًا أو إصلاحًا (متى انطبق ضمان الشركة المصنّعة) أو استرداد المبلغ.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>6. مدة الاسترداد ووسيلة الدفع</h2>
+        <p>
+          تتم معالجة المبالغ المُسترَدة خلال <strong>5 إلى 10 أيام عمل</strong> من استلام المنتج المُرجَع، وتُعاد إلى وسيلة الدفع الأصلية. راجع <a href="/ar/refund-policy">سياسة استرداد المبالغ</a> للاطلاع على التفاصيل الكاملة.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>7. التواصل</h2>
+        <p>
+          <strong>أنفال سبورتس</strong> (شركة أنفال سبورتس ذ.م.م)<br />
+          📍 يال مول، مدينة الكويت<br />
+          📧 <a href="mailto:info@anfalsports.com">info@anfalsports.com</a><br />
+          📞 / واتساب: <a href="tel:+96500000000">+965 0000 0000</a>
+        </p>
+      </section>
+    </>
+  );
+}
+
+export default function ReturnPolicy() {
+  const { i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+  return (
+    <StaticPage
+      title="Return Policy"
+      titleAr="سياسة الإرجاع"
+      description="Anfal Sports return policy. 14-day returns on unused items in original packaging across our two stores and online."
+      descriptionAr="سياسة الإرجاع لدى أنفال سبورتس. إرجاع خلال 14 يومًا للمنتجات غير المستعملة في تغليفها الأصلي في فرعَينا وعبر الإنترنت."
+    >
+      {isAr ? <ArabicBody /> : <EnglishBody />}
     </StaticPage>
   );
 }

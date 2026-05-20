@@ -1,11 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import StaticPage from './StaticPage';
 
-export default function ShippingPolicy() {
+function EnglishBody() {
   return (
-    <StaticPage
-      title="Shipping Policy"
-      description="Anfal Sports delivery across Kuwait. Free over a minimum order, same-day on most areas."
-    >
+    <>
       <p className="s2-static-date">Last updated: May 2026</p>
 
       <section className="s2-static-section">
@@ -90,6 +88,112 @@ export default function ShippingPolicy() {
           📧 <a href="mailto:info@anfalsports.com">info@anfalsports.com</a>
         </p>
       </section>
+    </>
+  );
+}
+
+function ArabicBody() {
+  return (
+    <>
+      <p className="s2-static-date">آخر تحديث: مايو 2026</p>
+
+      <section className="s2-static-section">
+        <h2>أين نوصِّل</h2>
+        <p>
+          نقوم بالتوصيل في جميع أنحاء الكويت. بالنسبة لمعظم مناطق مدينة الكويت وحولّي يمكننا عادةً ترتيب التوصيل في نفس اليوم أو اليوم التالي؛ أما المحافظات البعيدة فتستغرق يومًا أو يومين إضافيَّين.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>1. مدة التجهيز</h2>
+        <p>
+          الطلبات الإلكترونية التي تتمّ قبل الساعة 4 عصرًا في أي يوم عمل تُشحَن عادةً في نفس اليوم. أما الطلبات التي تتمّ بعد ذلك، أو يوم الجمعة، أو في العطلات الرسمية، فتُشحَن في يوم العمل التالي.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>2. مواعيد التوصيل</h2>
+        <table className="s2-static-table">
+          <thead>
+            <tr>
+              <th>المنطقة</th>
+              <th>مدة التوصيل التقديرية</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>مدينة الكويت، حولّي</td><td>نفس اليوم – يوم عمل واحد</td></tr>
+            <tr><td>الفروانية، مبارك الكبير</td><td>1–2 يوم عمل</td></tr>
+            <tr><td>الأحمدي، الجهراء</td><td>2–3 أيام عمل</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>3. رسوم التوصيل</h2>
+        <ul>
+          <li><strong>توصيل مجاني</strong> للطلبات التي تتجاوز الحد الأدنى لقيمة الطلب (يظهر عند الدفع).</li>
+          <li>رسوم توصيل ثابتة للطلبات التي تقلّ عن الحد الأدنى؛ المبلغ المحدّد يظهر عند الدفع.</li>
+          <li>قد تخضع الدفع عند الاستلام لرسوم إضافية بسيطة.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>4. الطلب والاستلام من المعرض</h2>
+        <p>
+          اطلب عبر الإنترنت واستلم من أي من فروعنا الفعلية خلال 1–2 ساعة من تأكيد التجهيز، دون أي رسوم. ستصلك رسالة نصية / بريد إلكتروني عندما يكون الطلب جاهزًا.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>5. تتبّع الطلب</h2>
+        <p>
+          بمجرّد شحن طلبك، ستصلك رسالة تأكيد تتضمّن بيانات التتبّع. كما يمكنك الاطلاع على الحالة المباشرة من <strong>طلباتي</strong> على موقعنا.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>6. فشل التوصيل</h2>
+        <p>
+          إذا تعذّر على شركة الشحن الوصول إليك، فستحاول إعادة التوصيل لمدة تصل إلى يومين إضافيَّين. وبعد تكرار محاولات التوصيل الفاشلة يعود الطرد إلينا — وسنتواصل معك إما لإعادة الشحن (قد تنطبق رسوم إضافية) أو لاسترداد المبلغ وفقًا لـ <a href="/ar/refund-policy">سياسة استرداد المبالغ</a>.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>7. التلف أثناء النقل</h2>
+        <p>
+          إذا وصل طردك بضرر ظاهر في العلبة أو المنتج، التقط صورًا وتواصل معنا خلال <strong>7 أيام من التسليم</strong>. التفاصيل الكاملة في <a href="/ar/return-policy">سياسة الإرجاع</a> و<a href="/ar/refund-policy">سياسة استرداد المبالغ</a>.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>8. الشحن الدولي</h2>
+        <p>
+          نقوم حاليًا بالشحن داخل دولة الكويت فقط. للطلبات الخليجية أو الدولية، يرجى التواصل معنا وسنرتّبها وفق كل حالة.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>9. التواصل</h2>
+        <p>
+          📞 / واتساب: <a href="tel:+96500000000">+965 0000 0000</a><br />
+          📧 <a href="mailto:info@anfalsports.com">info@anfalsports.com</a>
+        </p>
+      </section>
+    </>
+  );
+}
+
+export default function ShippingPolicy() {
+  const { i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+  return (
+    <StaticPage
+      title="Shipping Policy"
+      titleAr="سياسة الشحن"
+      description="Anfal Sports delivery across Kuwait. Free over a minimum order, same-day on most areas."
+      descriptionAr="توصيل أنفال سبورتس في جميع أنحاء الكويت. توصيل مجاني فوق الحد الأدنى للطلب، وتوصيل في نفس اليوم لمعظم المناطق."
+    >
+      {isAr ? <ArabicBody /> : <EnglishBody />}
     </StaticPage>
   );
 }

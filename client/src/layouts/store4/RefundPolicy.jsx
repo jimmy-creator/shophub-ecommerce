@@ -1,11 +1,9 @@
+import { useTranslation } from 'react-i18next';
 import StaticPage from './StaticPage';
 
-export default function RefundPolicy() {
+function EnglishBody() {
   return (
-    <StaticPage
-      title="Refund Policy"
-      description="Anfal Sports refund policy. Returns accepted within 14 days on unused items in original packaging."
-    >
+    <>
       <p className="s2-static-date">Last updated: May 2026</p>
 
       <section className="s2-static-section">
@@ -73,6 +71,95 @@ export default function RefundPolicy() {
           📞 / WhatsApp: <a href="tel:+96500000000">+965 0000 0000</a>
         </p>
       </section>
+    </>
+  );
+}
+
+function ArabicBody() {
+  return (
+    <>
+      <p className="s2-static-date">آخر تحديث: مايو 2026</p>
+
+      <section className="s2-static-section">
+        <h2>موقفنا</h2>
+        <p>
+          نريدك أن تكون راضيًا عمّا اشتريته. إذا لم يناسبك المقاس أو اللون، أو غيّرت رأيك ببساطة — أعِد المنتج خلال <strong>14 يومًا</strong> بحالته الأصلية وسنقوم باسترداد المبلغ أو الاستبدال.
+        </p>
+        <p>
+          أي منتج وصل تالفًا أو خطأً أو معيبًا فهو على عاتقنا — أبلِغنا خلال 7 أيام مع صور، وسنتحمل تكلفة الحلّ.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>1. الإرجاعات المؤهَّلة لاسترداد المبلغ</h2>
+        <ul>
+          <li><strong>غير مستعمل، لم يُرتدَ، وفي تغليفه الأصلي</strong> مع جميع البطاقات والملصقات والملحقات.</li>
+          <li>الإرجاع خلال <strong>14 يومًا</strong> من تاريخ الشراء من المعرض أو التسليم.</li>
+          <li>إثبات الشراء: الفاتورة الأصلية أو رقم الطلب.</li>
+          <li>للطلبات الإلكترونية، يُفضَّل أن يكون التغليف الأصلي للشحن سليمًا قدر الإمكان.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>2. منتجات غير قابلة للاسترداد</h2>
+        <ul>
+          <li>الأحذية المستعمَلة (يجب أن يكون نعلها الخارجي دون أي علامات).</li>
+          <li>الجوارب وملابس الداخلية وملابس السباحة وواقيات الفم وما شابهها من منتجات النظافة الشخصية إذا فُتحت أو استُخدمت.</li>
+          <li>المنتجات المخصَّصة أو المُعدَّلة حسب الطلب (قمصان مطبوعة، مضارب مشدودة حسب الطلب، إلخ).</li>
+          <li>بطاقات الهدايا.</li>
+          <li>منتجات التخفيضات أو التصفية الموسومة بـ "بيع نهائي".</li>
+          <li>المنتجات التالفة بسبب الاستعمال أو الغسيل أو الاستهلاك الطبيعي.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>3. المنتجات التالفة أو الخاطئة أو المعيبة</h2>
+        <p>
+          تواصل معنا خلال <strong>7 أيام من الاستلام</strong> مع رقم طلبك وصور واضحة. سنرتّب استلامًا مجانيًا ونوفّر استبدالًا أو إصلاحًا بموجب الضمان (وفق ما تسمح به الشركة المصنّعة)، أو استرداد المبلغ — حسب اختيارك.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>4. كيف يتمّ استرداد المبلغ</h2>
+        <ul>
+          <li>تتمّ معالجة استرداد المبلغ خلال <strong>5 إلى 10 أيام عمل</strong> بعد استلامنا للمنتج المُرجَع وفحصه.</li>
+          <li>يُعاد المبلغ إلى <strong>وسيلة الدفع الأصلية</strong> (KNET، بطاقة عبر Tap Payments، إلخ).</li>
+          <li>المشتريات النقدية داخل المعرض تُسترَد نقدًا أو رصيدًا داخل المعرض في الفرع نفسه.</li>
+          <li>رسوم التوصيل الأصلية غير قابلة للاسترداد ما لم يكن الإرجاع بسبب خطأ من جانبنا.</li>
+        </ul>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>5. المشتريات من المعرض مقابل المشتريات الإلكترونية</h2>
+        <p>
+          يمكنك إعادة الطلبات الإلكترونية إلى أيٍّ من معرضَينا الفعليَّين أو عبر شركة الشحن (تتحمّل تكلفة الشحن في حال الإرجاع بسبب تغيير الرأي). أما مشتريات المعرض فتُعاد إلى الفرع نفسه.
+        </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>6. التواصل</h2>
+        <p>
+          <strong>أنفال سبورتس</strong> (شركة أنفال سبورتس ذ.م.م)<br />
+          📍 يال مول، مدينة الكويت<br />
+          📧 <a href="mailto:info@anfalsports.com">info@anfalsports.com</a><br />
+          📞 / واتساب: <a href="tel:+96500000000">+965 0000 0000</a>
+        </p>
+      </section>
+    </>
+  );
+}
+
+export default function RefundPolicy() {
+  const { i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+  return (
+    <StaticPage
+      title="Refund Policy"
+      titleAr="سياسة استرداد المبالغ"
+      description="Anfal Sports refund policy. Returns accepted within 14 days on unused items in original packaging."
+      descriptionAr="سياسة استرداد المبالغ لدى أنفال سبورتس. نقبل الإرجاع خلال 14 يومًا للمنتجات غير المستعملة في تغليفها الأصلي."
+    >
+      {isAr ? <ArabicBody /> : <EnglishBody />}
     </StaticPage>
   );
 }
