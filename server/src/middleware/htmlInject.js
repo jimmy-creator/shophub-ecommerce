@@ -221,7 +221,7 @@ const STATIC_TITLES = {
 };
 
 export default async function htmlInject(req, res, next) {
-  if (req.method !== 'GET') return next();
+  if (req.method !== 'GET' && req.method !== 'HEAD') return next();
   // Skip only if caller explicitly asked for non-HTML (e.g. an XHR doing
   // Accept: application/json on a non-API path). Default curl + most
   // crawlers send `*/*` which we should treat as "fine, serve HTML".
@@ -242,6 +242,12 @@ export default async function htmlInject(req, res, next) {
     req.path === '/favicon.svg'
   ) {
     return next();
+  }
+
+  // HEAD requests get a cheap 200 — uptime monitors don't need the body
+  // or per-URL meta, just confirmation that the SPA shell is reachable.
+  if (req.method === 'HEAD') {
+    return res.type('text/html').status(200).end();
   }
 
   if (!loadTemplate()) return next();
