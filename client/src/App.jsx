@@ -83,9 +83,13 @@ function PageWrapper({ children }) {
 // belong there. On store4 also hide them on /admin so the back-office
 // has its own dedicated chrome.
 const IS_STORE4 = import.meta.env.VITE_LAYOUT === 'store4';
+// Non-obvious staff-only base path. Used in place of the old /pos so the
+// POS surface doesn't show up to customers/bots scanning common routes.
+// The auth gate is still the real protection — this is just hygiene.
+export const STAFF_BASE = '/anfal-staff-x7k2';
 function PosAware({ children }) {
   const { pathname } = useLocation();
-  if (pathname === '/pos' || pathname === '/pos/login') return null;
+  if (pathname === STAFF_BASE || pathname === `${STAFF_BASE}/login`) return null;
   if (IS_STORE4 && pathname.startsWith('/admin')) return null;
   return children;
 }
@@ -160,8 +164,8 @@ export default function App() {
                       {B2B_ENABLED && <Route path={p('/wholesale/request')} element={<WholesaleRequest />} />}
                       {B2B_ENABLED && <Route path={p('/wholesale/my-quotes')} element={<WholesaleQuotes />} />}
                       {B2B_ENABLED && <Route path={p('/wholesale/my-quotes/:id')} element={<WholesaleQuoteDetail />} />}
-                      {MULTILOC_ENABLED && <Route path={p('/pos/login')} element={<PosLogin />} />}
-                      {MULTILOC_ENABLED && <Route path={p('/pos')} element={<Pos />} />}
+                      {MULTILOC_ENABLED && <Route path={p(`${STAFF_BASE}/login`)} element={<PosLogin />} />}
+                      {MULTILOC_ENABLED && <Route path={p(STAFF_BASE)} element={<Pos />} />}
                     </Fragment>
                   );
                 })}

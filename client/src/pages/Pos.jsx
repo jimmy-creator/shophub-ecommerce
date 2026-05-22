@@ -13,6 +13,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { STAFF_BASE } from '../App';
 import toast from 'react-hot-toast';
 import {
   HiShoppingCart, HiClock, HiReply, HiChartBar,
@@ -83,7 +84,7 @@ export default function Pos() {
   useEffect(() => {
     api.get('/cashier/me')
       .then((res) => setMe(res.data))
-      .catch(() => navigate('/pos/login'))
+      .catch(() => navigate(`${STAFF_BASE}/login`))
       .finally(() => setLoading(false));
   }, [navigate]);
 
@@ -295,7 +296,7 @@ export default function Pos() {
 
   const signOut = async () => {
     await api.post('/cashier/logout').catch(() => {});
-    navigate('/pos/login');
+    navigate(`${STAFF_BASE}/login`);
   };
 
   const openXReport = async () => {
@@ -308,7 +309,7 @@ export default function Pos() {
   };
 
   // On close: fire the Z-report *before* the JWT cookie is wiped, then
-  // navigate to /pos/login when the report dialog is dismissed.
+  // navigate to the staff login when the report dialog is dismissed.
   const submitClose = async (e) => {
     e.preventDefault();
     try {
@@ -323,7 +324,7 @@ export default function Pos() {
         // Overlay merges the freshly closed counts.
         setReport({ ...zData, closingCash: data.session.closingCash, variance: data.variance, type: 'Z' });
       } else {
-        navigate('/pos/login');
+        navigate(`${STAFF_BASE}/login`);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed');
@@ -333,7 +334,7 @@ export default function Pos() {
   const closeReport = () => {
     const wasZ = report?.type === 'Z';
     setReport(null);
-    if (wasZ) navigate('/pos/login');
+    if (wasZ) navigate(`${STAFF_BASE}/login`);
   };
 
   const fmt = (n) => `${CURRENCY} ${(parseFloat(n) || 0).toFixed(3)}`;

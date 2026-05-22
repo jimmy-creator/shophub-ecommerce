@@ -98,6 +98,7 @@ Disallow: /api/
 Disallow: /checkout
 Disallow: /profile
 Disallow: /orders
+Disallow: /anfal-staff-x7k2
 
 Sitemap: ${baseUrl}/sitemap.xml
 `;

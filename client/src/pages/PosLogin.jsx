@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
+import { STAFF_BASE } from '../App';
 
 /**
  * POS login terminal screen.
@@ -14,8 +15,9 @@ import { CurrencySymbol } from '../utils/currency';
  *      - if you already have an open shift: resumed immediately
  *      - else: prompts for opening cash before opening a new shift
  *
- * Stays logged in until /pos/close is hit. Lives at /pos/login outside the
- * regular admin auth flow.
+ * Lives at a non-obvious /<staff-base>/login path (see STAFF_BASE in App.jsx)
+ * outside the regular admin auth flow. Once authenticated the cashier stays
+ * logged in until they close the shift.
  */
 export default function PosLogin() {
   const navigate = useNavigate();
@@ -77,7 +79,7 @@ export default function PosLogin() {
       if (withOpeningCash !== undefined) body.openingCash = withOpeningCash;
       const { data } = await api.post('/cashier/login', body);
       toast.success(data.resumed ? 'Shift resumed' : 'Shift opened');
-      navigate('/pos');
+      navigate(STAFF_BASE);
     } catch (err) {
       const status = err.response?.status;
       const detail = err.response?.data;
