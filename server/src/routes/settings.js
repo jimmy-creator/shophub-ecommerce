@@ -4,13 +4,17 @@ import { protect, admin, requirePermission } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get theme (public — all visitors need the active theme)
+// Get theme (public — all visitors need the active theme).
+// Returns null when no row exists so the client falls through to its
+// per-store `defaultTheme`. Hardcoding 'default' here used to override
+// the client default and keep re-seeding the obsolete value into
+// every visitor's localStorage.
 router.get('/theme', async (req, res) => {
   try {
     const setting = await Setting.findByPk('theme');
-    res.json({ theme: setting?.value || 'default' });
+    res.json({ theme: setting?.value || null });
   } catch (error) {
-    res.json({ theme: 'default' });
+    res.json({ theme: null });
   }
 });
 
