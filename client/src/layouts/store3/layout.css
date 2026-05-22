@@ -183,14 +183,14 @@
 .s2-btn:active { transform: translateY(0); }
 
 .s2-btn-primary {
-  background: #111;
+  background: #3B277E;
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px -10px rgba(59, 39, 126, 0.4);
 }
 .s2-btn-primary:hover {
-  background: #2a2a2a;
-  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.5);
+  background: #2e1d65;
+  box-shadow: 0 14px 40px -10px rgba(59, 39, 126, 0.5);
 }
 
 /* Add to cart button in product detail — matches mobile red */
@@ -1785,10 +1785,13 @@
   margin-top: 1.5rem;
   align-items: center;
 }
-/* The 4th child (Buy now) wraps to row 2 — make it span the full row
-   instead of sitting awkwardly in the first column. */
-.s2-add-to-cart > button:last-child {
-  grid-column: 1 / -1;
+/* The 4th child (Buy now) wraps to row 2 — make it span the full row.
+   Desktop-only: the mobile override below uses grid-template-areas and
+   places the buttons side-by-side, so we mustn't force a span there. */
+@media (min-width: 1025px) {
+  .s2-add-to-cart > button:last-child {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Mobile sticky buy bar */
@@ -1819,20 +1822,24 @@
     font-weight: 600;
     color: var(--s2-text);
     white-space: nowrap;
-    flex: 1;
+    flex: 0 0 auto;
   }
   .s2-mobile-buy-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.35rem;
-    padding: 0.65rem 1.1rem;
+    padding: 0.65rem 0.7rem;
     border-radius: var(--s2-radius-pill);
     font-size: 0.88rem;
     font-weight: 600;
     border: none;
     cursor: pointer;
     white-space: nowrap;
+    flex: 1 1 0;
+    min-width: 0;
   }
+  .s2-mobile-buy-btn svg { flex-shrink: 0; }
   .s2-mobile-buy-now {
     background: #111;
     color: #fff;
@@ -1845,6 +1852,11 @@
   .s2-detail { padding-bottom: 9rem; }
   /* hide the inline add-to-cart on mobile */
   .s2-add-to-cart { display: none; }
+}
+@media (max-width: 380px) {
+  .s2-mobile-buy-bar { gap: 0.4rem; padding: 0.55rem 0.7rem; }
+  .s2-mobile-buy-btn { padding: 0.55rem 0.45rem; font-size: 0.78rem; gap: 0.25rem; }
+  .s2-mobile-buy-price { font-size: 1rem; }
 }
 .s2-qty {
   display: flex;
@@ -3944,13 +3956,13 @@ body:has(.admin-page) .s2-footer {
   .s2-add-to-cart .s2-btn-primary {
     grid-area: btn2;
     display: inline-flex !important;
-    background: #f5e8c4 !important;
-    color: #1a1f3a !important;
+    background: #3B277E !important;
+    color: #ffffff !important;
     border-color: transparent !important;
     box-shadow: none !important;
   }
   .s2-add-to-cart .s2-btn-primary:hover {
-    background: #efddae !important;
+    background: #2e1d65 !important;
     box-shadow: none !important;
   }
   /* Hide button icons on mobile — Farmley reference is text-only */
