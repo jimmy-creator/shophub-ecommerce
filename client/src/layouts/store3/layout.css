@@ -591,10 +591,7 @@
 }
 .s2-hero-title em {
   font-style: italic;
-  background: linear-gradient(135deg, var(--s2-lavender), var(--s2-cyan));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--s2-text, #111);
   padding-right: 0.08em;
 }
 .s2-hero-lede {
@@ -1930,10 +1927,7 @@
   font-family: var(--s2-font-display);
   font-size: 3.8rem;
   line-height: 1;
-  background: linear-gradient(135deg, var(--s2-lavender), var(--s2-cyan));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--s2-text, #111);
 }
 .s2-reviews-avg-stars {
   display: flex;
@@ -1966,7 +1960,7 @@
 }
 .s2-reviews-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--s2-lavender), var(--s2-cyan));
+  background: var(--s2-text, #111);
   border-radius: inherit;
   transition: width 0.6s ease;
 }
