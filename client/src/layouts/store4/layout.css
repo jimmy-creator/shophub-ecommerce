@@ -1794,9 +1794,15 @@
 
 .s2-add-to-cart {
   display: grid;
-  grid-template-columns: auto 1fr 1fr;
+  grid-template-columns: auto auto 1fr;
   gap: 0.7rem;
   margin-top: 1.5rem;
+  align-items: center;
+}
+/* The 4th child (Buy now) wraps to row 2 — make it span the full row
+   instead of sitting awkwardly in the first column. */
+.s2-add-to-cart > button:last-child {
+  grid-column: 1 / -1;
 }
 
 /* Mobile sticky buy bar */
