@@ -1,8 +1,8 @@
 import sharedThemes from '../../themes/shared';
 
-export const defaultTheme = 'blanc';
+export const defaultTheme = 'marketplace';
 
-const store3Themes = {
+const store4Themes = {
   ...sharedThemes,
 
   blanc: {
@@ -39,4 +39,4 @@ const store3Themes = {
   },
 };
 
-export default store3Themes;
+export default store4Themes;
