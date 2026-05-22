@@ -1580,11 +1580,6 @@
 
 .s2-detail-info {
   padding: 0.5rem 0 0;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--s2-glass-border) transparent;
-  padding-right: 0.5rem;
 }
 .s2-detail-cat {
   font-size: 0.72rem;
