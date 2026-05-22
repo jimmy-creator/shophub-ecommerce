@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Star, Minus, Plus, ArrowLeft, Zap, Heart, ShoppingBag, Share2, Link as LinkIcon, Check } from 'lucide-react';
 import { FaFacebookF, FaXTwitter, FaPinterestP, FaTelegram, FaWhatsapp, FaEnvelope } from 'react-icons/fa6';
@@ -8,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useRecentlyViewed } from '../../context/RecentlyViewedContext';
 import ProductImage from '../../components/ProductImage';
+import EstimatedDelivery from '../../components/EstimatedDelivery';
 import SEO from '../../components/SEO';
 import api from '../../api/axios';
 import { showToast } from '../../utils/toast';
@@ -31,21 +33,37 @@ export default function ProductDetail() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [shareOpen, setShareOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const shareWrapRef = useRef(null);
+  const [sharePos, setSharePos] = useState({ top: 0, left: 0 });
+  const shareBtnRef = useRef(null);
+  const sharePopRef = useRef(null);
   const { t } = useTranslation();
 
-  // Close the share popover when clicking outside or pressing Escape.
+  // Share popover lifecycle: position it under the button (the popover is
+  // portaled to <body> so it isn't clipped by .s2-detail-info's overflow),
+  // close on outside click, Escape, scroll, or resize.
   useEffect(() => {
     if (!shareOpen) return;
+    const place = () => {
+      const r = shareBtnRef.current?.getBoundingClientRect();
+      if (r) setSharePos({ top: r.bottom + 8, left: r.left });
+    };
+    place();
     const onPointerDown = (e) => {
-      if (shareWrapRef.current && !shareWrapRef.current.contains(e.target)) setShareOpen(false);
+      const inBtn = shareBtnRef.current?.contains(e.target);
+      const inPop = sharePopRef.current?.contains(e.target);
+      if (!inBtn && !inPop) setShareOpen(false);
     };
     const onKey = (e) => { if (e.key === 'Escape') setShareOpen(false); };
+    const close = () => setShareOpen(false);
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
     return () => {
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
     };
   }, [shareOpen]);
 
@@ -262,6 +280,8 @@ export default function ProductDetail() {
                 : 'Out of stock'}
             </div>
 
+            {displayStock > 0 && <EstimatedDelivery minDays={1} maxDays={3} skipFriday />}
+
             {displayStock > 0 ? (
               <div className="s2-add-to-cart">
                 <label className="s2-qty-label">Quantity:</label>
@@ -312,8 +332,9 @@ export default function ProductDetail() {
                 } catch { /* clipboard unavailable */ }
               };
               return (
-                <div className="s2-detail-share" ref={shareWrapRef}>
+                <div className="s2-detail-share">
                   <button
+                    ref={shareBtnRef}
                     type="button"
                     className="s2-share-btn"
                     onClick={() => setShareOpen((v) => !v)}
@@ -323,8 +344,13 @@ export default function ProductDetail() {
                     <Share2 size={16} strokeWidth={2} />
                     <span>{t('product.shareProduct')}</span>
                   </button>
-                  {shareOpen && (
-                    <div className="s2-share-pop" role="menu">
+                  {shareOpen && createPortal(
+                    <div
+                      ref={sharePopRef}
+                      className="s2-share-pop"
+                      role="menu"
+                      style={{ top: sharePos.top, left: sharePos.left }}
+                    >
                       {shares.map((s) => (
                         <a
                           key={s.name}
@@ -350,7 +376,8 @@ export default function ProductDetail() {
                         </span>
                         <span>{linkCopied ? t('product.linkCopied') : t('product.copyLink')}</span>
                       </button>
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
               );
