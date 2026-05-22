@@ -70,7 +70,9 @@
     "youSave": "توفر",
     "off": "خصم",
     "quantity": "الكمية",
-    "shareProduct": "مشاركة"
+    "shareProduct": "مشاركة",
+    "copyLink": "نسخ الرابط",
+    "linkCopied": "تم نسخ الرابط"
   },
   "cart": {
     "title": "سلة التسوق",

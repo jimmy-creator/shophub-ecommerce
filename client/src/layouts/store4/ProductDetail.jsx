@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Star, Minus, Plus, ArrowLeft, Zap, Heart, ShoppingBag } from 'lucide-react';
+import { Star, Minus, Plus, ArrowLeft, Zap, Heart, ShoppingBag, Share2, Link as LinkIcon, Check } from 'lucide-react';
 import { FaFacebookF, FaXTwitter, FaPinterestP, FaTelegram, FaWhatsapp, FaEnvelope } from 'react-icons/fa6';
+import { useTranslation } from 'react-i18next';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
@@ -28,6 +29,25 @@ export default function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState({});
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const shareWrapRef = useRef(null);
+  const { t } = useTranslation();
+
+  // Close the share popover when clicking outside or pressing Escape.
+  useEffect(() => {
+    if (!shareOpen) return;
+    const onPointerDown = (e) => {
+      if (shareWrapRef.current && !shareWrapRef.current.contains(e.target)) setShareOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setShareOpen(false); };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [shareOpen]);
 
   useEffect(() => {
     api.get(`/products/${slug}`)
@@ -274,31 +294,64 @@ export default function ProductDetail() {
                 ? (window.location.origin + product.images[0])
                 : '';
               const u = encodeURIComponent(url);
-              const t = encodeURIComponent(title);
+              const tt = encodeURIComponent(title);
               const i = encodeURIComponent(img);
               const shares = [
                 { name: 'Facebook',  href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, color: '#1877F2', icon: <FaFacebookF /> },
-                { name: 'X',         href: `https://twitter.com/intent/tweet?url=${u}&text=${t}`, color: '#000000', icon: <FaXTwitter /> },
-                { name: 'Pinterest', href: `https://pinterest.com/pin/create/button/?url=${u}&media=${i}&description=${t}`, color: '#E60023', icon: <FaPinterestP /> },
-                { name: 'Telegram',  href: `https://t.me/share/url?url=${u}&text=${t}`, color: '#229ED9', icon: <FaTelegram /> },
+                { name: 'X',         href: `https://twitter.com/intent/tweet?url=${u}&text=${tt}`, color: '#000000', icon: <FaXTwitter /> },
+                { name: 'Pinterest', href: `https://pinterest.com/pin/create/button/?url=${u}&media=${i}&description=${tt}`, color: '#E60023', icon: <FaPinterestP /> },
+                { name: 'Telegram',  href: `https://t.me/share/url?url=${u}&text=${tt}`, color: '#229ED9', icon: <FaTelegram /> },
                 { name: 'WhatsApp',  href: `https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}`, color: '#25D366', icon: <FaWhatsapp /> },
-                { name: 'Email',     href: `mailto:?subject=${t}&body=${u}`, color: '#EA4335', icon: <FaEnvelope /> },
+                { name: 'Email',     href: `mailto:?subject=${tt}&body=${u}`, color: '#EA4335', icon: <FaEnvelope /> },
               ];
+              const copyLink = async () => {
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setLinkCopied(true);
+                  setTimeout(() => setLinkCopied(false), 1500);
+                } catch { /* clipboard unavailable */ }
+              };
               return (
-                <div className="s2-detail-share">
-                  {shares.map((s) => (
-                    <a
-                      key={s.name}
-                      href={s.href}
-                      target={s.name === 'Email' ? undefined : '_blank'}
-                      rel={s.name === 'Email' ? undefined : 'noopener noreferrer'}
-                      className="s2-detail-share-btn"
-                      style={{ background: s.color }}
-                      aria-label={`Share on ${s.name}`}
-                    >
-                      {s.icon}
-                    </a>
-                  ))}
+                <div className="s2-detail-share" ref={shareWrapRef}>
+                  <button
+                    type="button"
+                    className="s2-share-btn"
+                    onClick={() => setShareOpen((v) => !v)}
+                    aria-haspopup="menu"
+                    aria-expanded={shareOpen}
+                  >
+                    <Share2 size={16} strokeWidth={2} />
+                    <span>{t('product.shareProduct')}</span>
+                  </button>
+                  {shareOpen && (
+                    <div className="s2-share-pop" role="menu">
+                      {shares.map((s) => (
+                        <a
+                          key={s.name}
+                          href={s.href}
+                          target={s.name === 'Email' ? undefined : '_blank'}
+                          rel={s.name === 'Email' ? undefined : 'noopener noreferrer'}
+                          className="s2-share-pop-item"
+                          role="menuitem"
+                          onClick={() => setShareOpen(false)}
+                        >
+                          <span className="s2-share-icon" style={{ background: s.color }}>{s.icon}</span>
+                          <span>{s.name}</span>
+                        </a>
+                      ))}
+                      <button
+                        type="button"
+                        className="s2-share-pop-item"
+                        role="menuitem"
+                        onClick={copyLink}
+                      >
+                        <span className="s2-share-icon s2-share-icon-neutral">
+                          {linkCopied ? <Check size={14} strokeWidth={2.5} /> : <LinkIcon size={14} strokeWidth={2.2} />}
+                        </span>
+                        <span>{linkCopied ? t('product.linkCopied') : t('product.copyLink')}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })()}

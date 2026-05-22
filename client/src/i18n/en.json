@@ -70,7 +70,9 @@
     "youSave": "You save",
     "off": "off",
     "quantity": "Quantity",
-    "shareProduct": "Share"
+    "shareProduct": "Share",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied"
   },
   "cart": {
     "title": "Shopping cart",
