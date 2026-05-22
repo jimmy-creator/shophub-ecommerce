@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { Star, Minus, Plus, ArrowLeft, Zap, Heart, ShoppingBag, Share2, Link as LinkIcon, Check } from 'lucide-react';
-import { FaFacebookF, FaXTwitter, FaPinterestP, FaTelegram, FaWhatsapp, FaEnvelope } from 'react-icons/fa6';
+import { FaFacebookF, FaXTwitter, FaWhatsapp } from 'react-icons/fa6';
 import { useTranslation } from 'react-i18next';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
@@ -33,7 +33,7 @@ export default function ProductDetail() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [shareOpen, setShareOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [sharePos, setSharePos] = useState({ top: 0, left: 0 });
+  const [sharePos, setSharePos] = useState({ bottom: 0, left: 0 });
   const shareBtnRef = useRef(null);
   const sharePopRef = useRef(null);
   const { t } = useTranslation();
@@ -45,7 +45,7 @@ export default function ProductDetail() {
     if (!shareOpen) return;
     const place = () => {
       const r = shareBtnRef.current?.getBoundingClientRect();
-      if (r) setSharePos({ top: r.bottom + 8, left: r.left });
+      if (r) setSharePos({ bottom: window.innerHeight - r.top + 8, left: r.left });
     };
     place();
     const onPointerDown = (e) => {
@@ -310,19 +310,12 @@ export default function ProductDetail() {
             {(() => {
               const url = typeof window !== 'undefined' ? window.location.href : '';
               const title = product.name || '';
-              const img = product.images?.[0]
-                ? (window.location.origin + product.images[0])
-                : '';
               const u = encodeURIComponent(url);
               const tt = encodeURIComponent(title);
-              const i = encodeURIComponent(img);
               const shares = [
                 { name: 'Facebook',  href: `https://www.facebook.com/sharer/sharer.php?u=${u}`, color: '#1877F2', icon: <FaFacebookF /> },
                 { name: 'X',         href: `https://twitter.com/intent/tweet?url=${u}&text=${tt}`, color: '#000000', icon: <FaXTwitter /> },
-                { name: 'Pinterest', href: `https://pinterest.com/pin/create/button/?url=${u}&media=${i}&description=${tt}`, color: '#E60023', icon: <FaPinterestP /> },
-                { name: 'Telegram',  href: `https://t.me/share/url?url=${u}&text=${tt}`, color: '#229ED9', icon: <FaTelegram /> },
                 { name: 'WhatsApp',  href: `https://wa.me/?text=${encodeURIComponent(title + ' ' + url)}`, color: '#25D366', icon: <FaWhatsapp /> },
-                { name: 'Email',     href: `mailto:?subject=${tt}&body=${u}`, color: '#EA4335', icon: <FaEnvelope /> },
               ];
               const copyLink = async () => {
                 try {
@@ -349,14 +342,14 @@ export default function ProductDetail() {
                       ref={sharePopRef}
                       className="s2-share-pop"
                       role="menu"
-                      style={{ top: sharePos.top, left: sharePos.left }}
+                      style={{ bottom: sharePos.bottom, left: sharePos.left }}
                     >
                       {shares.map((s) => (
                         <a
                           key={s.name}
                           href={s.href}
-                          target={s.name === 'Email' ? undefined : '_blank'}
-                          rel={s.name === 'Email' ? undefined : 'noopener noreferrer'}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="s2-share-pop-item"
                           role="menuitem"
                           onClick={() => setShareOpen(false)}
