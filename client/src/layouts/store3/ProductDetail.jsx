@@ -557,10 +557,19 @@ function ReviewsSection({ productId, user }) {
     }
   };
 
+  const avgFloat = parseFloat(avgRating);
+  const avatarColor = (name) => {
+    const h = [...(name || '?')].reduce((s, c) => s + c.charCodeAt(0), 0) % 360;
+    return `hsl(${h}, 38%, 62%)`;
+  };
+
   return (
     <div className="s2-reviews">
       <div className="s2-reviews-head">
-        <h2>Customer <em style={{ fontStyle: 'italic', color: 'var(--s2-lavender)' }}>voices</em></h2>
+        <div>
+          <h2>Ratings and <em style={{ fontStyle: 'italic', color: 'var(--s2-lavender)' }}>reviews</em></h2>
+          {total > 0 && <span className="s2-reviews-count-pill">{total} review{total !== 1 ? 's' : ''}</span>}
+        </div>
         {user && (
           <button type="button" className="s2-btn" onClick={() => setShowForm(!showForm)}>
             {showForm ? 'Cancel' : 'Write a review'}
@@ -570,32 +579,40 @@ function ReviewsSection({ productId, user }) {
 
       <div className="s2-reviews-summary">
         <div className="s2-reviews-avg">
-          <span className="s2-reviews-avg-number">{avgRating}</span>
+          <div className="s2-reviews-avg-top">
+            <span className="s2-reviews-avg-number">{avgRating}</span>
+            <span className="s2-reviews-avg-of">/ 5</span>
+          </div>
           <div className="s2-reviews-avg-stars">
             {[1, 2, 3, 4, 5].map((s) => (
               <Star
                 key={s}
-                size={16}
-                fill={parseFloat(avgRating) >= s ? 'currentColor' : 'none'}
-                className={parseFloat(avgRating) >= s ? '' : 'star-empty'}
+                size={18}
+                fill={avgFloat >= s ? 'currentColor' : 'none'}
+                className={avgFloat >= s ? '' : 'star-empty'}
               />
             ))}
           </div>
-          <span className="s2-reviews-avg-count">{total} review{total !== 1 ? 's' : ''}</span>
+          <span className="s2-reviews-avg-count">
+            {total > 0 ? `Based on ${total} ${total === 1 ? 'review' : 'reviews'}` : 'No reviews yet'}
+          </span>
         </div>
         <div className="s2-reviews-bars">
-          {[5, 4, 3, 2, 1].map((r) => (
-            <div key={r} className="s2-reviews-bar-row">
-              <span>{r}★</span>
-              <div className="s2-reviews-bar">
-                <div
-                  className="s2-reviews-bar-fill"
-                  style={{ width: total > 0 ? `${(breakdown[r] / total) * 100}%` : '0%' }}
-                />
+          {[5, 4, 3, 2, 1].map((r) => {
+            const pct = total > 0 ? Math.round((breakdown[r] / total) * 100) : 0;
+            return (
+              <div key={r} className="s2-reviews-bar-row">
+                <span className="s2-reviews-bar-label">
+                  {r}
+                  <Star size={11} fill="currentColor" strokeWidth={0} />
+                </span>
+                <div className="s2-reviews-bar">
+                  <div className="s2-reviews-bar-fill" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="s2-reviews-bar-pct">{pct}%</span>
               </div>
-              <span>{breakdown[r]}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -643,43 +660,47 @@ function ReviewsSection({ productId, user }) {
       )}
 
       {reviews.length === 0 ? (
-        <p style={{
-          color: 'var(--s2-text-dim)',
-          padding: '2rem 0',
-          textAlign: 'center',
-          fontFamily: 'var(--s2-font-display)',
-          fontStyle: 'italic',
-          fontSize: '1.15rem',
-        }}>
-          The room is quiet. Be the first to speak.
-        </p>
+        <div className="s2-reviews-empty">
+          <div className="s2-reviews-empty-icon" aria-hidden="true">
+            <Star size={28} strokeWidth={1.5} />
+          </div>
+          <p className="s2-reviews-empty-title">No reviews yet</p>
+          <p className="s2-reviews-empty-hint">Be the first to share your experience.</p>
+        </div>
       ) : (
-        <div>
-          {reviews.map((review) => (
-            <div key={review.id} className="s2-review-card">
-              <div className="s2-review-top">
+        <div className="s2-reviews-list">
+          {reviews.map((review) => {
+            const name = (review.name || 'Anonymous').trim();
+            const initial = name.charAt(0).toUpperCase() || '?';
+            return (
+              <article key={review.id} className="s2-review-card">
+                <header className="s2-review-head">
+                  <div className="s2-review-avatar" style={{ background: avatarColor(name) }}>
+                    {initial}
+                  </div>
+                  <div className="s2-review-id">
+                    <span className="s2-review-name">{name}</span>
+                    <span className="s2-review-date">
+                      {new Date(review.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  {review.verified && <span className="s2-verified">Verified buyer</span>}
+                </header>
                 <div className="s2-review-stars">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <Star
                       key={s}
-                      size={13}
+                      size={14}
                       fill={review.rating >= s ? 'currentColor' : 'none'}
                       className={review.rating >= s ? '' : 'star-empty'}
                     />
                   ))}
                 </div>
-                {review.verified && <span className="s2-verified">Verified</span>}
-              </div>
-              {review.title && <h4 className="s2-review-title">{review.title}</h4>}
-              <p className="s2-review-comment">{review.comment}</p>
-              <div className="s2-review-meta">
-                <span>{review.name}</span>
-                <span>
-                  {new Date(review.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </span>
-              </div>
-            </div>
-          ))}
+                {review.title && <h4 className="s2-review-title">{review.title}</h4>}
+                <p className="s2-review-comment">{review.comment}</p>
+              </article>
+            );
+          })}
 
           {totalPages > 1 && (
             <div className="s2-pagination">
