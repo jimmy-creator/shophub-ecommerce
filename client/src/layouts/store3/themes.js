@@ -1,6 +1,6 @@
 import sharedThemes from '../../themes/shared';
 
-export const defaultTheme = 'blanc';
+export const defaultTheme = 'marketplace';
 
 const store3Themes = {
   ...sharedThemes,
