@@ -1473,6 +1473,9 @@
   right: 0;
   bottom: 0;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Pin LTR so RTL doesn't reverse slide order + flip translateX direction
+     (same fix as .s2-banner-track). Images are visual, not text. */
+  direction: ltr;
 }
 .s2-gallery-slide {
   flex: 0 0 100%;
