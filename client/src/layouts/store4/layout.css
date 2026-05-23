@@ -468,6 +468,11 @@
   margin-left: auto;
 }
 
+/* Standalone cart icon shown only on /ar mobile — hoisted to the row end so
+   RTL flexbox renders it at the visual left edge. Always rendered in DOM but
+   hidden by default; @media (max-width: 720px) html[dir="rtl"] enables it. */
+.s2-nav-cart-arabic { display: none; }
+
 /* Mobile search bar �� sits below navbar */
 .s2-mobile-search {
   display: none;
@@ -3829,7 +3834,25 @@ body:has(.admin-page) .s2-footer {
     row-gap: 0.6rem;
   }
   .s2-nav-logo-img { height: 30px; margin: 0; }
-  .s2-nav-actions-desktop { display: inline-flex !important; margin-left: auto; }
+  /* Use logical margin so it pushes to the row end in both LTR and RTL.
+     Plain margin-left: auto worked in /en but in /ar it squished the
+     icons against the logo. */
+  .s2-nav-actions-desktop {
+    display: inline-flex !important;
+    margin-inline-start: auto;
+    gap: 0.55rem;
+  }
+
+  /* /ar mobile: cart pulled out to the visual left edge.
+     Hide the in-cluster cart and reveal the standalone one; the standalone
+     cart uses margin-inline-start: auto so RTL flow pushes it to row end
+     (= visual left). The remaining Lang + User cluster keeps its own auto
+     margin and settles between the logo and the cart. */
+  html[dir="rtl"] .s2-nav-cart-arabic {
+    display: inline-flex;
+    margin-inline-start: auto;
+  }
+  html[dir="rtl"] .s2-nav-cart-inline { display: none; }
   .s2-nav-searchwrap {
     flex-basis: 100%;
     order: 10;          /* push to the bottom of the flex line */

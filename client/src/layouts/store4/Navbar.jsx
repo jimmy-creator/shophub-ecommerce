@@ -209,11 +209,18 @@ export default function Navbar() {
           >
             <User size={20} strokeWidth={1.8} />
           </Link>
-          <Link to="/cart" className="s2-icon-btn" aria-label="Cart">
+          <Link to="/cart" className="s2-icon-btn s2-nav-cart-inline" aria-label="Cart">
             <ShoppingBag size={20} strokeWidth={1.8} />
             {cartCount > 0 && <span className="s2-badge">{cartCount}</span>}
           </Link>
         </div>
+
+        {/* /ar mobile only: cart hoisted to the row end so RTL puts it at the
+            visual left edge. Hidden everywhere else (see layout.css). */}
+        <Link to="/cart" className="s2-icon-btn s2-nav-cart-arabic" aria-label="Cart">
+          <ShoppingBag size={20} strokeWidth={1.8} />
+          {cartCount > 0 && <span className="s2-badge">{cartCount}</span>}
+        </Link>
       </nav>
 
       {/* Mobile slide-in menu */}
