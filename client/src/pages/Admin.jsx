@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX, HiEye, HiEyeOff } from 'react-icons/hi';
+import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX, HiEye, HiEyeOff, HiLogout } from 'react-icons/hi';
 import ProductImage from '../components/ProductImage';
 import { useTheme } from '../context/ThemeContext';
 import { CURRENCY } from '../utils/currency';
@@ -893,8 +894,14 @@ function ImageUploader({ images = [], onChange }) {
 }
 
 export default function Admin() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { currentTheme, changeTheme, themes: themeOptions } = useTheme();
+
+  const handleLogout = async () => {
+    try { await logout(); } catch { /* clear client state regardless */ }
+    navigate('/login');
+  };
   const [tab, setTab] = useState(() => {
     if (user?.role === 'staff' && user?.permissions?.length > 0) {
       const permToTab = { analytics: 'dashboard', products: 'products', orders: 'orders', categories: 'categories', customers: 'customers', coupons: 'coupons', reviews: 'reviews', settings: 'theme' };
@@ -1347,6 +1354,13 @@ export default function Admin() {
               </div>
             );
           })}
+          <button
+            className="sidebar-item sidebar-logout"
+            onClick={handleLogout}
+            style={{ marginTop: '0.75rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}
+          >
+            <HiLogout /> Logout{user?.name ? ` (${user.name})` : ''}
+          </button>
         </aside>
 
         <main className="admin-content">
