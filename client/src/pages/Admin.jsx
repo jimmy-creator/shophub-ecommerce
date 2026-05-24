@@ -17,7 +17,7 @@ const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 const emptyProduct = {
   name: '', nameAr: '', code: '', description: '', descriptionAr: '',
   price: '', comparePrice: '', costPrice: '',
-  category: '', brand: '', stock: '', featured: false, images: [],
+  category: '', categories: [], brand: '', stock: '', featured: false, images: [],
   variantOptions: null, variants: null,
 };
 
@@ -1252,8 +1252,13 @@ export default function Admin() {
 
   const handleProductSubmit = async (e) => {
     e.preventDefault();
+    const cats = (form.categories || []).filter(Boolean);
+    if (cats.length === 0) {
+      toast.error('Select at least one category');
+      return;
+    }
     try {
-      const payload = { ...form };
+      const payload = { ...form, categories: cats, category: cats[0] };
       if (editing) {
         await api.put(`/products/${editing}`, payload);
         toast.success('Product updated');
@@ -1604,20 +1609,37 @@ export default function Admin() {
                   />
 
                   <div style={{ marginTop: '1.25rem' }}>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Name</label>
-                        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                    <div className="form-group">
+                      <label>Name</label>
+                      <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Categories <span style={{ color: 'var(--text-light)', fontSize: '0.78rem' }}>(pick one or more — ★ is the primary)</span></label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+                        {adminCategories.map((cat) => {
+                          const cur = form.categories || [];
+                          const idx = cur.indexOf(cat.name);
+                          const selected = idx !== -1;
+                          const isPrimary = idx === 0;
+                          return (
+                            <span
+                              key={cat.id}
+                              onClick={() => {
+                                const next = selected
+                                  ? cur.filter((c) => c !== cat.name)
+                                  : [...cur, cat.name];
+                                setForm({ ...form, categories: next, category: next[0] || '' });
+                              }}
+                              style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500, userSelect: 'none' }}
+                            >
+                              {isPrimary ? '★ ' : ''}{cat.name}
+                            </span>
+                          );
+                        })}
                       </div>
-                      <div className="form-group">
-                        <label>Category</label>
-                        <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} required>
-                          <option value="">Select category</option>
-                          {adminCategories.map((cat) => (
-                            <option key={cat.id} value={cat.name}>{cat.name}</option>
-                          ))}
-                        </select>
-                      </div>
+                      {(form.categories || []).length === 0 && (
+                        <p style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: '0.25rem' }}>Select at least one category</p>
+                      )}
                     </div>
                     <div className="form-group">
                       <label>Description</label>
@@ -1794,6 +1816,9 @@ export default function Admin() {
                             setForm({
                               ...p,
                               images: p.images || [],
+                              categories: (Array.isArray(p.categories) && p.categories.length)
+                                ? p.categories
+                                : (p.category ? [p.category] : []),
                               code: p.code || '',
                               taxable: !!p.taxable,
                               taxRate: parseFloat(p.taxRate) || 0,

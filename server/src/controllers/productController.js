@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import sequelize from '../config/database.js';
 import { Product } from '../models/index.js';
 
 export const getProducts = async (req, res) => {
@@ -16,20 +17,34 @@ export const getProducts = async (req, res) => {
     } = req.query;
 
     const where = { active: true };
+    const and = [];
 
-    if (category) where.category = category;
+    if (category) {
+      // Match the primary `category` OR any entry in the `categories` array.
+      // escape() embeds a safe SQL literal, e.g. JSON_CONTAINS(categories, '"Footwear"').
+      const catJson = sequelize.escape(JSON.stringify(category));
+      and.push({
+        [Op.or]: [
+          { category },
+          sequelize.literal(`JSON_CONTAINS(categories, ${catJson})`),
+        ],
+      });
+    }
     if (featured) where.featured = true;
     if (search) {
-      where[Op.or] = [
-        { name: { [Op.like]: `%${search}%` } },
-        { description: { [Op.like]: `%${search}%` } },
-      ];
+      and.push({
+        [Op.or]: [
+          { name: { [Op.like]: `%${search}%` } },
+          { description: { [Op.like]: `%${search}%` } },
+        ],
+      });
     }
     if (minPrice || maxPrice) {
       where.price = {};
       if (minPrice) where.price[Op.gte] = minPrice;
       if (maxPrice) where.price[Op.lte] = maxPrice;
     }
+    if (and.length) where[Op.and] = and;
 
     const offset = (page - 1) * limit;
     const { count, rows } = await Product.findAndCountAll({
@@ -68,12 +83,23 @@ export const getProduct = async (req, res) => {
 
 export const getCategories = async (req, res) => {
   try {
-    const categories = await Product.findAll({
-      attributes: ['category'],
-      group: ['category'],
+    // Union of every category any active product belongs to — primary plus the
+    // `categories` array — so secondary memberships still show up as filters.
+    const rows = await Product.findAll({
+      attributes: ['category', 'categories'],
       where: { active: true },
+      raw: true,
     });
-    res.json(categories.map((c) => c.category));
+    const set = new Set();
+    for (const r of rows) {
+      if (r.category) set.add(r.category);
+      let cats = r.categories;
+      if (typeof cats === 'string') {
+        try { cats = JSON.parse(cats); } catch { cats = []; }
+      }
+      if (Array.isArray(cats)) cats.forEach((c) => c && set.add(c));
+    }
+    res.json([...set].sort((a, b) => a.localeCompare(b)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

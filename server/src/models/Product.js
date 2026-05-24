@@ -52,8 +52,18 @@ const Product = sequelize.define('Product', {
     allowNull: true,
   },
   category: {
+    // PRIMARY category (denormalized). Read everywhere — POS, finance,
+    // coupon rules, shiprocket, sitemap, related products. Always kept equal
+    // to categories[0] by the beforeValidate hook below.
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  categories: {
+    // Full set of categories this product belongs to (array of category
+    // names). categories[0] mirrors `category`. A product matches a storefront
+    // ?category=X filter if X is its primary OR appears in this array.
+    type: DataTypes.JSON,
+    defaultValue: [],
   },
   brand: {
     type: DataTypes.STRING,
@@ -113,6 +123,20 @@ const Product = sequelize.define('Product', {
     type: DataTypes.JSON,
     defaultValue: null,
   },
+});
+
+// Keep the denormalized primary `category` in sync with the `categories`
+// array so the rest of the app (which only reads `category`) never breaks:
+//   - categories[0] is the primary
+//   - `category` is always present in `categories`
+//   - if only `category` was set (legacy rows, bulk CSV), seed the array from it
+// Runs on create AND update for every code path (controller, bulk import, POS).
+Product.beforeValidate((product) => {
+  let cats = Array.isArray(product.categories) ? product.categories : [];
+  cats = [...new Set(cats.map((c) => (typeof c === 'string' ? c.trim() : '')).filter(Boolean))];
+  if (cats.length === 0 && product.category) cats = [product.category];
+  if (cats.length > 0) product.category = cats[0];
+  product.categories = cats;
 });
 
 export default Product;
