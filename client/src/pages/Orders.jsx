@@ -4,7 +4,7 @@ import { HiDownload } from 'react-icons/hi';
 import { XCircle, Truck, ExternalLink } from 'lucide-react';
 import api from '../api/axios';
 import { showToast } from '../utils/toast';
-import { CURRENCY } from '../utils/currency';
+import { CURRENCY, formatPrice } from '../utils/currency';
 
 function ShipmentBlock({ order }) {
   const meta = order.shippingMeta;
@@ -140,7 +140,7 @@ export default function Orders() {
                         {item.variant && ` (${Object.entries(item.variant).filter(([k]) => k !== 'sku').map(([,v]) => v).join(', ')})`}
                         {' x '}{item.quantity}
                       </span>
-                      <span>{CURRENCY}{(item.price * item.quantity).toFixed(2)}</span>
+                      <span>{CURRENCY}{formatPrice(item.price * item.quantity)}</span>
                     </div>
                   ))}
                 </div>
@@ -154,7 +154,7 @@ export default function Orders() {
                       Refund {order.refundStatus}
                     </span>
                     {order.refundAmount > 0 && (
-                      <span>{CURRENCY}{parseFloat(order.refundAmount).toFixed(2)}</span>
+                      <span>{CURRENCY}{formatPrice(order.refundAmount)}</span>
                     )}
                   </div>
                 )}
@@ -183,7 +183,7 @@ export default function Orders() {
                       <HiDownload /> Invoice
                     </button>
                     <span className="order-total">
-                      Total: {CURRENCY}{parseFloat(order.totalAmount).toFixed(2)}
+                      Total: {CURRENCY}{formatPrice(order.totalAmount)}
                     </span>
                   </div>
                 </div>

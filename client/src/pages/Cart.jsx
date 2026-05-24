@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { HiTrash, HiMinus, HiPlus, HiShoppingCart } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import ProductImage from '../components/ProductImage';
-import { CurrencySymbol } from '../utils/currency';
+import { CurrencySymbol, formatPrice } from '../utils/currency';
 import { localizedName } from '../utils/i18nHelpers';
 
 export default function Cart() {
@@ -41,7 +41,7 @@ export default function Cart() {
                       {Object.entries(item.selectedVariant).map(([k, v]) => `${k}: ${v}`).join(' / ')}
                     </p>
                   )}
-                  <p className="cart-item-price"><CurrencySymbol /> {parseFloat(item.price).toFixed(2)}</p>
+                  <p className="cart-item-price"><CurrencySymbol /> {formatPrice(item.price)}</p>
                 </div>
                 <div className="cart-item-quantity">
                   <button onClick={() => updateQuantity(item.cartKey, item.quantity - 1)}>
@@ -53,7 +53,7 @@ export default function Cart() {
                   </button>
                 </div>
                 <div className="cart-item-total">
-                  <CurrencySymbol /> {(parseFloat(item.price) * item.quantity).toFixed(2)}
+                  <CurrencySymbol /> {formatPrice(parseFloat(item.price) * item.quantity)}
                 </div>
                 <button className="remove-btn" onClick={() => removeFromCart(item.cartKey)}>
                   <HiTrash />
@@ -66,7 +66,7 @@ export default function Cart() {
             <h3>{t('checkout.orderSummary')}</h3>
             <div className="summary-row">
               <span>{t('cart.subtotal')}</span>
-              <span><CurrencySymbol /> {cartTotal.toFixed(2)}</span>
+              <span><CurrencySymbol /> {formatPrice(cartTotal)}</span>
             </div>
             <div className="summary-row">
               <span>{t('cart.shipping')}</span>
@@ -74,7 +74,7 @@ export default function Cart() {
             </div>
             <div className="summary-row total">
               <span>{t('cart.subtotal')}</span>
-              <span><CurrencySymbol /> {cartTotal.toFixed(2)}</span>
+              <span><CurrencySymbol /> {formatPrice(cartTotal)}</span>
             </div>
             <Link to="/checkout" className="btn btn-primary btn-block">
               {t('cart.proceedToCheckout')}

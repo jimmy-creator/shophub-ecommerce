@@ -37,11 +37,14 @@ const Product = sequelize.define('Product', {
     allowNull: true,
   },
   price: {
-    type: DataTypes.DECIMAL(10, 2),
+    // 3 decimals so KWD (fils) stores exactly; 2-decimal currencies (INR/AED)
+    // are unaffected. Display precision is controlled client-side by
+    // VITE_CURRENCY_DECIMALS / formatPrice().
+    type: DataTypes.DECIMAL(10, 3),
     allowNull: false,
   },
   comparePrice: {
-    type: DataTypes.DECIMAL(10, 2),
+    type: DataTypes.DECIMAL(10, 3),
     allowNull: true,
   },
   // Cost price for COGS / margin reporting (Phase D). Snapshotted into

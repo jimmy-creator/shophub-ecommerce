@@ -8,9 +8,15 @@ const storeAddress = process.env.STORE_ADDRESS || '';
 const storePhone = process.env.STORE_PHONE || '';
 
 const currencySymbol = process.env.CURRENCY_SYMBOL || 'Rs.';
+// Display decimals — pairs with the client's VITE_CURRENCY_DECIMALS.
+// store4 (KWD/fils) sets CURRENCY_DECIMALS=3; default 2 for INR/AED.
+const currencyDecimals = (() => {
+  const n = parseInt(process.env.CURRENCY_DECIMALS, 10);
+  return Number.isFinite(n) && n >= 0 && n <= 4 ? n : 2;
+})();
 
 function formatPrice(amount) {
-  return `${currencySymbol}${parseFloat(amount).toFixed(2)}`;
+  return `${currencySymbol}${(parseFloat(amount) || 0).toFixed(currencyDecimals)}`;
 }
 
 export function generateInvoice(order) {

@@ -10,7 +10,7 @@ import api from '../../api/axios';
 import AnnouncementBar from '../../components/AnnouncementBar';
 import ScrollToTopButton from '../../components/ScrollToTopButton';
 import ProductImage from '../../components/ProductImage';
-import { CURRENCY } from '../../utils/currency';
+import { CURRENCY, formatPrice } from '../../utils/currency';
 
 export default function Navbar() {
   const { t } = useTranslation();
@@ -188,7 +188,7 @@ export default function Navbar() {
                   <div className="s2-nav-suggest-info">
                     <span className="s2-nav-suggest-name">{p.name}</span>
                     <span className="s2-nav-suggest-meta">
-                      {p.category} · {CURRENCY}{parseFloat(p.price).toFixed(2)}
+                      {p.category} · {CURRENCY}{formatPrice(p.price)}
                     </span>
                   </div>
                 </button>

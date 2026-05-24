@@ -33,9 +33,15 @@ const textDim = process.env.EMAIL_TEXT_DIM || '#64748b';
 const bgColor = process.env.EMAIL_BG || '#f1f5f9';
 
 const currencySymbol = process.env.CURRENCY_SYMBOL || '₹';
+// Display decimals — pairs with the client's VITE_CURRENCY_DECIMALS.
+// store4 (KWD/fils) sets CURRENCY_DECIMALS=3; default 2 for INR/AED.
+const currencyDecimals = (() => {
+  const n = parseInt(process.env.CURRENCY_DECIMALS, 10);
+  return Number.isFinite(n) && n >= 0 && n <= 4 ? n : 2;
+})();
 
 function formatPrice(amount) {
-  return `${currencySymbol}${parseFloat(amount).toFixed(2)}`;
+  return `${currencySymbol}${(parseFloat(amount) || 0).toFixed(currencyDecimals)}`;
 }
 
 function orderItemsHTML(items) {
@@ -449,7 +455,7 @@ export async function sendQuoteEmail({ to, customerName, request, bankDetails })
   const quoteUrl = `${clientUrl}/wholesale/my-quotes/${request.id}`;
   const currency = request.quotedCurrency || process.env.CURRENCY_CODE || 'INR';
   const symbol = currency === 'INR' ? '₹' : (currency === 'USD' ? '$' : (currency === 'AED' ? 'AED ' : `${currency} `));
-  const fmt = (n) => `${symbol}${parseFloat(n || 0).toFixed(2)}`;
+  const fmt = (n) => `${symbol}${(parseFloat(n) || 0).toFixed(currencyDecimals)}`;
 
   const validUntil = request.quotedValidUntil
     ? new Date(request.quotedValidUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })

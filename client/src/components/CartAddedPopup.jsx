@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, X, ShoppingBag } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { CURRENCY } from '../utils/currency';
+import { CURRENCY, formatPrice } from '../utils/currency';
 
 export default function CartAddedPopup() {
   const { lastAdded, dismissLastAdded, cartCount } = useCart();
@@ -20,7 +20,7 @@ export default function CartAddedPopup() {
   const variantText = selectedVariant
     ? Object.entries(selectedVariant).map(([k, v]) => `${k}: ${v}`).join(' · ')
     : null;
-  const lineTotal = (parseFloat(product.price) * quantity).toFixed(2);
+  const lineTotal = formatPrice(parseFloat(product.price) * quantity);
 
   return (
     <div className="cart-added-popup" role="alert">

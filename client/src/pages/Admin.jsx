@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX, HiEye, HiEyeOff, HiLogout } from 'react-icons/hi';
 import ProductImage from '../components/ProductImage';
 import { useTheme } from '../context/ThemeContext';
-import { CURRENCY } from '../utils/currency';
+import { CURRENCY, PRICE_STEP } from '../utils/currency';
 import PoModals from '../components/admin/PoModals';
 import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
 import FinanceTabs from '../components/admin/FinanceTabs';
@@ -210,7 +210,7 @@ function VariantEditor({ variantOptions, variants, onChange, basePrice }) {
                         <td style={{ padding: '0.4rem 0.5rem' }}>
                           <input
                             type="number"
-                            step="0.01"
+                            step={PRICE_STEP}
                             value={v.price ?? ''}
                             onChange={(e) => handleVariantFieldChange(i, 'price', e.target.value)}
                             placeholder="Base price"
@@ -1685,11 +1685,11 @@ export default function Admin() {
                     <div className="form-row">
                       <div className="form-group">
                         <label>Price</label>
-                        <input type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+                        <input type="number" step={PRICE_STEP} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
                       </div>
                       <div className="form-group">
                         <label>Compare Price</label>
-                        <input type="number" step="0.01" value={form.comparePrice} onChange={(e) => setForm({ ...form, comparePrice: e.target.value })} />
+                        <input type="number" step={PRICE_STEP} value={form.comparePrice} onChange={(e) => setForm({ ...form, comparePrice: e.target.value })} />
                       </div>
                       <div className="form-group">
                         <label>Cost Price <span style={{ color: 'var(--text-light)', fontSize: '0.78rem' }}>(for COGS / margin)</span></label>

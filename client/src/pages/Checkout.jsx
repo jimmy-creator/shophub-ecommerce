@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { localizedCurrency } from '../utils/i18nHelpers';
+import { formatPrice } from '../utils/currency';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { HiShieldCheck, HiLockClosed, HiUser } from 'react-icons/hi';
@@ -697,7 +698,7 @@ export default function Checkout() {
               {loading
                 ? t('checkout.placingOrder')
                 : isOnlinePayment
-                  ? `${t('checkout.placeOrder')} — ${cur}${grandTotal.toFixed(2)}`
+                  ? `${t('checkout.placeOrder')} — ${cur}${formatPrice(grandTotal)}`
                   : t('checkout.placeOrder')
               }
             </button>
@@ -713,7 +714,7 @@ export default function Checkout() {
                   {item.selectedVariant && ` (${Object.values(item.selectedVariant).join(', ')})`}
                   {' x '}{item.quantity}
                 </span>
-                <span>{cur}{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                <span>{cur}{formatPrice(parseFloat(item.price) * item.quantity)}</span>
               </div>
             ))}
             {/* Coupon Input */}
@@ -763,8 +764,8 @@ export default function Checkout() {
                               {c.description && <p className="coupon-list-desc">{c.description}</p>}
                               {c.minOrderAmount > 0 && (
                                 <p className="coupon-list-meta">
-                                  Min. order {cur}{c.minOrderAmount.toFixed(2)}
-                                  {!eligible && ` · add ${cur}${(c.minOrderAmount - cartTotal).toFixed(2)} more`}
+                                  Min. order {cur}{formatPrice(c.minOrderAmount)}
+                                  {!eligible && ` · add ${cur}${formatPrice(c.minOrderAmount - cartTotal)} more`}
                                 </p>
                               )}
                             </div>
@@ -788,12 +789,12 @@ export default function Checkout() {
 
             <div className="summary-row">
               <span>{t('cart.subtotal')}</span>
-              <span>{cur}{cartTotal.toFixed(2)}</span>
+              <span>{cur}{formatPrice(cartTotal)}</span>
             </div>
             {discountAmount > 0 && (
               <div className="summary-row discount-row">
                 <span>{t('cart.discount')}</span>
-                <span>-{cur}{discountAmount.toFixed(2)}</span>
+                <span>-{cur}{formatPrice(discountAmount)}</span>
               </div>
             )}
             {taxAmount > 0 && (
@@ -803,13 +804,13 @@ export default function Checkout() {
                   {taxInfo.breakdown && (
                     <span style={{ fontSize: '0.72rem', display: 'block', marginTop: '2px' }}>
                       {taxInfo.breakdown.isSameState
-                        ? `CGST ${cur}${taxInfo.breakdown.cgst.toFixed(2)} + SGST ${cur}${taxInfo.breakdown.sgst.toFixed(2)}`
-                        : `IGST ${cur}${taxInfo.breakdown.igst.toFixed(2)}`
+                        ? `CGST ${cur}${formatPrice(taxInfo.breakdown.cgst)} + SGST ${cur}${formatPrice(taxInfo.breakdown.sgst)}`
+                        : `IGST ${cur}${formatPrice(taxInfo.breakdown.igst)}`
                       }
                     </span>
                   )}
                 </span>
-                <span>{cur}{taxAmount.toFixed(2)}</span>
+                <span>{cur}{formatPrice(taxAmount)}</span>
               </div>
             )}
             {shippingOptions && (
@@ -824,7 +825,7 @@ export default function Checkout() {
                     <span className="shipping-option-days">{shippingOptions.standard.days}</span>
                   </div>
                   <span className="shipping-option-price">
-                    {shippingOptions.standard.rate === 0 ? 'Free' : `${cur}${shippingOptions.standard.rate.toFixed(2)}`}
+                    {shippingOptions.standard.rate === 0 ? 'Free' : `${cur}${formatPrice(shippingOptions.standard.rate)}`}
                   </span>
                 </label>
                 <label
@@ -836,18 +837,18 @@ export default function Checkout() {
                     <span className="shipping-option-name">{shippingOptions.express.label}</span>
                     <span className="shipping-option-days">{shippingOptions.express.days}</span>
                   </div>
-                  <span className="shipping-option-price">{cur}{shippingOptions.express.rate.toFixed(2)}</span>
+                  <span className="shipping-option-price">{cur}{formatPrice(shippingOptions.express.rate)}</span>
                 </label>
                 {shippingOptions.amountForFree && (
                   <p className="shipping-free-hint">
-                    {`Add ${cur}${shippingOptions.amountForFree.toFixed(2)} more for free shipping`}
+                    {`Add ${cur}${formatPrice(shippingOptions.amountForFree)} more for free shipping`}
                   </p>
                 )}
               </div>
             )}
             <div className="summary-row total">
               <span>{t('cart.total')}</span>
-              <span>{cur}{grandTotal.toFixed(2)}</span>
+              <span>{cur}{formatPrice(grandTotal)}</span>
             </div>
 
             <div className="checkout-trust">

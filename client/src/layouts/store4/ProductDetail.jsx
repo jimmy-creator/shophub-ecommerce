@@ -13,7 +13,7 @@ import EstimatedDelivery from '../../components/EstimatedDelivery';
 import SEO from '../../components/SEO';
 import api from '../../api/axios';
 import { showToast } from '../../utils/toast';
-import { CURRENCY, CurrencySymbol } from '../../utils/currency';
+import { CURRENCY, CurrencySymbol, formatPrice } from '../../utils/currency';
 import { localizedName, localizedDescription } from '../../utils/i18nHelpers';
 import ProductCard from './ProductCard';
 import { SkeletonGrid } from '../../components/Skeleton';
@@ -173,7 +173,7 @@ export default function ProductDetail() {
     <div className="s2-root">
       <SEO
         title={product.name}
-        description={product.description?.slice(0, 160) || `${product.name} at ${CURRENCY}${parseFloat(displayPrice).toFixed(2)}`}
+        description={product.description?.slice(0, 160) || `${product.name} at ${CURRENCY}${formatPrice(displayPrice)}`}
         image={product.images?.[0] ? `${window.location.origin}${product.images[0]}` : undefined}
         type="product"
         product={{ ...product, price: displayPrice, stock: displayStock }}
@@ -215,9 +215,9 @@ export default function ProductDetail() {
             </div>
 
             <div className="s2-pricing">
-              <span className="now"><CurrencySymbol />{parseFloat(displayPrice).toFixed(0)}</span>
+              <span className="now"><CurrencySymbol />{formatPrice(displayPrice)}</span>
               {product.comparePrice && (
-                <span className="was"><CurrencySymbol />{parseFloat(product.comparePrice).toFixed(0)}</span>
+                <span className="was"><CurrencySymbol />{formatPrice(product.comparePrice)}</span>
               )}
               {discount > 0 && <span className="save">Save {discount}%</span>}
             </div>
@@ -382,7 +382,7 @@ export default function ProductDetail() {
         {displayStock > 0 && (
           <div className="s2-mobile-buy-bar">
             <span className="s2-mobile-buy-price">
-              <CurrencySymbol />{parseFloat(displayPrice).toFixed(0)}
+              <CurrencySymbol />{formatPrice(displayPrice)}
             </span>
             <button type="button" className="s2-mobile-buy-btn s2-mobile-buy-now" onClick={handleBuyNow}>
               <Zap size={15} strokeWidth={1.8} /> Buy now

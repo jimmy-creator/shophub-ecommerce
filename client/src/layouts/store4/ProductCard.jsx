@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Eye, ShoppingBag } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
-import { CurrencySymbol } from '../../utils/currency';
+import { CurrencySymbol, formatPrice } from '../../utils/currency';
 import { localizedName } from '../../utils/i18nHelpers';
 
 export default function ProductCard({ product, eager = false }) {
@@ -55,10 +55,10 @@ export default function ProductCard({ product, eager = false }) {
         <div className="s2-product-foot">
           <div className="s2-product-price">
             <span className="now">
-              <CurrencySymbol />{parseFloat(product.price).toFixed(0)}
+              <CurrencySymbol />{formatPrice(product.price)}
             </span>
             {hasDiscount && (
-              <span className="was"><CurrencySymbol />{parseFloat(product.comparePrice).toFixed(0)}</span>
+              <span className="was"><CurrencySymbol />{formatPrice(product.comparePrice)}</span>
             )}
           </div>
           <button

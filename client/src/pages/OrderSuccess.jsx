@@ -4,7 +4,7 @@ import { HiCheckCircle, HiXCircle, HiDownload } from 'react-icons/hi';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
-import { CURRENCY } from '../utils/currency';
+import { CURRENCY, formatPrice } from '../utils/currency';
 
 export default function OrderSuccess() {
   const [searchParams] = useSearchParams();
@@ -107,7 +107,7 @@ export default function OrderSuccess() {
               </div>
               <div className="order-success-row">
                 <span>Amount</span>
-                <strong>{CURRENCY}{parseFloat(order.totalAmount).toFixed(2)}</strong>
+                <strong>{CURRENCY}{formatPrice(order.totalAmount)}</strong>
               </div>
               <div className="order-success-row">
                 <span>Payment</span>
