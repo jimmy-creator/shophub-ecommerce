@@ -645,17 +645,15 @@ export default function Pos() {
       )}
 
       {/* ─── Receipt overlay ──────────────────── */}
+      {/* PosReceipt renders its own overlay via a body portal (print isolation). */}
       {receipt && (
-        <div className="modal-backdrop">
-          <PosReceipt payload={receipt} currency={CURRENCY} onClose={() => setReceipt(null)} />
-        </div>
+        <PosReceipt payload={receipt} currency={CURRENCY} onClose={() => setReceipt(null)} />
       )}
 
       {/* ─── X/Z report overlay ───────────────── */}
+      {/* PosReportReceipt renders its own overlay via a body portal (print isolation). */}
       {report && (
-        <div className="modal-backdrop">
-          <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} />
-        </div>
+        <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} />
       )}
 
       {/* ─── Printer settings ─────────────────── */}
@@ -741,10 +739,9 @@ export default function Pos() {
           })}
         />
       )}
+      {/* PosReturnReceipt renders its own overlay via a body portal (print isolation). */}
       {returnReceipt && (
-        <div className="modal-backdrop">
-          <PosReturnReceipt payload={returnReceipt} currency={CURRENCY} onClose={() => setReturnReceipt(null)} />
-        </div>
+        <PosReturnReceipt payload={returnReceipt} currency={CURRENCY} onClose={() => setReturnReceipt(null)} />
       )}
 
       <style>{`

@@ -2,26 +2,30 @@
  * Printable return receipt — 80mm thermal, same print CSS pattern as
  * PosReceipt. Auto-fires window.print() on mount.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { isEnabled, printReturn, getReceiptLocale } from '../lib/thermalPrinter';
 
 export default function PosReturnReceipt({ payload, currency = 'KWD', onClose }) {
+  const printedRef = useRef(false);
+
   useEffect(() => {
-    let cancelled = false;
-    const tryDirect = async () => {
+    // Print exactly once — see PosReceipt for why a ref guard (not a cleanup
+    // flag) is used: StrictMode double-invoked this in dev → an extra copy.
+    if (printedRef.current) return;
+    printedRef.current = true;
+    (async () => {
       if (isEnabled('receipt')) {
         try {
           await printReturn(payload, currency);
-          if (!cancelled) onClose?.();
+          onClose?.();
           return;
         } catch (err) {
           console.warn('[thermal] direct return print failed, falling back:', err.message);
         }
       }
-      if (!cancelled) setTimeout(() => window.print(), 200);
-    };
-    tryDirect();
-    return () => { cancelled = true; };
+      setTimeout(() => window.print(), 200);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -37,15 +41,25 @@ export default function PosReturnReceipt({ payload, currency = 'KWD', onClose })
     : sr.refundMethod === 'card' ? 'Card'
     : 'Store Credit';
 
-  return (
-    <>
+  // Portal to <body> + hide #root in print so only the receipt prints on one
+  // page (fixed-position over a tall app paginated → duplicate copies).
+  return createPortal(
+    <div className="pos-receipt-overlay">
       <style>{`
+        .pos-receipt-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
+          display: grid; place-items: center; padding: 1rem;
+        }
         @media print {
-          body * { visibility: hidden !important; }
-          #pos-return-receipt, #pos-return-receipt * { visibility: visible !important; }
+          body > #root { display: none !important; }
+          .pos-receipt-overlay {
+            position: static !important; background: none !important;
+            display: block !important; padding: 0 !important; z-index: auto !important;
+          }
           #pos-return-receipt {
-            position: fixed !important; inset: 0 !important;
+            margin: 0 !important;
             width: 80mm !important; padding: 4mm !important;
+            box-shadow: none !important;
             background: white !important; color: black !important;
             font-family: 'Courier New', monospace !important; font-size: 11pt !important;
           }
@@ -135,6 +149,7 @@ export default function PosReturnReceipt({ payload, currency = 'KWD', onClose })
           <button onClick={onClose}>Close</button>
         </div>
       </div>
-    </>
+    </div>,
+    document.body,
   );
 }

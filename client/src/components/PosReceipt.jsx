@@ -5,30 +5,35 @@
  * `#pos-receipt` so `window.print()` produces just the receipt — no nav,
  * cart, or admin chrome.
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { isEnabled, printSale, getReceiptLocale } from '../lib/thermalPrinter';
 
 export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   const { order, change, amountTendered, location, cashier } = payload;
+  const printedRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-    const tryDirect = async () => {
+    // Print exactly once. React 18 StrictMode runs mount effects twice in dev,
+    // which sent the thermal printer two jobs → an extra copy. A ref guard is
+    // the right tool here (a cleanup-based flag would suppress onClose, since
+    // StrictMode's cleanup fires before the printSale await resolves).
+    if (printedRef.current) return;
+    printedRef.current = true;
+    (async () => {
       if (isEnabled('receipt')) {
         try {
           const openDrawer = payload.order.paymentMethod === 'pos_cash'
             || payload.order.paymentMethod === 'pos_split';
           await printSale(payload, currency, openDrawer);
-          if (!cancelled) onClose?.();
+          onClose?.();
           return;
         } catch (err) {
           console.warn('[thermal] direct print failed, falling back:', err.message);
         }
       }
-      if (!cancelled) setTimeout(() => window.print(), 200);
-    };
-    tryDirect();
-    return () => { cancelled = true; };
+      setTimeout(() => window.print(), 200);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -46,17 +51,29 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   const method = breakdown ? 'Split' : methodLabel(order.paymentMethod);
   const tenderLabel = (m) => m === 'cash' ? 'Cash' : m === 'knet' ? 'KNET' : 'Card';
 
-  return (
-    <>
+  // Rendered through a portal to <body> so the print stylesheet can hide the
+  // whole app (#root) and leave ONLY the receipt. The previous approach kept
+  // #pos-receipt position:fixed over a visibility:hidden app — but a tall app
+  // paginated into 2 pages and fixed elements repeat on every page, so the
+  // receipt printed twice. Hiding #root makes the document exactly one page.
+  return createPortal(
+    <div className="pos-receipt-overlay">
       <style>{`
+        .pos-receipt-overlay {
+          position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
+          display: grid; place-items: center; padding: 1rem;
+        }
         @media print {
-          body * { visibility: hidden !important; }
-          #pos-receipt, #pos-receipt * { visibility: visible !important; }
+          body > #root { display: none !important; }
+          .pos-receipt-overlay {
+            position: static !important; background: none !important;
+            display: block !important; padding: 0 !important; z-index: auto !important;
+          }
           #pos-receipt {
-            position: fixed !important;
-            inset: 0 !important;
+            margin: 0 !important;
             width: 80mm !important;
             padding: 4mm !important;
+            box-shadow: none !important;
             background: white !important;
             color: black !important;
             font-family: 'Courier New', monospace !important;
@@ -174,6 +191,7 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
           <button onClick={onClose}>Close</button>
         </div>
       </div>
-    </>
+    </div>,
+    document.body,
   );
 }
