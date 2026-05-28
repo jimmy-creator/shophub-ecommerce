@@ -56,11 +56,19 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose }) 
             width: 80mm !important;
             padding: 4mm !important;
             box-shadow: none !important;
-            background: white !important;
-            color: black !important;
+            background: #fff !important;
             font-family: 'Courier New', monospace !important;
-            font-size: 11pt !important;
+            font-size: 12pt !important;
+            line-height: 1.45 !important;
           }
+          #pos-report, #pos-report * {
+            color: #000 !important; font-weight: 600 !important;
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+          }
+          #pos-report h2 { font-size: 15pt !important; font-weight: 800 !important; }
+          #pos-report .total-row, #pos-report .total-row * { font-weight: 800 !important; }
+          #pos-report .meta { font-size: 10.5pt !important; }
+          #pos-report hr { border-top: 1px solid #000 !important; }
           #pos-report .no-print { display: none !important; }
           @page { size: 80mm auto; margin: 0; }
         }

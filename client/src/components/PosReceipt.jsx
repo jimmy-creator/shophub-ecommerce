@@ -78,11 +78,23 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
             width: 80mm !important;
             padding: 4mm !important;
             box-shadow: none !important;
-            background: white !important;
-            color: black !important;
+            background: #fff !important;
             font-family: 'Courier New', monospace !important;
-            font-size: 11pt !important;
+            font-size: 12pt !important;
+            line-height: 1.45 !important;
           }
+          /* Pure black + medium weight everywhere — regular-weight greys
+             (#444 sub-lines) print faint on thermal/laser paper. */
+          #pos-receipt, #pos-receipt * {
+            color: #000 !important;
+            font-weight: 600 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          #pos-receipt h2 { font-size: 15pt !important; font-weight: 800 !important; }
+          #pos-receipt .total-row, #pos-receipt .total-row * { font-weight: 800 !important; }
+          #pos-receipt .meta { font-size: 10.5pt !important; }
+          #pos-receipt hr { border-top: 1px solid #000 !important; }
           #pos-receipt .no-print { display: none !important; }
           @page { size: 80mm auto; margin: 0; }
         }
