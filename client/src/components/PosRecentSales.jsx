@@ -60,9 +60,9 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
           <button onClick={onClose} className="link-btn">Close</button>
         </div>
 
-        {loading && <p style={{ color: '#94a3b8', padding: '1rem 0' }}>Loading…</p>}
+        {loading && <p style={{ color: 'var(--pos-text-2)', padding: '1rem 0' }}>Loading…</p>}
         {!loading && sales.length === 0 && (
-          <p style={{ color: '#94a3b8', padding: '1rem 0' }}>No sales yet in this shift.</p>
+          <p style={{ color: 'var(--pos-text-2)', padding: '1rem 0' }}>No sales yet in this shift.</p>
         )}
 
         {!loading && sales.length > 0 && (
@@ -73,23 +73,23 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
               return (
                 <div key={s.id} style={{
                   display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.75rem',
-                  padding: '0.75rem', border: '1px solid #334155', borderRadius: 8,
-                  marginBottom: '0.4rem', background: fullyVoid ? '#1e293b66' : '#0f172a',
+                  padding: '0.75rem', border: '1px solid var(--pos-line)', borderRadius: 8,
+                  marginBottom: '0.4rem', background: fullyVoid ? 'var(--pos-panel)66' : 'var(--pos-bg)',
                   opacity: fullyVoid ? 0.5 : 1,
                 }}>
                   <div>
-                    <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>{s.orderNumber}</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--pos-text-2)' }}>{s.orderNumber}</div>
                     <div style={{ fontSize: 13 }}>
                       {(s.items || []).length} items · {new Date(s.createdAt).toLocaleTimeString()} · {s.paymentMethod === 'pos_cash' ? 'Cash' : 'Card'}
                     </div>
                     {s.shippingAddress?.fullName && s.shippingAddress.fullName !== 'Walk-in' && (
-                      <div style={{ fontSize: 12, color: '#cbd5e1' }}>{s.shippingAddress.fullName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--pos-label)' }}>{s.shippingAddress.fullName}</div>
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 600 }}>{fmt(s.totalAmount)}</div>
                     {parseFloat(s.refundAmount || 0) > 0 && (
-                      <div style={{ fontSize: 12, color: '#fbbf24' }}>
+                      <div style={{ fontSize: 12, color: 'var(--pos-warn)' }}>
                         {fullyVoid ? 'VOIDED' : `−${fmt(s.refundAmount)} refunded`}
                       </div>
                     )}
@@ -107,8 +107,8 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                         }}
                         title="Reprint receipt"
                         style={{
-                          padding: '0.4rem 0.55rem', background: '#1e293b', color: '#cbd5e1',
-                          border: '1px solid #334155', borderRadius: 6, cursor: 'pointer',
+                          padding: '0.4rem 0.55rem', background: 'var(--pos-panel)', color: 'var(--pos-label)',
+                          border: '1px solid var(--pos-line)', borderRadius: 6, cursor: 'pointer',
                           fontFamily: 'inherit', display: 'grid', placeItems: 'center',
                         }}>
                         <HiPrinter size={14} />
@@ -118,8 +118,8 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                       <button
                         onClick={() => onEdit(s.orderNumber)}
                         style={{
-                          padding: '0.4rem 0.7rem', background: '#1e293b', color: '#cbd5e1',
-                          border: '1px solid #334155', borderRadius: 6, cursor: 'pointer',
+                          padding: '0.4rem 0.7rem', background: 'var(--pos-panel)', color: 'var(--pos-label)',
+                          border: '1px solid var(--pos-line)', borderRadius: 6, cursor: 'pointer',
                           fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600,
                         }}>
                         Edit
@@ -132,7 +132,7 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                           startVoid(s);
                         }}
                         style={{
-                          padding: '0.4rem 0.7rem', background: '#7f1d1d', color: '#fff',
+                          padding: '0.4rem 0.7rem', background: '#7f1d1d', color: 'var(--pos-on-accent)',
                           border: 'none', borderRadius: 6, cursor: 'pointer',
                           fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600,
                         }}>
@@ -146,7 +146,7 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
           </div>
         )}
 
-        <p style={{ fontSize: 11, color: '#64748b', marginTop: '0.5rem' }}>
+        <p style={{ fontSize: 11, color: 'var(--pos-text-3)', marginTop: '0.5rem' }}>
           Voiding requires a manager PIN. To make small corrections, use Return instead.
         </p>
       </div>

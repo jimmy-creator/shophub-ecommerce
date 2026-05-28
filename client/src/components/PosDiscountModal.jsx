@@ -95,7 +95,7 @@ export default function PosDiscountModal({
           <button onClick={onClose} className="link-btn">Cancel</button>
         </div>
 
-        <div style={{ display: 'flex', gap: 4, marginTop: '0.75rem', borderBottom: '1px solid #334155' }}>
+        <div style={{ display: 'flex', gap: 4, marginTop: '0.75rem', borderBottom: '1px solid var(--pos-line)' }}>
           <button
             onClick={() => setTab('manual')}
             style={{ ...tabBtn, ...(tab === 'manual' ? tabActive : {}) }}>
@@ -118,9 +118,9 @@ export default function PosDiscountModal({
                   onClick={() => setKind(k)}
                   style={{
                     padding: '0.6rem',
-                    background: kind === k ? '#c4784a' : '#0f172a',
-                    border: kind === k ? 'none' : '1px solid #334155',
-                    color: kind === k ? '#fff' : '#cbd5e1',
+                    background: kind === k ? 'var(--pos-accent)' : 'var(--pos-bg)',
+                    border: kind === k ? 'none' : '1px solid var(--pos-line)',
+                    color: kind === k ? 'var(--pos-on-accent)' : 'var(--pos-label)',
                     borderRadius: 8,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
@@ -149,8 +149,8 @@ export default function PosDiscountModal({
               placeholder="loyalty / damaged / manager approval"
             />
 
-            <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.8rem', background: '#0f172a', borderRadius: 8, fontSize: 14, color: '#cbd5e1' }}>
-              Discount: <strong style={{ color: '#fbbf24' }}>−{fmt(manualPreview)}</strong>
+            <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.8rem', background: 'var(--pos-bg)', borderRadius: 8, fontSize: 14, color: 'var(--pos-label)' }}>
+              Discount: <strong style={{ color: 'var(--pos-warn)' }}>−{fmt(manualPreview)}</strong>
               {' · '}New subtotal: <strong>{fmt(Math.max(0, subtotal - manualPreview))}</strong>
             </div>
 
@@ -180,10 +180,10 @@ export default function PosDiscountModal({
             </div>
 
             {appliedCoupon && (
-              <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.8rem', background: 'rgba(90,138,106,0.15)', borderRadius: 8, fontSize: 14, color: '#cbd5e1' }}>
+              <div style={{ marginTop: '0.75rem', padding: '0.6rem 0.8rem', background: 'rgba(90,138,106,0.15)', borderRadius: 8, fontSize: 14, color: 'var(--pos-label)' }}>
                 <div><strong>{appliedCoupon.code}</strong> — {appliedCoupon.type === 'percentage' ? `${appliedCoupon.value}% off` : `${currency} ${appliedCoupon.value} off`}</div>
-                {appliedCoupon.description && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{appliedCoupon.description}</div>}
-                <div style={{ marginTop: 4 }}>Discount: <strong style={{ color: '#fbbf24' }}>−{fmt(appliedCoupon.discount)}</strong></div>
+                {appliedCoupon.description && <div style={{ fontSize: 12, color: 'var(--pos-text-2)', marginTop: 2 }}>{appliedCoupon.description}</div>}
+                <div style={{ marginTop: 4 }}>Discount: <strong style={{ color: 'var(--pos-warn)' }}>−{fmt(appliedCoupon.discount)}</strong></div>
               </div>
             )}
 
@@ -205,7 +205,7 @@ export default function PosDiscountModal({
 
 const tabBtn = {
   flex: 1, padding: '0.6rem', background: 'transparent', border: 'none',
-  color: '#94a3b8', cursor: 'pointer', fontFamily: 'inherit',
+  color: 'var(--pos-text-2)', cursor: 'pointer', fontFamily: 'inherit',
   fontSize: 14, borderBottom: '2px solid transparent',
 };
-const tabActive = { color: '#f8fafc', borderBottomColor: '#c4784a' };
+const tabActive = { color: 'var(--pos-text)', borderBottomColor: 'var(--pos-accent)' };

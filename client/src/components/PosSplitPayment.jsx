@@ -99,7 +99,7 @@ export default function PosSplitPayment({ total, currency = 'KWD', onClose, onCo
           <button type="button" onClick={setCardForRest} className="quick-chip">Card for rest</button>
         </div>
 
-        <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: '#0f172a', borderRadius: 10, fontSize: 14, color: '#cbd5e1' }}>
+        <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', background: 'var(--pos-bg)', borderRadius: 10, fontSize: 14, color: 'var(--pos-label)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span>Card applied</span><strong>{fmt(cardApplied)}</strong>
           </div>
@@ -110,13 +110,13 @@ export default function PosSplitPayment({ total, currency = 'KWD', onClose, onCo
             <span>Cash applied</span><strong>{fmt(Math.min(cashTendered, cashApplied))}</strong>
           </div>
           {cashChange > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#34d399' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--pos-success)' }}>
               <span>Cash change</span><strong>{fmt(cashChange)}</strong>
             </div>
           )}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTop: '1px solid #334155', fontSize: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--pos-line)', fontSize: 16 }}>
             <span>{fullyPaid ? 'Fully paid' : 'Remaining'}</span>
-            <strong style={{ color: fullyPaid ? '#34d399' : '#fbbf24' }}>
+            <strong style={{ color: fullyPaid ? 'var(--pos-success)' : 'var(--pos-warn)' }}>
               {fmt(remaining)}
             </strong>
           </div>
@@ -131,11 +131,11 @@ export default function PosSplitPayment({ total, currency = 'KWD', onClose, onCo
 
         <style>{`
           .quick-chip {
-            padding: 6px 10px; background: #0f172a; border: 1px solid #334155;
-            color: #cbd5e1; border-radius: 100px; font-size: 12px;
+            padding: 6px 10px; background: var(--pos-bg); border: 1px solid var(--pos-line);
+            color: var(--pos-label); border-radius: 100px; font-size: 12px;
             cursor: pointer; font-family: inherit;
           }
-          .quick-chip:hover { background: #334155; }
+          .quick-chip:hover { background: var(--pos-line); }
         `}</style>
       </form>
     </div>

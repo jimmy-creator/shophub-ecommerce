@@ -150,19 +150,19 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
 
         {step === 'pick' && lookup && (
           <>
-            <div style={{ background: '#0f172a', padding: '0.75rem 1rem', borderRadius: 8, margin: '1rem 0', fontSize: 13 }}>
+            <div style={{ background: 'var(--pos-bg)', padding: '0.75rem 1rem', borderRadius: 8, margin: '1rem 0', fontSize: 13 }}>
               <div><strong>{lookup.order.orderNumber}</strong></div>
-              <div style={{ color: '#94a3b8' }}>
+              <div style={{ color: 'var(--pos-text-2)' }}>
                 Total {fmt(lookup.order.totalAmount)} · {(lookup.order.items || []).length} items · paid {lookup.order.paymentMethod}
               </div>
               {lookup.priorReturns > 0 && (
-                <div style={{ color: '#fbbf24', fontSize: 12, marginTop: 4 }}>
+                <div style={{ color: 'var(--pos-warn)', fontSize: 12, marginTop: 4 }}>
                   {lookup.priorReturns} prior return{lookup.priorReturns > 1 ? 's' : ''} on this order
                 </div>
               )}
             </div>
 
-            <div style={{ maxHeight: '50vh', overflowY: 'auto', borderTop: '1px solid #334155' }}>
+            <div style={{ maxHeight: '50vh', overflowY: 'auto', borderTop: '1px solid var(--pos-line)' }}>
               {lines.map((l) => {
                 const isExhausted = l.maxReturnable < 1;
                 return (
@@ -170,17 +170,17 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
                     display: 'grid',
                     gridTemplateColumns: '1fr auto auto',
                     gap: '0.75rem', padding: '0.65rem 0',
-                    borderBottom: '1px solid #334155',
+                    borderBottom: '1px solid var(--pos-line)',
                     opacity: isExhausted ? 0.4 : 1,
                   }}>
                     <div>
                       <div style={{ fontSize: 14 }}>{l.name}</div>
-                      <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                      <div style={{ fontSize: 12, color: 'var(--pos-text-2)' }}>
                         {fmt(l.price)} ea · sold {l.quantity}
                         {l.alreadyReturned > 0 && ` · returned ${l.alreadyReturned}`}
                       </div>
                       {!isExhausted && (
-                        <label style={{ fontSize: 11, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                        <label style={{ fontSize: 11, color: 'var(--pos-label)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                           <input
                             type="checkbox"
                             checked={l.returnToStock}
@@ -200,13 +200,13 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
                         value={l.returnQty}
                         onChange={(e) => setLineQty(l._key, e.target.value)}
                         disabled={isExhausted}
-                        style={{ width: 50, padding: '4px 6px', background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', borderRadius: 6, textAlign: 'center', fontFamily: 'inherit' }}
+                        style={{ width: 50, padding: '4px 6px', background: 'var(--pos-bg)', border: '1px solid var(--pos-line)', color: 'var(--pos-text)', borderRadius: 6, textAlign: 'center', fontFamily: 'inherit' }}
                       />
                       <button
                         onClick={() => setLineQty(l._key, l.returnQty + 1)}
                         disabled={isExhausted || l.returnQty >= l.maxReturnable}
                         style={qtyBtn}>+</button>
-                      <span style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>/{l.maxReturnable}</span>
+                      <span style={{ fontSize: 10, color: 'var(--pos-text-3)', marginLeft: 4 }}>/{l.maxReturnable}</span>
                     </div>
                     <div style={{ minWidth: 70, textAlign: 'right', fontSize: 14, fontWeight: 600 }}>
                       {l.returnQty > 0 ? fmt(l.price * l.returnQty) : '—'}
@@ -216,9 +216,9 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
               })}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderTop: '1px solid #334155', marginTop: '0.5rem' }}>
-              <span style={{ color: '#cbd5e1' }}>Refund total</span>
-              <strong style={{ fontSize: 18, color: '#fbbf24' }}>{fmt(refundTotal)}</strong>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderTop: '1px solid var(--pos-line)', marginTop: '0.5rem' }}>
+              <span style={{ color: 'var(--pos-label)' }}>Refund total</span>
+              <strong style={{ fontSize: 18, color: 'var(--pos-warn)' }}>{fmt(refundTotal)}</strong>
             </div>
 
             <div className="modal-actions">
@@ -232,9 +232,9 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
 
         {step === 'pay' && (
           <>
-            <div style={{ background: '#0f172a', padding: '0.75rem 1rem', borderRadius: 8, margin: '1rem 0', textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>Refund amount</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: '#fbbf24' }}>{fmt(refundTotal)}</div>
+            <div style={{ background: 'var(--pos-bg)', padding: '0.75rem 1rem', borderRadius: 8, margin: '1rem 0', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: 'var(--pos-text-2)' }}>Refund amount</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--pos-warn)' }}>{fmt(refundTotal)}</div>
             </div>
 
             <label className="modal-label">Refund method</label>
@@ -245,9 +245,9 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
                   onClick={() => setRefundMethod(m)}
                   style={{
                     padding: '0.7rem',
-                    background: refundMethod === m ? '#c4784a' : '#0f172a',
-                    border: refundMethod === m ? 'none' : '1px solid #334155',
-                    color: refundMethod === m ? '#fff' : '#cbd5e1',
+                    background: refundMethod === m ? 'var(--pos-accent)' : 'var(--pos-bg)',
+                    border: refundMethod === m ? 'none' : '1px solid var(--pos-line)',
+                    color: refundMethod === m ? 'var(--pos-on-accent)' : 'var(--pos-label)',
                     borderRadius: 8,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
@@ -293,6 +293,6 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
 }
 
 const qtyBtn = {
-  width: 26, height: 26, border: '1px solid #334155', background: '#0f172a',
-  color: '#f8fafc', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+  width: 26, height: 26, border: '1px solid var(--pos-line)', background: 'var(--pos-bg)',
+  color: 'var(--pos-text)', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
 };

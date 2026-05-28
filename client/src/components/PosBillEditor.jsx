@@ -227,25 +227,25 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
           <h3 style={{ margin: 0 }}>Edit bill — {order.orderNumber}</h3>
           <button onClick={onClose} className="link-btn">Close</button>
         </div>
-        <div style={{ color: '#94a3b8', fontSize: 12, marginBottom: '0.75rem' }}>
+        <div style={{ color: 'var(--pos-text-2)', fontSize: 12, marginBottom: '0.75rem' }}>
           {new Date(order.createdAt).toLocaleString()} · paid {order.paymentMethod?.replace('pos_', '')} · total {fmt(order.totalAmount)}
         </div>
 
         {/* ─── Existing lines ────────────────── */}
-        <div style={{ borderTop: '1px solid #334155' }}>
+        <div style={{ borderTop: '1px solid var(--pos-line)' }}>
           {lines.map((l) => {
             const exhausted = l.remaining < 1;
             return (
               <div key={l._key} style={{
                 display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12,
-                padding: '0.65rem 0', borderBottom: '1px solid #334155',
+                padding: '0.65rem 0', borderBottom: '1px solid var(--pos-line)',
                 opacity: exhausted ? 0.45 : 1,
               }}>
                 <div>
                   <div style={{ fontSize: 14, textDecoration: exhausted ? 'line-through' : 'none' }}>{l.name}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                  <div style={{ fontSize: 11, color: 'var(--pos-text-2)' }}>
                     {l.quantity} × {fmt(l.price)}
-                    {l.refunded > 0 && <span style={{ color: '#fbbf24', marginLeft: 6 }}>({l.refunded} refunded)</span>}
+                    {l.refunded > 0 && <span style={{ color: 'var(--pos-warn)', marginLeft: 6 }}>({l.refunded} refunded)</span>}
                   </div>
                 </div>
                 <div style={{ fontWeight: 600, fontSize: 14, minWidth: 70, textAlign: 'right' }}>
@@ -257,9 +257,9 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
                   title={exhausted ? 'Already refunded' : 'Remove from bill'}
                   style={{
                     width: 32, height: 32, borderRadius: 8,
-                    background: exhausted ? '#1e293b' : 'rgba(239,68,68,0.12)',
-                    border: '1px solid ' + (exhausted ? '#334155' : 'rgba(239,68,68,0.3)'),
-                    color: exhausted ? '#475569' : '#f87171',
+                    background: exhausted ? 'var(--pos-panel)' : 'rgba(239,68,68,0.12)',
+                    border: '1px solid ' + (exhausted ? 'var(--pos-line)' : 'rgba(239,68,68,0.3)'),
+                    color: exhausted ? 'var(--pos-line-2)' : 'var(--pos-danger)',
                     cursor: exhausted ? 'not-allowed' : 'pointer',
                     display: 'grid', placeItems: 'center',
                   }}>
@@ -273,7 +273,7 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
         {/* ─── Add line panel ────────────────── */}
         <h4 style={{ margin: '1rem 0 0.5rem' }}>Add items</h4>
         <div style={{ position: 'relative' }}>
-          <HiSearch size={18} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <HiSearch size={18} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--pos-text-2)' }} />
           <input
             placeholder="Search to add a missed item…"
             value={search}
@@ -291,26 +291,26 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
                 style={{
                   display: 'flex', justifyContent: 'space-between', width: '100%',
                   padding: '0.55rem 0.75rem', textAlign: 'left',
-                  background: '#0f172a', border: '1px solid #334155',
-                  color: '#f8fafc', borderRadius: 8, marginBottom: 4,
+                  background: 'var(--pos-bg)', border: '1px solid var(--pos-line)',
+                  color: 'var(--pos-text)', borderRadius: 8, marginBottom: 4,
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}>
                 <span>
                   {r.name}
-                  <span style={{ color: '#94a3b8', marginLeft: 8, fontSize: 11 }}>
+                  <span style={{ color: 'var(--pos-text-2)', marginLeft: 8, fontSize: 11 }}>
                     {r.hasVariants ? `${r.variants.length} variants` : `${r.stockAtLocation} in stock`}
                   </span>
                 </span>
                 <span style={{ fontWeight: 600 }}>{fmt(r.price)}</span>
               </button>
             ))}
-            {searching && <div style={{ fontSize: 12, color: '#94a3b8', padding: 4 }}>Searching…</div>}
+            {searching && <div style={{ fontSize: 12, color: 'var(--pos-text-2)', padding: 4 }}>Searching…</div>}
           </div>
         )}
 
         {addQueue.length > 0 && (
           <>
-            <div style={{ marginTop: '0.75rem', borderTop: '1px solid #334155', paddingTop: '0.5rem' }}>
+            <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--pos-line)', paddingTop: '0.5rem' }}>
               {addQueue.map((q, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr auto auto auto', gap: 8, alignItems: 'center', padding: '0.4rem 0' }}>
                   <span style={{ fontSize: 14 }}>{q.name}</span>
@@ -320,14 +320,14 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
                     <button onClick={() => setAddQty(i, q.quantity + 1)} style={qtyBtn}>+</button>
                   </div>
                   <div style={{ minWidth: 80, textAlign: 'right', fontWeight: 600 }}>{fmt(q.price * q.quantity)}</div>
-                  <button onClick={() => removeAddRow(i)} style={{ ...qtyBtn, color: '#f87171' }}><HiX size={14} /></button>
+                  <button onClick={() => removeAddRow(i)} style={{ ...qtyBtn, color: 'var(--pos-danger)' }}><HiX size={14} /></button>
                 </div>
               ))}
             </div>
 
-            <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: '#0f172a', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 14, color: '#cbd5e1' }}>Customer pays</span>
-              <strong style={{ fontSize: 20, color: '#fbbf24' }}>{fmt(addTotal)}</strong>
+            <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'var(--pos-bg)', borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 14, color: 'var(--pos-label)' }}>Customer pays</span>
+              <strong style={{ fontSize: 20, color: 'var(--pos-warn)' }}>{fmt(addTotal)}</strong>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: '0.5rem' }}>
@@ -354,7 +354,7 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
           </>
         )}
 
-        <p style={{ fontSize: 11, color: '#64748b', marginTop: '0.75rem' }}>
+        <p style={{ fontSize: 11, color: 'var(--pos-text-3)', marginTop: '0.75rem' }}>
           All edits need a manager PIN. Refunds use the original payment rail.
           Added lines are at current price (any discount on the original bill
           does not auto-apply).
@@ -365,7 +365,7 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
         <div className="modal-backdrop" onClick={() => setVariantPicker(null)} style={{ zIndex: 110 }}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <h3 style={{ margin: 0 }}>{variantPicker.name}</h3>
-            <p style={{ color: '#94a3b8', fontSize: 13, margin: '4px 0 0.75rem' }}>Pick a variant</p>
+            <p style={{ color: 'var(--pos-text-2)', fontSize: 13, margin: '4px 0 0.75rem' }}>Pick a variant</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {variantPicker.variants.map((v, i) => {
                 const stock = v.stockAtLocation || 0;
@@ -376,16 +376,16 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.7rem 0.9rem', textAlign: 'left',
-                      background: stock < 1 ? '#0f172a' : '#1e293b',
-                      border: '1px solid #334155',
-                      color: '#f8fafc', borderRadius: 8,
+                      background: stock < 1 ? 'var(--pos-bg)' : 'var(--pos-panel)',
+                      border: '1px solid var(--pos-line)',
+                      color: 'var(--pos-text)', borderRadius: 8,
                       cursor: stock < 1 ? 'not-allowed' : 'pointer',
                       opacity: stock < 1 ? 0.4 : 1,
                       fontFamily: 'inherit',
                     }}>
                     <span>{Object.values(v.options || {}).join(' / ')}</span>
                     <span style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12 }}>
-                      <span style={{ color: stock < 1 ? '#f87171' : '#34d399' }}>
+                      <span style={{ color: stock < 1 ? 'var(--pos-danger)' : 'var(--pos-success)' }}>
                         {stock < 1 ? 'Out of stock' : `${stock} in stock`}
                       </span>
                       <span style={{ fontWeight: 600 }}>{fmt(v.price ?? variantPicker.price)}</span>
@@ -405,15 +405,15 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
 }
 
 const qtyBtn = {
-  width: 26, height: 26, border: '1px solid #334155', background: '#0f172a',
-  color: '#f8fafc', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+  width: 26, height: 26, border: '1px solid var(--pos-line)', background: 'var(--pos-bg)',
+  color: 'var(--pos-text)', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
   display: 'grid', placeItems: 'center',
 };
 
 const payMethodBtn = (active) => ({
   padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-  background: active ? '#c4784a' : '#0f172a',
-  border: active ? 'none' : '1px solid #334155',
-  color: active ? '#fff' : '#cbd5e1',
+  background: active ? 'var(--pos-accent)' : 'var(--pos-bg)',
+  border: active ? 'none' : '1px solid var(--pos-line)',
+  color: active ? 'var(--pos-on-accent)' : 'var(--pos-label)',
   borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
 });

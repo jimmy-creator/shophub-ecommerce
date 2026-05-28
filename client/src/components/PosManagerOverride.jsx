@@ -50,7 +50,7 @@ export default function PosManagerOverride({ reasonText, onApprove, onCancel }) 
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
       <form className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h3 style={{ margin: '0 0 0.5rem' }}>Manager override</h3>
-        <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 1rem' }}>
+        <p style={{ color: 'var(--pos-text-2)', fontSize: 13, margin: '0 0 1rem' }}>
           {reasonText || 'A manager must approve this action.'}
         </p>
 
@@ -95,7 +95,7 @@ export default function PosManagerOverride({ reasonText, onApprove, onCancel }) 
         </div>
 
         {managers.length === 0 && (
-          <p style={{ fontSize: 12, color: '#fbbf24', marginTop: '0.5rem' }}>
+          <p style={{ fontSize: 12, color: 'var(--pos-warn)', marginTop: '0.5rem' }}>
             No managers configured. Admin must mark a cashier as Manager in Admin → Cashiers.
           </p>
         )}

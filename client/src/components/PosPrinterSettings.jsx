@@ -88,13 +88,13 @@ function PrinterCard({ kind }) {
   };
 
   return (
-    <div style={{ padding: '1rem', background: '#0f172a', borderRadius: 12, border: '1px solid #334155' }}>
-      <h4 style={{ margin: '0 0 4px', color: '#f8fafc' }}>{kind.title}</h4>
-      <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#94a3b8' }}>{kind.blurb}</p>
+    <div style={{ padding: '1rem', background: 'var(--pos-bg)', borderRadius: 12, border: '1px solid var(--pos-line)' }}>
+      <h4 style={{ margin: '0 0 4px', color: 'var(--pos-text)' }}>{kind.title}</h4>
+      <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: 'var(--pos-text-2)' }}>{kind.blurb}</p>
 
       <div style={{ fontSize: 13, marginBottom: '0.75rem' }}>
-        <div style={{ color: '#94a3b8' }}>Status</div>
-        <div style={{ fontWeight: 600, color: paired && enabled ? '#34d399' : '#fbbf24' }}>
+        <div style={{ color: 'var(--pos-text-2)' }}>Status</div>
+        <div style={{ fontWeight: 600, color: paired && enabled ? 'var(--pos-success)' : 'var(--pos-warn)' }}>
           {paired && enabled && (paired.productName || `Vendor ${paired.vendorId} Product ${paired.productId}`)}
           {paired && !enabled && 'Paired but disabled'}
           {!paired && 'Not paired'}
@@ -109,7 +109,7 @@ function PrinterCard({ kind }) {
         <span>Use direct USB print</span>
       </label>
 
-      <div style={{ fontSize: 12, color: '#cbd5e1', marginBottom: 4 }}>Paper width</div>
+      <div style={{ fontSize: 12, color: 'var(--pos-label)', marginBottom: 4 }}>Paper width</div>
       <div style={{ display: 'flex', gap: 6, marginBottom: '0.75rem' }}>
         {kind.widths.map((w) => (
           <button
@@ -117,9 +117,9 @@ function PrinterCard({ kind }) {
             onClick={() => { setColumns(kind.id, w.cols); setColsLocal(w.cols); }}
             style={{
               flex: 1, padding: '0.5rem',
-              background: cols === w.cols ? '#c4784a' : '#1e293b',
-              border: cols === w.cols ? 'none' : '1px solid #334155',
-              color: cols === w.cols ? '#fff' : '#cbd5e1',
+              background: cols === w.cols ? 'var(--pos-accent)' : 'var(--pos-panel)',
+              border: cols === w.cols ? 'none' : '1px solid var(--pos-line)',
+              color: cols === w.cols ? 'var(--pos-on-accent)' : 'var(--pos-label)',
               borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
             }}>
             {w.label}
@@ -155,9 +155,9 @@ function ReceiptLanguageCard() {
     { id: 'bi', label: 'Bilingual', sub: 'Both names · د.ك' },
   ];
   return (
-    <div style={{ marginTop: '0.75rem', padding: '1rem', background: '#0f172a', borderRadius: 12, border: '1px solid #334155' }}>
-      <h4 style={{ margin: '0 0 4px', color: '#f8fafc' }}>Receipt language</h4>
-      <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: '#94a3b8' }}>
+    <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'var(--pos-bg)', borderRadius: 12, border: '1px solid var(--pos-line)' }}>
+      <h4 style={{ margin: '0 0 4px', color: 'var(--pos-text)' }}>Receipt language</h4>
+      <p style={{ margin: '0 0 0.75rem', fontSize: 12, color: 'var(--pos-text-2)' }}>
         Applies to printed receipts (sale, return, X/Z). Uses the product&apos;s Arabic name when available, falls back to English.
       </p>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
@@ -167,9 +167,9 @@ function ReceiptLanguageCard() {
             onClick={() => { setReceiptLocale(o.id); setLocale(o.id); }}
             style={{
               padding: '0.6rem',
-              background: locale === o.id ? '#c4784a' : '#1e293b',
-              border: locale === o.id ? 'none' : '1px solid #334155',
-              color: locale === o.id ? '#fff' : '#cbd5e1',
+              background: locale === o.id ? 'var(--pos-accent)' : 'var(--pos-panel)',
+              border: locale === o.id ? 'none' : '1px solid var(--pos-line)',
+              color: locale === o.id ? 'var(--pos-on-accent)' : 'var(--pos-label)',
               borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               fontWeight: 600, fontSize: 14,
             }}>
@@ -194,7 +194,7 @@ export default function PosPrinterSettings({ onClose }) {
         </div>
 
         {!supported && (
-          <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(251,191,36,0.1)', borderRadius: 8, color: '#fbbf24', fontSize: 13 }}>
+          <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(251,191,36,0.1)', borderRadius: 8, color: 'var(--pos-warn)', fontSize: 13 }}>
             Direct USB printing isn&apos;t available in this browser. Use Chrome
             or Edge on a desktop POS terminal. Receipts will fall back to
             the browser print dialog.
@@ -209,7 +209,7 @@ export default function PosPrinterSettings({ onClose }) {
 
             <ReceiptLanguageCard />
 
-            <p style={{ fontSize: 11, color: '#64748b', marginTop: '1rem' }}>
+            <p style={{ fontSize: 11, color: 'var(--pos-text-3)', marginTop: '1rem' }}>
               Pairings are per-browser. The OS picker excludes the other paired
               printer so you can&apos;t accidentally double-pair.
             </p>

@@ -89,19 +89,19 @@ export default function PosCustomerPicker({ customer, onSelect, onClear }) {
       <div className="pos-customer-chip">
         <div>
           <div style={{ fontSize: '0.85rem', fontWeight: 500 }}>{customer.name}</div>
-          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--pos-text-2)' }}>
             {customer.phone || customer.email || 'no contact'}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="link-btn" onClick={() => setOpen(true)}>change</button>
-          <button className="link-btn" onClick={onClear} style={{ color: '#f87171' }}>clear</button>
+          <button className="link-btn" onClick={onClear} style={{ color: 'var(--pos-danger)' }}>clear</button>
         </div>
         <style>{`
           .pos-customer-chip {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 0.6rem 0.75rem; background: #0f172a;
-            border: 1px solid #c4784a; border-radius: 8px;
+            padding: 0.6rem 0.75rem; background: var(--pos-bg);
+            border: 1px solid var(--pos-accent); border-radius: 8px;
             margin-bottom: 0.5rem;
           }
         `}</style>
@@ -142,7 +142,7 @@ export default function PosCustomerPicker({ customer, onSelect, onClear }) {
                   onClick={() => { onSelect(c); setOpen(false); setQuery(''); setResults([]); }}>
                   <div>
                     <div style={{ fontSize: '0.88rem' }}>{c.name}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--pos-text-2)' }}>
                       {[c.phone, c.email].filter(Boolean).join(' · ') || 'no contact'}
                     </div>
                   </div>
@@ -163,7 +163,7 @@ export default function PosCustomerPicker({ customer, onSelect, onClear }) {
 
       {createForm && (
         <form onSubmit={submitCreate}>
-          <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '0.4rem' }}>New customer</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--pos-label)', marginBottom: '0.4rem' }}>New customer</div>
           <input
             placeholder="Name" autoFocus={!createForm.name}
             value={createForm.name}
@@ -199,35 +199,35 @@ export default function PosCustomerPicker({ customer, onSelect, onClear }) {
 
       <style>{`
         .pos-customer-search {
-          padding: 0.6rem 0.75rem; background: #0f172a;
-          border: 1px solid #334155; border-radius: 8px;
+          padding: 0.6rem 0.75rem; background: var(--pos-bg);
+          border: 1px solid var(--pos-line); border-radius: 8px;
           margin-bottom: 0.5rem;
         }
         .pos-cust-input {
           width: 100%; padding: 0.5rem 0.75rem;
-          background: #1e293b; border: 1px solid #334155;
-          color: #f8fafc; border-radius: 6px; font-size: 0.88rem;
+          background: var(--pos-panel); border: 1px solid var(--pos-line);
+          color: var(--pos-text); border-radius: 6px; font-size: 0.88rem;
           font-family: inherit;
         }
-        .pos-cust-input:focus { outline: none; border-color: #c4784a; }
+        .pos-cust-input:focus { outline: none; border-color: var(--pos-accent); }
         .pos-cust-list { margin-top: 0.4rem; max-height: 200px; overflow-y: auto; }
-        .pos-cust-empty { padding: 0.4rem 0.5rem; color: #94a3b8; font-size: 0.82rem; }
+        .pos-cust-empty { padding: 0.4rem 0.5rem; color: var(--pos-text-2); font-size: 0.82rem; }
         .pos-cust-item {
           display: flex; width: 100%; text-align: left;
           padding: 0.5rem 0.6rem; background: transparent;
           border: 1px solid transparent; border-radius: 6px;
-          color: #f8fafc; cursor: pointer; font-family: inherit;
+          color: var(--pos-text); cursor: pointer; font-family: inherit;
         }
-        .pos-cust-item:hover { background: #1e293b; border-color: #334155; }
+        .pos-cust-item:hover { background: var(--pos-panel); border-color: var(--pos-line); }
         .pos-cust-create { display: block; padding: 0.4rem 0.5rem; }
         .pos-cust-btn-primary {
-          flex: 1; padding: 0.5rem; background: #c4784a; color: white;
+          flex: 1; padding: 0.5rem; background: var(--pos-accent); color: white;
           border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 600;
         }
         .pos-cust-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .pos-cust-btn-secondary {
-          padding: 0.5rem 0.9rem; background: transparent; border: 1px solid #334155;
-          color: #cbd5e1; border-radius: 6px; cursor: pointer; font-family: inherit;
+          padding: 0.5rem 0.9rem; background: transparent; border: 1px solid var(--pos-line);
+          color: var(--pos-label); border-radius: 6px; cursor: pointer; font-family: inherit;
         }
       `}</style>
     </div>

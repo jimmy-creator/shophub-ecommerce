@@ -18,10 +18,11 @@ import toast from 'react-hot-toast';
 import {
   HiShoppingCart, HiClock, HiReply, HiChartBar,
   HiLogout, HiOutlineLogout, HiUserCircle, HiCash, HiCreditCard,
-  HiSearch, HiX, HiPrinter,
+  HiSearch, HiX, HiPrinter, HiSun, HiMoon,
 } from 'react-icons/hi';
 import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
+import { usePosTheme } from '../lib/usePosTheme';
 import PosReceipt from '../components/PosReceipt';
 import PosReportReceipt from '../components/PosReportReceipt';
 import PosReturnModal from '../components/PosReturnModal';
@@ -52,6 +53,7 @@ function PosClock() {
 
 export default function Pos() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = usePosTheme();
   const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -341,7 +343,7 @@ export default function Pos() {
   const cashChange = payOpen === 'cash' && tendered ? +(parseFloat(tendered) - total).toFixed(3) : 0;
 
   return (
-    <div className="pos-app">
+    <div className={`pos-app${theme === 'light' ? ' pos-light' : ''}`}>
       {/* ─── Left action rail ────────────────────── */}
       <aside className="pos-rail">
         <div className="rail-brand">{(session.Location?.name || 'POS').slice(0, 1)}</div>
@@ -377,7 +379,17 @@ export default function Pos() {
           <HiUserCircle size={16} style={{ verticalAlign: '-3px', marginRight: 4 }} />
           <span className="topbar-cashier">{user.name}</span>
         </div>
-        <PosClock />
+        <div className="topbar-right">
+          <button
+            className="topbar-theme-btn"
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            aria-label="Toggle theme"
+          >
+            {theme === 'light' ? <HiMoon size={16} /> : <HiSun size={16} />}
+          </button>
+          <PosClock />
+        </div>
       </header>
 
       <div className="pos-grid">
@@ -545,7 +557,7 @@ export default function Pos() {
         <div className="modal-backdrop" onClick={() => setVariantPicker(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>{variantPicker.name}</h3>
-            <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 1rem' }}>Choose a variant</p>
+            <p style={{ color: 'var(--pos-text-2)', fontSize: 13, margin: '0 0 1rem' }}>Choose a variant</p>
             <div className="variant-list">
               {variantPicker.variants.map((v, i) => {
                 const stock = v.stockAtLocation || 0;
@@ -560,7 +572,7 @@ export default function Pos() {
                       <span className={stock < 1 ? 'stock-out' : 'stock-ok'} style={{ fontSize: 12 }}>
                         {stock < 1 ? 'Out of stock' : `${stock} in stock`}
                       </span>
-                      <span style={{ color: '#cbd5e1' }}>{fmt(v.price ?? variantPicker.price)}</span>
+                      <span style={{ color: 'var(--pos-label)' }}>{fmt(v.price ?? variantPicker.price)}</span>
                     </span>
                   </button>
                 );
@@ -598,7 +610,7 @@ export default function Pos() {
               </>
             )}
             {(payOpen === 'card' || payOpen === 'knet') && (
-              <p style={{ color: '#94a3b8', fontSize: 14 }}>
+              <p style={{ color: 'var(--pos-text-2)', fontSize: 14 }}>
                 Charge the customer on the {payOpen === 'knet' ? 'KNET' : 'card'} terminal, then confirm below.
               </p>
             )}
@@ -745,7 +757,7 @@ export default function Pos() {
       )}
 
       <style>{`
-        /* ── Palette ────────────────────────────── */
+        /* ── Palette (dark = default) ───────────── */
         .pos-app {
           --pos-bg: #0a0f1e;
           --pos-surface: #131a2e;
@@ -761,6 +773,12 @@ export default function Pos() {
           --pos-card: #2563eb;
           --pos-warn: #fbbf24;
           --pos-danger: #ef4444;
+          /* modal/component roles (used by the inline-styled Pos* dialogs) */
+          --pos-panel: #1e293b;        /* modal & card surface */
+          --pos-line: #334155;         /* borders, dividers, inactive chips */
+          --pos-line-2: #475569;       /* stronger border */
+          --pos-label: #cbd5e1;        /* form labels / secondary text */
+          --pos-on-accent: #fff;       /* text on accent/active fills */
 
           min-height: 100vh; background: var(--pos-bg); color: var(--pos-text);
           display: grid;
@@ -770,6 +788,32 @@ export default function Pos() {
           font-family: -apple-system, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
           font-feature-settings: 'tnum' 1;
         }
+
+        /* ── Light theme override ───────────────── */
+        .pos-app.pos-light {
+          --pos-bg: #eef2f7;
+          --pos-surface: #ffffff;
+          --pos-elevated: #f1f5f9;
+          --pos-border: rgba(15,23,42,0.10);
+          --pos-border-strong: rgba(15,23,42,0.18);
+          --pos-text: #0f172a;
+          --pos-text-2: #475569;
+          --pos-text-3: #94a3b8;
+          --pos-accent: #c4784a;
+          --pos-accent-soft: rgba(196,120,74,0.14);
+          --pos-success: #059669;
+          --pos-card: #2563eb;
+          --pos-warn: #b45309;
+          --pos-danger: #dc2626;
+          --pos-panel: #ffffff;
+          --pos-line: #e2e8f0;
+          --pos-line-2: #cbd5e1;
+          --pos-label: #334155;
+          --pos-on-accent: #fff;
+        }
+        /* Lift modal/panel surfaces off a white background with a soft shadow */
+        .pos-app.pos-light .modal,
+        .pos-app.pos-light .pos-right { box-shadow: 0 1px 3px rgba(15,23,42,0.08); }
 
         /* ── Left action rail ───────────────────── */
         .pos-rail {
@@ -781,8 +825,8 @@ export default function Pos() {
         }
         .rail-brand {
           width: 44px; height: 44px; border-radius: 12px;
-          background: linear-gradient(135deg, var(--pos-accent), #c4784a);
-          color: #fff; display: grid; place-items: center;
+          background: linear-gradient(135deg, var(--pos-accent), var(--pos-accent));
+          color: var(--pos-on-accent); display: grid; place-items: center;
           font-weight: 700; font-size: 18px; letter-spacing: -0.5px;
           margin-bottom: 8px;
         }
@@ -814,6 +858,14 @@ export default function Pos() {
         .topbar-sep { margin: 0 0.5rem; color: var(--pos-text-3); }
         .topbar-cashier { color: var(--pos-text-2); }
         .topbar-clock { color: var(--pos-text-2); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+        .topbar-right { display: flex; align-items: center; gap: 0.75rem; }
+        .topbar-theme-btn {
+          display: grid; place-items: center; width: 32px; height: 32px;
+          border-radius: 8px; border: 1px solid var(--pos-border);
+          background: var(--pos-elevated); color: var(--pos-text-2);
+          cursor: pointer; transition: color .15s ease, background .15s ease;
+        }
+        .topbar-theme-btn:hover { color: var(--pos-accent); background: var(--pos-accent-soft); }
 
         /* ── Main grid ──────────────────────────── */
         .pos-grid {
@@ -997,7 +1049,7 @@ export default function Pos() {
         .pay-btn {
           padding: 1.1rem; border: none; border-radius: 14px;
           font-size: 1.05rem; font-weight: 700;
-          color: #fff; cursor: pointer; font-family: inherit;
+          color: var(--pos-on-accent); cursor: pointer; font-family: inherit;
           display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           transition: transform .12s ease, filter .12s ease;
         }
@@ -1021,43 +1073,43 @@ export default function Pos() {
           display: grid; place-items: center; padding: 1rem;
         }
         .modal {
-          background: #1e293b; border: 1px solid #334155; border-radius: 14px;
+          background: var(--pos-panel); border: 1px solid var(--pos-line); border-radius: 14px;
           padding: 1.5rem; max-width: 480px; width: 100%;
         }
-        .modal h3 { margin: 0 0 1rem; color: #f8fafc; }
-        .pay-total { font-size: 2rem; font-weight: 700; color: #c4784a; text-align: center; margin: 0.5rem 0 1rem; }
-        .modal-label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.3rem; }
+        .modal h3 { margin: 0 0 1rem; color: var(--pos-text); }
+        .pay-total { font-size: 2rem; font-weight: 700; color: var(--pos-accent); text-align: center; margin: 0.5rem 0 1rem; }
+        .modal-label { display: block; font-size: 0.85rem; color: var(--pos-label); margin-bottom: 0.3rem; }
         .modal-input {
-          width: 100%; padding: 0.75rem 1rem; background: #0f172a; border: 1px solid #334155;
-          color: #f8fafc; border-radius: 8px; font-size: 1.1rem; font-family: inherit;
+          width: 100%; padding: 0.75rem 1rem; background: var(--pos-bg); border: 1px solid var(--pos-line);
+          color: var(--pos-text); border-radius: 8px; font-size: 1.1rem; font-family: inherit;
         }
-        .pay-change { margin-top: 0.75rem; font-size: 1.1rem; text-align: center; color: #cbd5e1; }
-        .pay-change strong { color: #4ade80; }
+        .pay-change { margin-top: 0.75rem; font-size: 1.1rem; text-align: center; color: var(--pos-label); }
+        .pay-change strong { color: var(--pos-success); }
         .quick-cash { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.75rem; }
         .quick-cash button {
-          padding: 0.6rem 0.3rem; background: #0f172a; border: 1px solid #334155;
-          color: #cbd5e1; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem;
+          padding: 0.6rem 0.3rem; background: var(--pos-bg); border: 1px solid var(--pos-line);
+          color: var(--pos-label); border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem;
         }
-        .quick-cash button:hover { background: #334155; }
+        .quick-cash button:hover { background: var(--pos-line); }
 
         .modal-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; }
         .modal-btn {
           flex: 1; padding: 0.85rem; border-radius: 10px; font-size: 1rem; font-weight: 600;
           cursor: pointer; font-family: inherit; border: none;
         }
-        .modal-btn-primary { background: #c4784a; color: #fff; }
-        .modal-btn-primary:hover:not(:disabled) { background: #b56a3e; }
+        .modal-btn-primary { background: var(--pos-accent); color: var(--pos-on-accent); }
+        .modal-btn-primary:hover:not(:disabled) { filter: brightness(0.92); }
         .modal-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-        .modal-btn-secondary { background: transparent; border: 1px solid #334155; color: #cbd5e1; }
-        .modal-btn-secondary:hover:not(:disabled) { background: #334155; }
+        .modal-btn-secondary { background: transparent; border: 1px solid var(--pos-line); color: var(--pos-label); }
+        .modal-btn-secondary:hover:not(:disabled) { background: var(--pos-line); }
 
         .variant-list { display: flex; flex-direction: column; gap: 0.4rem; }
         .variant-btn {
           display: flex; justify-content: space-between; padding: 0.85rem 1rem;
-          background: #0f172a; border: 1px solid #334155; color: #f8fafc;
+          background: var(--pos-bg); border: 1px solid var(--pos-line); color: var(--pos-text);
           border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.95rem;
         }
-        .variant-btn:hover:not(:disabled) { background: #334155; border-color: #c4784a; }
+        .variant-btn:hover:not(:disabled) { background: var(--pos-line); border-color: var(--pos-accent); }
         .variant-btn:disabled { opacity: 0.4; cursor: not-allowed; }
       `}</style>
     </div>
