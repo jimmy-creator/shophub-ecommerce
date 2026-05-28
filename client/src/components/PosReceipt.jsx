@@ -9,6 +9,10 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { isEnabled, printSale, getReceiptLocale } from '../lib/thermalPrinter';
 
+// Brand name printed at the top of every receipt (the branch/location name
+// moves into the address block below).
+const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
+
 export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
   const { order, change, amountTendered, location, cashier } = payload;
   const printedRef = useRef(false);
@@ -108,8 +112,9 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
       `}</style>
 
       <div id="pos-receipt">
-        <h2>{location?.name || 'Anfal Sports'}</h2>
+        <h2>{STORE_NAME}</h2>
         <div className="meta">
+          {location?.name && <div>{location.name}</div>}
           {location?.address && <div>{location.address}</div>}
           {location?.phone && <div>Tel: {location.phone}</div>}
         </div>
