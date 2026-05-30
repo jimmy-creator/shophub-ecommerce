@@ -105,7 +105,7 @@ router.post('/', protect, async (req, res) => {
 // ===== Admin Routes =====
 
 // Get all reviews (admin)
-router.get('/all', protect, admin, async (req, res) => {
+router.get('/all', protect, admin, requirePermission('reviews'), async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     const offset = (page - 1) * limit;
@@ -128,7 +128,7 @@ router.get('/all', protect, admin, async (req, res) => {
 });
 
 // Admin create review (for seeding/marketing)
-router.post('/admin', protect, admin, async (req, res) => {
+router.post('/admin', protect, admin, requirePermission('reviews'), async (req, res) => {
   try {
     const { productId, name, rating, title, comment, verified } = req.body;
 
@@ -158,7 +158,7 @@ router.post('/admin', protect, admin, async (req, res) => {
 });
 
 // Toggle review approval
-router.put('/:id/approve', protect, admin, async (req, res) => {
+router.put('/:id/approve', protect, admin, requirePermission('reviews'), async (req, res) => {
   try {
     const review = await Review.findByPk(req.params.id);
     if (!review) return res.status(404).json({ message: 'Review not found' });
@@ -173,7 +173,7 @@ router.put('/:id/approve', protect, admin, async (req, res) => {
 });
 
 // Delete review
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', protect, admin, requirePermission('reviews'), async (req, res) => {
   try {
     const review = await Review.findByPk(req.params.id);
     if (!review) return res.status(404).json({ message: 'Review not found' });

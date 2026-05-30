@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get all categories including inactive (admin)
-router.get('/all', protect, admin, async (req, res) => {
+router.get('/all', protect, admin, requirePermission('categories'), async (req, res) => {
   try {
     const categories = await Category.findAll({
       order: [['sortOrder', 'ASC'], ['name', 'ASC']],
@@ -30,7 +30,7 @@ router.get('/all', protect, admin, async (req, res) => {
 });
 
 // Create category
-router.post('/', protect, admin, async (req, res) => {
+router.post('/', protect, admin, requirePermission('categories'), async (req, res) => {
   try {
     const { name, image, sortOrder } = req.body;
     if (!name) return res.status(400).json({ message: 'Name is required' });
@@ -50,7 +50,7 @@ router.post('/', protect, admin, async (req, res) => {
 });
 
 // Update category
-router.put('/:id', protect, admin, async (req, res) => {
+router.put('/:id', protect, admin, requirePermission('categories'), async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
     if (!category) return res.status(404).json({ message: 'Category not found' });
@@ -62,7 +62,7 @@ router.put('/:id', protect, admin, async (req, res) => {
 });
 
 // Delete category
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', protect, admin, requirePermission('categories'), async (req, res) => {
   try {
     const category = await Category.findByPk(req.params.id);
     if (!category) return res.status(404).json({ message: 'Category not found' });

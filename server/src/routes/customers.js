@@ -7,7 +7,7 @@ import { Op } from 'sequelize';
 const router = Router();
 
 // Get all registered customers
-router.get('/', protect, admin, async (req, res) => {
+router.get('/', protect, admin, requirePermission('customers'), async (req, res) => {
   try {
     const { page = 1, limit = 20, search } = req.query;
     const offset = (page - 1) * limit;
@@ -68,7 +68,7 @@ router.get('/', protect, admin, async (req, res) => {
 });
 
 // Get guest customers (unique emails from orders with no userId)
-router.get('/guests', protect, admin, async (req, res) => {
+router.get('/guests', protect, admin, requirePermission('customers'), async (req, res) => {
   try {
     const guestOrders = await Order.findAll({
       where: { userId: null, guestEmail: { [Op.not]: null } },
@@ -112,7 +112,7 @@ router.get('/guests', protect, admin, async (req, res) => {
 });
 
 // Get a customer's order history
-router.get('/:id/orders', protect, admin, async (req, res) => {
+router.get('/:id/orders', protect, admin, requirePermission('customers'), async (req, res) => {
   try {
     const orders = await Order.findAll({
       where: { userId: req.params.id },
@@ -125,7 +125,7 @@ router.get('/:id/orders', protect, admin, async (req, res) => {
 });
 
 // Get a guest's order history
-router.get('/guest-orders', protect, admin, async (req, res) => {
+router.get('/guest-orders', protect, admin, requirePermission('customers'), async (req, res) => {
   try {
     const { email } = req.query;
     if (!email) return res.status(400).json({ message: 'Email required' });

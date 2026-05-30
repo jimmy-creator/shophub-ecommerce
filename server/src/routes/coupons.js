@@ -162,7 +162,7 @@ router.post('/apply', optionalAuth, async (req, res) => {
 // ===== Admin Routes =====
 
 // List all coupons
-router.get('/', protect, admin, async (req, res) => {
+router.get('/', protect, admin, requirePermission('coupons'), async (req, res) => {
   try {
     const coupons = await Coupon.findAll({ order: [['createdAt', 'DESC']] });
     res.json(coupons);
@@ -172,7 +172,7 @@ router.get('/', protect, admin, async (req, res) => {
 });
 
 // Create coupon
-router.post('/', protect, admin, async (req, res) => {
+router.post('/', protect, admin, requirePermission('coupons'), async (req, res) => {
   try {
     const { code, description, type, value, minOrderAmount, maxDiscount, usageLimit, perUserLimit, startDate, endDate, applicableCategories, applicableProducts, applicablePaymentMethods } = req.body;
 
@@ -208,7 +208,7 @@ router.post('/', protect, admin, async (req, res) => {
 });
 
 // Update coupon
-router.put('/:id', protect, admin, async (req, res) => {
+router.put('/:id', protect, admin, requirePermission('coupons'), async (req, res) => {
   try {
     const coupon = await Coupon.findByPk(req.params.id);
     if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
@@ -222,7 +222,7 @@ router.put('/:id', protect, admin, async (req, res) => {
 });
 
 // Delete coupon
-router.delete('/:id', protect, admin, async (req, res) => {
+router.delete('/:id', protect, admin, requirePermission('coupons'), async (req, res) => {
   try {
     const coupon = await Coupon.findByPk(req.params.id);
     if (!coupon) return res.status(404).json({ message: 'Coupon not found' });

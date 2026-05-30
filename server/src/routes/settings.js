@@ -19,7 +19,7 @@ router.get('/theme', async (req, res) => {
 });
 
 // Update theme (admin only)
-router.put('/theme', protect, admin, async (req, res) => {
+router.put('/theme', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const { theme } = req.body;
     const allowed = ['default', 'midnight', 'minimal', 'forest', 'royal', 'marketplace'];
@@ -45,7 +45,7 @@ router.get('/hero-image', async (req, res) => {
 });
 
 // Update hero image (admin only)
-router.put('/hero-image', protect, admin, async (req, res) => {
+router.put('/hero-image', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const { value } = req.body;
     if (!value) return res.status(400).json({ message: 'Image URL is required' });
@@ -68,7 +68,7 @@ router.get('/banners', async (req, res) => {
 });
 
 // Update banners (admin only) — max 5
-router.put('/banners', protect, admin, async (req, res) => {
+router.put('/banners', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const { banners } = req.body;
     if (!Array.isArray(banners) || banners.length > 5) {
@@ -92,7 +92,7 @@ router.get('/mid-banners', async (req, res) => {
   }
 });
 
-router.put('/mid-banners', protect, admin, async (req, res) => {
+router.put('/mid-banners', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const { banners } = req.body;
     if (!Array.isArray(banners) || banners.length > 3) {
@@ -116,7 +116,7 @@ router.get('/category-cards', async (req, res) => {
   }
 });
 
-router.put('/category-cards', protect, admin, async (req, res) => {
+router.put('/category-cards', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const { cards } = req.body;
     if (!Array.isArray(cards) || cards.length > 8) {
@@ -140,7 +140,7 @@ router.get('/announcements', async (req, res) => {
   }
 });
 
-router.put('/announcements', protect, admin, async (req, res) => {
+router.put('/announcements', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const { items } = req.body;
     if (!Array.isArray(items) || items.length > 10) {
@@ -156,7 +156,7 @@ router.put('/announcements', protect, admin, async (req, res) => {
 
 // B2B bank-transfer details — free-form text included in the quote email when
 // the admin picks the bank-transfer payment method.
-router.get('/b2b-bank-details', protect, admin, async (req, res) => {
+router.get('/b2b-bank-details', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const setting = await Setting.findByPk('b2b_bank_details');
     res.json({ value: setting?.value || '' });
@@ -165,7 +165,7 @@ router.get('/b2b-bank-details', protect, admin, async (req, res) => {
   }
 });
 
-router.put('/b2b-bank-details', protect, admin, async (req, res) => {
+router.put('/b2b-bank-details', protect, admin, requirePermission('settings'), async (req, res) => {
   try {
     const value = String(req.body.value || '').trim();
     await Setting.upsert({ key: 'b2b_bank_details', value });
