@@ -132,11 +132,59 @@ router.get('/revenue-chart', protect, admin, async (req, res) => {
       });
     }
 
-    res.json(data.map((d) => ({
-      period: d.period,
+    let out = data.map((d) => ({
+      period: typeof d.period === 'string' ? d.period : new Date(d.period).toISOString().slice(0, 10),
       revenue: parseFloat(d.revenue),
       orders: parseInt(d.orders),
-    })));
+    }));
+
+    // Optional ?compare=true: also fetch the prior window of equal length and
+    // attach `previousRevenue` aligned by shifted date — for an overlay line.
+    if (req.query.compare === 'true') {
+      const monthly = period === '12months';
+      const prevSince = monthly
+        ? new Date(new Date().setMonth(new Date().getMonth() - 24))
+        : new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+      const prevUntil = monthly
+        ? new Date(new Date().setMonth(new Date().getMonth() - 12))
+        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+      const prev = await Order.findAll({
+        where: {
+          paymentStatus: 'paid',
+          createdAt: { [Op.gte]: prevSince, [Op.lt]: prevUntil },
+        },
+        attributes: [
+          [sequelize.fn(monthly ? 'DATE_FORMAT' : 'DATE',
+            sequelize.col('createdAt'),
+            ...(monthly ? ['%Y-%m'] : [])), 'period'],
+          [sequelize.fn('SUM', sequelize.col('totalAmount')), 'revenue'],
+        ],
+        group: [sequelize.fn(monthly ? 'DATE_FORMAT' : 'DATE',
+          sequelize.col('createdAt'),
+          ...(monthly ? ['%Y-%m'] : []))],
+        raw: true,
+      });
+
+      // Build a map keyed by the prior period shifted forward to align with current.
+      const prevMap = new Map();
+      for (const p of prev) {
+        const periodStr = typeof p.period === 'string' ? p.period : new Date(p.period).toISOString().slice(0, 10);
+        let shifted;
+        if (monthly) {
+          const [y, m] = periodStr.split('-').map(Number);
+          const dt = new Date(Date.UTC(y, m - 1 + 12, 1));
+          shifted = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`;
+        } else {
+          const dt = new Date(periodStr); dt.setDate(dt.getDate() + 30);
+          shifted = dt.toISOString().slice(0, 10);
+        }
+        prevMap.set(shifted, parseFloat(p.revenue));
+      }
+      out = out.map((d) => ({ ...d, previousRevenue: prevMap.get(d.period) || 0 }));
+    }
+
+    res.json(out);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -252,6 +300,24 @@ router.get('/low-stock', protect, admin, async (req, res) => {
       order: [['stock', 'ASC']],
     });
     res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Star-rating distribution across all reviews — for the dashboard histogram.
+router.get('/rating-distribution', protect, admin, async (req, res) => {
+  try {
+    const rows = await Review.findAll({
+      attributes: [
+        [sequelize.fn('FLOOR', sequelize.col('rating')), 'rating'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+      ],
+      group: [sequelize.fn('FLOOR', sequelize.col('rating'))],
+      raw: true,
+    });
+    const byRating = new Map(rows.map((r) => [parseInt(r.rating), parseInt(r.count)]));
+    res.json([1, 2, 3, 4, 5].map((rating) => ({ rating, count: byRating.get(rating) || 0 })));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

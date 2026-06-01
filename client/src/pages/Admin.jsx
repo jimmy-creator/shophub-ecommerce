@@ -12,8 +12,19 @@ import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
 import FinanceTabs from '../components/admin/FinanceTabs';
 import BarcodeLabels from '../components/admin/BarcodeLabels';
 import StockCounts from '../components/admin/StockCounts';
+import {
+  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend,
+  CartesianGrid, BarChart, Bar, PieChart, Pie, Cell,
+} from 'recharts';
 
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
+
+// Palette for the dashboard charts. Kept here so future widgets read the same
+// accents — copper is the admin's brand accent, slate is the muted comparison.
+const CHART_PRIMARY = '#c4784a';
+const CHART_MUTED = '#94a3b8';
+const CHART_PALETTE = ['#c4784a', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#14b8a6'];
+const STATUS_COLORS = { processing: '#f59e0b', confirmed: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444', returned: '#a855f7' };
 
 const emptyProduct = {
   name: '', nameAr: '', code: '', description: '', descriptionAr: '',
@@ -942,6 +953,7 @@ export default function Admin() {
   const [orderStatus, setOrderStatus] = useState({});
   const [recentOrders, setRecentOrders] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
+  const [ratingDistribution, setRatingDistribution] = useState([]);
   const [availableGateways, setAvailableGateways] = useState([]);
   const [b2bQuotes, setB2bQuotes] = useState([]);
   const [b2bQuoteForm, setB2bQuoteForm] = useState(null);
@@ -1037,13 +1049,14 @@ export default function Admin() {
     if (tab === 'dashboard') {
       Promise.all([
         api.get('/analytics/overview'),
-        api.get(`/analytics/revenue-chart?period=${chartPeriod}`),
+        api.get(`/analytics/revenue-chart?period=${chartPeriod}&compare=true`),
         api.get('/analytics/top-products'),
         api.get('/analytics/order-status'),
         api.get('/analytics/recent-orders'),
         api.get('/analytics/payment-methods'),
         api.get('/analytics/low-stock'),
-      ]).then(([ov, rc, tp, os, ro, pm, ls]) => {
+        api.get('/analytics/rating-distribution').catch(() => ({ data: [] })),
+      ]).then(([ov, rc, tp, os, ro, pm, ls, rd]) => {
         setDashboard(ov.data);
         setRevenueChart(rc.data);
         setTopProducts(tp.data);
@@ -1051,6 +1064,7 @@ export default function Admin() {
         setRecentOrders(ro.data);
         setPaymentMethods(pm.data);
         setLowStockProducts(ls.data);
+        setRatingDistribution(rd.data);
       }).catch(console.error);
     } else if (tab === 'products') {
       api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
@@ -1404,26 +1418,45 @@ export default function Admin() {
                     <button className={chartPeriod === '12months' ? 'active' : ''} onClick={() => setChartPeriod('12months')}>12 Months</button>
                   </div>
                 </div>
-                <div className="dash-chart">
+                <div className="dash-chart" style={{ height: 280 }}>
                   {revenueChart.length === 0 ? (
                     <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No revenue data yet</p>
                   ) : (
-                    <div className="chart-bars">
-                      {(() => {
-                        const maxRev = Math.max(...revenueChart.map((d) => d.revenue), 1);
-                        return revenueChart.map((d, i) => (
-                          <div key={i} className="chart-bar-col" title={`${d.period}: ${CURRENCY}${d.revenue.toLocaleString('en-IN')} (${d.orders} orders)`}>
-                            <div className="chart-bar" style={{ height: `${(d.revenue / maxRev) * 100}%` }} />
-                            <span className="chart-bar-label">
-                              {chartPeriod === '12months'
-                                ? new Date(d.period + '-01').toLocaleDateString('en-IN', { month: 'short' })
-                                : new Date(d.period).getDate()
-                              }
-                            </span>
-                          </div>
-                        ));
-                      })()}
-                    </div>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={revenueChart} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="var(--border-light)" strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="period"
+                          tick={{ fontSize: 11, fill: 'var(--text-light)' }}
+                          tickFormatter={(p) => chartPeriod === '12months'
+                            ? new Date(p + '-01').toLocaleDateString('en-IN', { month: 'short' })
+                            : new Date(p).getDate()}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: 'var(--text-light)' }}
+                          tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v}
+                          width={48}
+                        />
+                        <Tooltip
+                          formatter={(v, name) => [`${CURRENCY}${Number(v).toLocaleString('en-IN')}`, name]}
+                          labelFormatter={(p) => chartPeriod === '12months'
+                            ? new Date(p + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+                            : new Date(p).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          contentStyle={{ borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 12 }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line
+                          type="monotone" dataKey="revenue" name="Current"
+                          stroke={CHART_PRIMARY} strokeWidth={2.5}
+                          dot={{ r: 2.5 }} activeDot={{ r: 5 }}
+                        />
+                        <Line
+                          type="monotone" dataKey="previousRevenue" name="Previous"
+                          stroke={CHART_MUTED} strokeWidth={1.5}
+                          strokeDasharray="5 4" dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   )}
                 </div>
               </div>
@@ -1431,23 +1464,38 @@ export default function Admin() {
               {/* Order Status */}
               <div className="dash-panel">
                 <h3>Order Status</h3>
-                <div className="dash-status-list">
-                  {Object.entries(orderStatus).map(([status, count]) => {
-                    const colors = { processing: '#f59e0b', confirmed: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444' };
-                    const total = Object.values(orderStatus).reduce((s, c) => s + c, 0) || 1;
-                    return (
-                      <div key={status} className="dash-status-row">
-                        <div className="dash-status-info">
-                          <span className="dash-status-dot" style={{ background: colors[status] || '#999' }} />
-                          <span style={{ textTransform: 'capitalize' }}>{status}</span>
-                        </div>
-                        <div className="dash-status-bar-wrap">
-                          <div className="dash-status-bar" style={{ width: `${(count / total) * 100}%`, background: colors[status] || '#999' }} />
-                        </div>
-                        <span className="dash-status-count">{count}</span>
-                      </div>
-                    );
-                  })}
+                <div style={{ height: 280 }}>
+                  {Object.keys(orderStatus).length === 0 ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No orders yet</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        layout="vertical"
+                        data={Object.entries(orderStatus)
+                          .map(([status, count]) => ({ status, count }))
+                          .sort((a, b) => b.count - a.count)}
+                        margin={{ top: 8, right: 24, left: 8, bottom: 0 }}
+                      >
+                        <CartesianGrid stroke="var(--border-light)" strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--text-light)' }} allowDecimals={false} />
+                        <YAxis
+                          type="category" dataKey="status" width={84}
+                          tick={{ fontSize: 12, fill: 'var(--text)', textTransform: 'capitalize' }}
+                          tickFormatter={(s) => s.charAt(0).toUpperCase() + s.slice(1)}
+                        />
+                        <Tooltip
+                          formatter={(v) => [`${v} orders`, 'Count']}
+                          labelFormatter={(s) => s.charAt(0).toUpperCase() + s.slice(1)}
+                          contentStyle={{ borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 12 }}
+                        />
+                        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                          {Object.keys(orderStatus).map((status) => (
+                            <Cell key={status} fill={STATUS_COLORS[status] || CHART_MUTED} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
             </div>
@@ -1474,7 +1522,7 @@ export default function Admin() {
                 )}
               </div>
 
-              {/* Recent Orders + Payment Methods */}
+              {/* Recent Orders */}
               <div className="dash-panel">
                 <h3>Recent Orders</h3>
                 <div className="dash-recent">
@@ -1492,19 +1540,79 @@ export default function Admin() {
                   ))}
                 </div>
 
-                {paymentMethods.length > 0 && (
-                  <>
-                    <h4 style={{ marginTop: '1.5rem', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)' }}>Payment Methods</h4>
-                    <div className="dash-payment-methods">
-                      {paymentMethods.map((pm) => (
-                        <div key={pm.method} className="dash-pm-row">
-                          <span style={{ textTransform: 'capitalize' }}>{pm.method}</span>
-                          <span>{pm.count} orders · {CURRENCY}{pm.revenue.toLocaleString('en-IN')}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+              </div>
+            </div>
+
+            {/* Payment mix + Rating distribution */}
+            <div className="dash-grid">
+              <div className="dash-panel">
+                <h3>Payment Methods</h3>
+                <div style={{ height: 280 }}>
+                  {paymentMethods.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No payment data yet</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={paymentMethods}
+                          dataKey="revenue"
+                          nameKey="method"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={95}
+                          paddingAngle={2}
+                          label={({ method, percent }) => `${method.charAt(0).toUpperCase() + method.slice(1)} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {paymentMethods.map((_, i) => (
+                            <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(v, _name, entry) => [
+                            `${CURRENCY}${Number(v).toLocaleString('en-IN')} · ${entry.payload.count} orders`,
+                            entry.payload.method.charAt(0).toUpperCase() + entry.payload.method.slice(1),
+                          ]}
+                          contentStyle={{ borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 12 }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+
+              <div className="dash-panel">
+                <h3>Rating Distribution</h3>
+                <div style={{ height: 280 }}>
+                  {ratingDistribution.length === 0 || ratingDistribution.every((r) => r.count === 0) ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No reviews yet</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={ratingDistribution} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="var(--border-light)" strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="rating"
+                          tick={{ fontSize: 12, fill: 'var(--text)' }}
+                          tickFormatter={(r) => `${r}★`}
+                        />
+                        <YAxis tick={{ fontSize: 11, fill: 'var(--text-light)' }} allowDecimals={false} width={32} />
+                        <Tooltip
+                          formatter={(v) => [`${v} reviews`, 'Count']}
+                          labelFormatter={(r) => `${r} star${r === 1 ? '' : 's'}`}
+                          contentStyle={{ borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 12 }}
+                        />
+                        <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                          {ratingDistribution.map((r) => {
+                            // 5★ green → 1★ red
+                            const ratingColors = { 5: '#10b981', 4: '#3b82f6', 3: '#f59e0b', 2: '#f97316', 1: '#ef4444' };
+                            return <Cell key={r.rating} fill={ratingColors[r.rating] || CHART_MUTED} />;
+                          })}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
               </div>
             </div>
 
