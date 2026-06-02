@@ -132,11 +132,16 @@ router.get('/revenue-chart', protect, admin, async (req, res) => {
       });
     }
 
-    let out = data.map((d) => ({
-      period: typeof d.period === 'string' ? d.period : new Date(d.period).toISOString().slice(0, 10),
-      revenue: parseFloat(d.revenue),
-      orders: parseInt(d.orders),
-    }));
+    let out = data.map((d) => {
+      const revenue = parseFloat(d.revenue);
+      const orders = parseInt(d.orders);
+      return {
+        period: typeof d.period === 'string' ? d.period : new Date(d.period).toISOString().slice(0, 10),
+        revenue,
+        orders,
+        aov: orders > 0 ? revenue / orders : 0,
+      };
+    });
 
     // Optional ?compare=true: also fetch the prior window of equal length and
     // attach `previousRevenue` aligned by shifted date — for an overlay line.
@@ -300,6 +305,140 @@ router.get('/low-stock', protect, admin, async (req, res) => {
       order: [['stock', 'ASC']],
     });
     res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Hour-of-day × day-of-week activity grid for the dashboard heatmap.
+// One SQL grouped by HOUR + DAYOFWEEK over a rolling N-day window (default 90).
+// Sparse output (only buckets with orders) — the client fills the rest with 0.
+router.get('/order-patterns', protect, admin, async (req, res) => {
+  try {
+    const days = Math.max(1, Math.min(365, parseInt(req.query.days) || 90));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const rows = await Order.findAll({
+      where: { paymentStatus: 'paid', createdAt: { [Op.gte]: since } },
+      attributes: [
+        [sequelize.fn('HOUR', sequelize.col('createdAt')), 'hour'],
+        [sequelize.fn('DAYOFWEEK', sequelize.col('createdAt')), 'day'],
+        [sequelize.fn('COUNT', sequelize.col('id')), 'orders'],
+        [sequelize.fn('SUM', sequelize.col('totalAmount')), 'revenue'],
+      ],
+      group: [
+        sequelize.fn('HOUR', sequelize.col('createdAt')),
+        sequelize.fn('DAYOFWEEK', sequelize.col('createdAt')),
+      ],
+      raw: true,
+    });
+
+    res.json({
+      windowDays: days,
+      cells: rows.map((r) => ({
+        hour: parseInt(r.hour),
+        // MySQL DAYOFWEEK returns 1..7 (Sun..Sat); normalize to 0..6 (Sun=0).
+        day: (parseInt(r.day) || 1) - 1,
+        orders: parseInt(r.orders),
+        revenue: parseFloat(r.revenue || 0),
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Operational health time-series: AOV + cancel rate + return rate per period.
+// Same period/compare semantics as /revenue-chart so the same toggle controls both.
+router.get('/operational-trends', protect, admin, async (req, res) => {
+  try {
+    const { period = '30days' } = req.query;
+    const monthly = period === '12months';
+    const since = monthly
+      ? new Date(new Date().setMonth(new Date().getMonth() - 12))
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // One aggregate query — totals + status-conditional sums — so AOV and the
+    // cancel/return rates come out of the same row per period.
+    const periodFn = monthly
+      ? sequelize.fn('DATE_FORMAT', sequelize.col('createdAt'), '%Y-%m')
+      : sequelize.fn('DATE', sequelize.col('createdAt'));
+
+    const buildRow = (rows) => rows.map((r) => {
+      const totalOrders = parseInt(r.totalOrders) || 0;
+      const paidRevenue = parseFloat(r.paidRevenue) || 0;
+      const paidCount = parseInt(r.paidCount) || 0;
+      const cancelledCount = parseInt(r.cancelledCount) || 0;
+      const returnedCount = parseInt(r.returnedCount) || 0;
+      return {
+        period: typeof r.period === 'string' ? r.period : new Date(r.period).toISOString().slice(0, 10),
+        aov: paidCount > 0 ? paidRevenue / paidCount : 0,
+        totalOrders,
+        cancelRate: totalOrders > 0 ? cancelledCount / totalOrders : 0,
+        returnRate: totalOrders > 0 ? returnedCount / totalOrders : 0,
+      };
+    });
+
+    const attrs = [
+      [periodFn, 'period'],
+      [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrders'],
+      [sequelize.literal("SUM(CASE WHEN paymentStatus='paid' THEN totalAmount ELSE 0 END)"), 'paidRevenue'],
+      [sequelize.literal("SUM(CASE WHEN paymentStatus='paid' THEN 1 ELSE 0 END)"), 'paidCount'],
+      [sequelize.literal("SUM(CASE WHEN orderStatus='cancelled' THEN 1 ELSE 0 END)"), 'cancelledCount'],
+      [sequelize.literal("SUM(CASE WHEN orderStatus='returned' THEN 1 ELSE 0 END)"), 'returnedCount'],
+    ];
+
+    const current = await Order.findAll({
+      where: { createdAt: { [Op.gte]: since } },
+      attributes: attrs,
+      group: [periodFn],
+      order: [[periodFn, 'ASC']],
+      raw: true,
+    });
+
+    let out = buildRow(current);
+
+    if (req.query.compare === 'true') {
+      const prevSince = monthly
+        ? new Date(new Date().setMonth(new Date().getMonth() - 24))
+        : new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+      const prevUntil = since;
+
+      const previous = await Order.findAll({
+        where: { createdAt: { [Op.gte]: prevSince, [Op.lt]: prevUntil } },
+        attributes: attrs,
+        group: [periodFn],
+        raw: true,
+      });
+
+      const prevRows = buildRow(previous);
+      // Shift each previous row's period forward by 30 days / 12 months and key
+      // the map so we can pair it with the equivalent current-period row.
+      const prevMap = new Map();
+      for (const p of prevRows) {
+        let shifted;
+        if (monthly) {
+          const [y, m] = p.period.split('-').map(Number);
+          const dt = new Date(Date.UTC(y, m - 1 + 12, 1));
+          shifted = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`;
+        } else {
+          const dt = new Date(p.period); dt.setDate(dt.getDate() + 30);
+          shifted = dt.toISOString().slice(0, 10);
+        }
+        prevMap.set(shifted, p);
+      }
+      out = out.map((d) => {
+        const prev = prevMap.get(d.period);
+        return {
+          ...d,
+          previousAov: prev ? prev.aov : 0,
+          previousCancelRate: prev ? prev.cancelRate : 0,
+          previousReturnRate: prev ? prev.returnRate : 0,
+        };
+      });
+    }
+
+    res.json(out);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

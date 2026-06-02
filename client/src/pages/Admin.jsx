@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { HiPlus, HiPencil, HiTrash, HiPhotograph, HiX, HiEye, HiEyeOff, HiLogout } from 'react-icons/hi';
 import ProductImage from '../components/ProductImage';
 import { useTheme } from '../context/ThemeContext';
-import { CURRENCY, PRICE_STEP } from '../utils/currency';
+import { CURRENCY, PRICE_STEP, formatPrice } from '../utils/currency';
 import PoModals from '../components/admin/PoModals';
 import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
 import FinanceTabs from '../components/admin/FinanceTabs';
@@ -954,6 +954,8 @@ export default function Admin() {
   const [recentOrders, setRecentOrders] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [ratingDistribution, setRatingDistribution] = useState([]);
+  const [orderPatterns, setOrderPatterns] = useState({ cells: [], windowDays: 90 });
+  const [operationalTrends, setOperationalTrends] = useState([]);
   const [availableGateways, setAvailableGateways] = useState([]);
   const [b2bQuotes, setB2bQuotes] = useState([]);
   const [b2bQuoteForm, setB2bQuoteForm] = useState(null);
@@ -1056,7 +1058,9 @@ export default function Admin() {
         api.get('/analytics/payment-methods'),
         api.get('/analytics/low-stock'),
         api.get('/analytics/rating-distribution').catch(() => ({ data: [] })),
-      ]).then(([ov, rc, tp, os, ro, pm, ls, rd]) => {
+        api.get('/analytics/order-patterns').catch(() => ({ data: { cells: [], windowDays: 90 } })),
+        api.get(`/analytics/operational-trends?period=${chartPeriod}&compare=true`).catch(() => ({ data: [] })),
+      ]).then(([ov, rc, tp, os, ro, pm, ls, rd, op, ot]) => {
         setDashboard(ov.data);
         setRevenueChart(rc.data);
         setTopProducts(tp.data);
@@ -1065,6 +1069,8 @@ export default function Admin() {
         setPaymentMethods(pm.data);
         setLowStockProducts(ls.data);
         setRatingDistribution(rd.data);
+        setOrderPatterns(op.data);
+        setOperationalTrends(ot.data);
       }).catch(console.error);
     } else if (tab === 'products') {
       api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
@@ -1610,6 +1616,146 @@ export default function Admin() {
                           })}
                         </Bar>
                       </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Activity heatmap — full-width row */}
+            <div className="dash-panel">
+              <div className="dash-panel-header">
+                <h3>Order Activity</h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>last {orderPatterns.windowDays || 90} days</span>
+              </div>
+              {(() => {
+                const cells = orderPatterns.cells || [];
+                if (cells.length === 0) {
+                  return <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No order activity yet</p>;
+                }
+                // Build a 7×24 matrix (Sun…Sat × 0…23) from the sparse cells
+                const matrix = Array.from({ length: 7 }, () => Array(24).fill(0));
+                let max = 0;
+                for (const c of cells) {
+                  if (c.day >= 0 && c.day < 7 && c.hour >= 0 && c.hour < 24) {
+                    matrix[c.day][c.hour] = c.orders;
+                    if (c.orders > max) max = c.orders;
+                  }
+                }
+                const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                const cellStyle = {
+                  borderRadius: 3, aspectRatio: '1', minHeight: 22,
+                };
+                return (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '36px repeat(24, 1fr)',
+                    gap: 3,
+                    marginTop: '0.5rem',
+                    fontSize: '0.7rem', color: 'var(--text-light)',
+                  }}>
+                    {/* corner */}
+                    <div />
+                    {/* hour labels: show every 4th to avoid clutter */}
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <div key={`h-${h}`} style={{ textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                        {h % 4 === 0 ? h : ''}
+                      </div>
+                    ))}
+                    {matrix.flatMap((row, day) => [
+                      <div key={`d-${day}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: 6, color: 'var(--text)' }}>
+                        {dayLabels[day]}
+                      </div>,
+                      ...row.map((count, hour) => (
+                        <div
+                          key={`c-${day}-${hour}`}
+                          style={{
+                            ...cellStyle,
+                            background: count > 0
+                              ? `rgba(196,120,74,${0.12 + 0.88 * (count / max)})`
+                              : 'rgba(148,163,184,0.10)',
+                          }}
+                          title={`${dayLabels[day]} ${String(hour).padStart(2, '0')}:00 — ${count} order${count !== 1 ? 's' : ''}`}
+                        />
+                      )),
+                    ])}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* AOV trend + Cancel/Return rate */}
+            <div className="dash-grid">
+              <div className="dash-panel">
+                <h3>Average Order Value</h3>
+                <div style={{ height: 260 }}>
+                  {operationalTrends.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No order data yet</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={operationalTrends} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="var(--border-light)" strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="period"
+                          tick={{ fontSize: 11, fill: 'var(--text-light)' }}
+                          tickFormatter={(p) => chartPeriod === '12months'
+                            ? new Date(p + '-01').toLocaleDateString('en-IN', { month: 'short' })
+                            : new Date(p).getDate()}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: 'var(--text-light)' }}
+                          tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}K` : Math.round(v)}
+                          width={48}
+                        />
+                        <Tooltip
+                          formatter={(v, name) => [`${CURRENCY} ${formatPrice(v)}`, name]}
+                          labelFormatter={(p) => chartPeriod === '12months'
+                            ? new Date(p + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+                            : new Date(p).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          contentStyle={{ borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 12 }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line type="monotone" dataKey="aov" name="Current" stroke={CHART_PRIMARY} strokeWidth={2.5} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="previousAov" name="Previous" stroke={CHART_MUTED} strokeWidth={1.5} strokeDasharray="5 4" dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+
+              <div className="dash-panel">
+                <h3>Cancel &amp; Return Rate</h3>
+                <div style={{ height: 260 }}>
+                  {operationalTrends.length === 0 ? (
+                    <p style={{ textAlign: 'center', color: 'var(--text-light)', padding: '2rem' }}>No order data yet</p>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={operationalTrends} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                        <CartesianGrid stroke="var(--border-light)" strokeDasharray="3 3" vertical={false} />
+                        <XAxis
+                          dataKey="period"
+                          tick={{ fontSize: 11, fill: 'var(--text-light)' }}
+                          tickFormatter={(p) => chartPeriod === '12months'
+                            ? new Date(p + '-01').toLocaleDateString('en-IN', { month: 'short' })
+                            : new Date(p).getDate()}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: 'var(--text-light)' }}
+                          tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                          width={42}
+                          domain={[0, (max) => Math.max(0.05, max)]}
+                        />
+                        <Tooltip
+                          formatter={(v, name) => [`${(v * 100).toFixed(1)}%`, name]}
+                          labelFormatter={(p) => chartPeriod === '12months'
+                            ? new Date(p + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+                            : new Date(p).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          contentStyle={{ borderRadius: 8, border: '1px solid var(--border-light)', fontSize: 12 }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line type="monotone" dataKey="cancelRate" name="Cancellations" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
+                        <Line type="monotone" dataKey="returnRate" name="Returns" stroke="#ef4444" strokeWidth={2} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />
+                      </LineChart>
                     </ResponsiveContainer>
                   )}
                 </div>
