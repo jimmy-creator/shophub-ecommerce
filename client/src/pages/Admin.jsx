@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
@@ -923,6 +923,7 @@ export default function Admin() {
   const [products, setProducts] = useState([]);
   const [productSearch, setProductSearch] = useState('');
   const [orders, setOrders] = useState([]);
+  const [expandedOrder, setExpandedOrder] = useState(null); // order id whose detail row is open
   const [coupons, setCoupons] = useState([]);
   const [couponForm, setCouponForm] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -2127,9 +2128,27 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => (
-                  <tr key={o.id}>
-                    <td>{o.orderNumber}</td>
+                {orders.map((o) => {
+                  const isOpen = expandedOrder === o.id;
+                  const addr = o.shippingAddress || {};
+                  const subtotal = (o.items || []).reduce((s, it) => s + (parseFloat(it.price) || 0) * (it.quantity || 0), 0);
+                  const discount = parseFloat(o.discount) || 0;
+                  const shippingCharge = parseFloat(o.shippingCharge) || 0;
+                  const taxAmount = parseFloat(o.taxAmount) || 0;
+                  return (
+                  <Fragment key={o.id}>
+                  <tr>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedOrder(isOpen ? null : o.id)}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', color: 'inherit', padding: 0, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        title="View order details"
+                      >
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-light)', display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>▸</span>
+                        {o.orderNumber}
+                      </button>
+                    </td>
                     <td>{new Date(o.createdAt).toLocaleDateString()}</td>
                     <td>{CURRENCY}{parseFloat(o.totalAmount).toFixed(2)}</td>
                     <td>{o.paymentStatus}</td>
@@ -2205,7 +2224,63 @@ export default function Admin() {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  {isOpen && (
+                  <tr>
+                    <td colSpan={9} style={{ background: 'var(--bg-warm)', padding: 0 }}>
+                      <div style={{ padding: '1rem 1.25rem', display: 'grid', gap: '1rem' }}>
+                        {/* Items */}
+                        <div>
+                          <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-light)', marginBottom: '0.4rem' }}>Items ({(o.items || []).length})</div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                            <tbody>
+                              {(o.items || []).map((it, i) => {
+                                const variant = it.variant ? Object.entries(it.variant).filter(([k]) => k !== 'sku').map(([, v]) => v).join(', ') : '';
+                                return (
+                                  <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                    <td style={{ padding: '0.35rem 0' }}>
+                                      {it.name}{variant && <span style={{ color: 'var(--text-light)' }}> ({variant})</span>}
+                                    </td>
+                                    <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--text-light)' }}>{CURRENCY}{formatPrice(it.price)} × {it.quantity}</td>
+                                    <td style={{ padding: '0.35rem 0', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 600 }}>{CURRENCY}{formatPrice((parseFloat(it.price) || 0) * (it.quantity || 0))}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                          {/* Customer & shipping */}
+                          <div style={{ fontSize: '0.82rem', lineHeight: 1.6 }}>
+                            <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-light)', marginBottom: '0.35rem' }}>Customer &amp; Shipping</div>
+                            {addr.fullName && <div><strong>{addr.fullName}</strong></div>}
+                            {(o.guestEmail || addr.email) && <div>{o.guestEmail || addr.email}</div>}
+                            {addr.phone && <div>{addr.phone}</div>}
+                            {addr.address && <div>{addr.address}</div>}
+                            {(addr.city || addr.state || addr.zipCode) && <div>{[addr.city, addr.state, addr.zipCode].filter(Boolean).join(', ')}</div>}
+                            {!addr.fullName && !o.guestEmail && !addr.address && <div style={{ color: 'var(--text-light)' }}>No address (in-store / POS)</div>}
+                          </div>
+
+                          {/* Payment & charges */}
+                          <div style={{ fontSize: '0.82rem', lineHeight: 1.7 }}>
+                            <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-light)', marginBottom: '0.35rem' }}>Payment</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span style={{ color: 'var(--text-light)' }}>Method</span><span>{o.paymentMethod || '—'}{o.paymentStatus ? ` · ${o.paymentStatus}` : ''}</span></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span style={{ color: 'var(--text-light)' }}>Subtotal</span><span>{CURRENCY}{formatPrice(subtotal)}</span></div>
+                            {discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span style={{ color: 'var(--text-light)' }}>Discount{o.couponCode ? ` (${o.couponCode})` : ''}</span><span style={{ color: 'var(--success)' }}>−{CURRENCY}{formatPrice(discount)}</span></div>}
+                            {shippingCharge > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span style={{ color: 'var(--text-light)' }}>Shipping</span><span>{CURRENCY}{formatPrice(shippingCharge)}</span></div>}
+                            {taxAmount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}><span style={{ color: 'var(--text-light)' }}>Tax</span><span>{CURRENCY}{formatPrice(taxAmount)}</span></div>}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontWeight: 700, borderTop: '1px solid var(--border-light)', marginTop: '0.25rem', paddingTop: '0.25rem' }}><span>Total</span><span>{CURRENCY}{formatPrice(o.totalAmount)}</span></div>
+                          </div>
+                        </div>
+
+                        {o.cancellationReason && <div style={{ fontSize: '0.8rem', color: 'var(--danger)' }}><strong>Cancellation:</strong> {o.cancellationReason}</div>}
+                      </div>
+                    </td>
+                  </tr>
+                  )}
+                  </Fragment>
+                  );
+                })}
               </tbody>
             </table>
 

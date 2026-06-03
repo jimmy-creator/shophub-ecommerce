@@ -1,13 +1,24 @@
 import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const arabicFontPath = path.join(__dirname, '../assets/fonts/NotoSansArabic.ttf');
 
 const storeName = process.env.STORE_NAME || 'ShopHub';
+const storeNameAr = process.env.STORE_NAME_AR || '';
 const storeState = process.env.STORE_STATE || '';
 const storeEmail = process.env.SMTP_EMAIL || '';
 const storeGSTIN = process.env.STORE_GSTIN || '';
 const storeAddress = process.env.STORE_ADDRESS || '';
 const storePhone = process.env.STORE_PHONE || '';
 
-const currencySymbol = process.env.CURRENCY_SYMBOL || 'Rs.';
+// Bilingual EN/AR invoice — store4 (Anfal Sports, Kuwait). Pairs with client VITE_FEATURE_I18N.
+const i18n = process.env.FEATURE_I18N === 'true';
+
+// Fall back to the currency code (KWD/AED) when no symbol is set, before the INR default.
+const currencySymbol = process.env.CURRENCY_SYMBOL || process.env.CURRENCY_CODE || 'Rs.';
 // Display decimals — pairs with the client's VITE_CURRENCY_DECIMALS.
 // store4 (KWD/fils) sets CURRENCY_DECIMALS=3; default 2 for INR/AED.
 const currencyDecimals = (() => {
@@ -16,7 +27,9 @@ const currencyDecimals = (() => {
 })();
 
 function formatPrice(amount) {
-  return `${currencySymbol}${(parseFloat(amount) || 0).toFixed(currencyDecimals)}`;
+  // Alphabetic codes (KWD, AED) read better with a space; glyph symbols (₹, $) don't.
+  const sep = /[A-Za-z]/.test(currencySymbol) ? ' ' : '';
+  return `${currencySymbol}${sep}${(parseFloat(amount) || 0).toFixed(currencyDecimals)}`;
 }
 
 export function generateInvoice(order) {
@@ -28,6 +41,12 @@ export function generateInvoice(order) {
       doc.on('data', (chunk) => buffers.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', reject);
+
+      // Embed an Arabic-capable font only when i18n is on; PDFKit/fontkit shape + RTL it natively.
+      let arabic = false;
+      if (i18n && fs.existsSync(arabicFontPath)) {
+        try { doc.registerFont('Arabic', arabicFontPath); arabic = true; } catch { arabic = false; }
+      }
 
       const items = order.items || [];
       const address = order.shippingAddress || {};
@@ -48,6 +67,11 @@ export function generateInvoice(order) {
 
       doc.fontSize(22).fill('#ffffff').font('Helvetica-Bold')
         .text(storeName, 50, 35, { width: 250 });
+
+      if (arabic && storeNameAr) {
+        doc.fontSize(12).fill('#cccccc').font('Arabic')
+          .text(storeNameAr, 50, 66, { width: 250 });
+      }
 
       doc.fontSize(24).fill(copper).font('Helvetica-Bold')
         .text('INVOICE', 400, 30, { width: 150, align: 'right' });
@@ -132,14 +156,16 @@ export function generateInvoice(order) {
 
       // ===== ITEMS ROWS =====
       items.forEach((item, i) => {
-        if (y > 700) {
+        const showAr = arabic && item.nameAr;
+        const rowH = showAr ? 40 : 26;
+        if (y + rowH > 760) {
           doc.addPage();
           y = 50;
         }
 
         const isEven = i % 2 === 0;
         if (isEven) {
-          doc.rect(50, y, 495.28, 26).fill(bg);
+          doc.rect(50, y, 495.28, rowH).fill(bg);
         }
 
         doc.fontSize(9).fill(dark).font('Helvetica');
@@ -155,6 +181,13 @@ export function generateInvoice(order) {
         }
         doc.text(itemName, 80, y + 8, { width: 195 });
 
+        // Arabic name underneath (RTL, right-aligned within the name column)
+        if (showAr) {
+          doc.font('Arabic').fontSize(9).fill(grey)
+            .text(item.nameAr, 80, y + 22, { width: 195, align: 'right' });
+          doc.font('Helvetica');
+        }
+
         doc.fontSize(8).fill(grey);
         doc.text(item.hsnCode || '-', 280, y + 8, { width: 50 });
 
@@ -163,7 +196,7 @@ export function generateInvoice(order) {
         doc.text(formatPrice(item.price), 380, y + 8, { width: 70, align: 'right' });
         doc.text(formatPrice(item.price * item.quantity), 460, y + 8, { width: 80, align: 'right' });
 
-        y += 26;
+        y += rowH;
       });
 
       y += 10;
@@ -236,6 +269,11 @@ export function generateInvoice(order) {
       doc.fontSize(8).fill(grey).font('Helvetica');
       doc.text('Thank you for your purchase!', 50, y, { width: 495.28, align: 'center' });
       y += 14;
+      if (arabic) {
+        doc.font('Arabic').text('شكراً لتسوقكم', 50, y, { width: 495.28, align: 'center' });
+        doc.font('Helvetica');
+        y += 14;
+      }
       doc.text(`${storeName} • ${storeEmail}${storeGSTIN ? ` • GSTIN: ${storeGSTIN}` : ''}`, 50, y, { width: 495.28, align: 'center' });
       y += 14;
       doc.text('This is a computer-generated invoice and does not require a signature.', 50, y, { width: 495.28, align: 'center' });
