@@ -26,6 +26,29 @@ const CHART_MUTED = '#94a3b8';
 const CHART_PALETTE = ['#c4784a', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#14b8a6'];
 const STATUS_COLORS = { processing: '#f59e0b', confirmed: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444', returned: '#a855f7' };
 
+// Map an order/payment/refund/quote/PO status string → a .badge variant.
+const STATUS_VARIANT = {
+  // success (green) — terminal-good
+  paid: 'success', delivered: 'success', processed: 'success', completed: 'success',
+  approved: 'success', accepted: 'success', active: 'success', fulfilled: 'success',
+  received: 'success', recovered: 'success', refunded: 'success',
+  // info (blue) — in progress
+  processing: 'info', confirmed: 'info', shipped: 'info', sent: 'info',
+  ordered: 'info', partial: 'info', open: 'info', in_transit: 'info', quoted: 'info',
+  // warning (amber) — needs attention
+  pending: 'warning', draft: 'warning', hold: 'warning', requested: 'warning', awaiting: 'warning',
+  // danger (red)
+  cancelled: 'danger', canceled: 'danger', failed: 'danger', rejected: 'danger',
+  returned: 'danger', expired: 'danger', void: 'danger', declined: 'danger',
+};
+const statusVariant = (s) => STATUS_VARIANT[String(s ?? '').toLowerCase().trim()] || 'neutral';
+
+// Status pill. Falls back to a muted dash when empty.
+function StatusBadge({ value, plain = false }) {
+  if (value == null || value === '') return <span className="badge neutral plain">—</span>;
+  return <span className={`badge ${statusVariant(value)}${plain ? ' plain' : ''}`}>{String(value)}</span>;
+}
+
 const emptyProduct = {
   name: '', nameAr: '', code: '', description: '', descriptionAr: '',
   price: '', comparePrice: '', costPrice: '',
@@ -2151,8 +2174,8 @@ export default function Admin() {
                     </td>
                     <td>{new Date(o.createdAt).toLocaleDateString()}</td>
                     <td>{CURRENCY}{parseFloat(o.totalAmount).toFixed(2)}</td>
-                    <td>{o.paymentStatus}</td>
-                    <td>{o.orderStatus}</td>
+                    <td><StatusBadge value={o.paymentStatus} /></td>
+                    <td><StatusBadge value={o.orderStatus} /></td>
                     <td>
                       <select
                         value={o.orderStatus}
@@ -2182,19 +2205,19 @@ export default function Admin() {
                             }}>✕</button>
                         </div>
                       ) : o.refundStatus === 'processed' ? (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 600 }}>Done</span>
+                        <span className="badge success">Done</span>
                       ) : o.refundStatus === 'failed' ? (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--danger)', fontWeight: 600 }}>Rejected</span>
+                        <span className="badge danger">Rejected</span>
                       ) : o.paymentStatus === 'paid' ? (
-                        <button className="icon-btn" style={{ fontSize: '0.65rem', fontWeight: 600 }}
+                        <button className="admin-btn sm secondary"
                           onClick={async () => {
-                            if (!confirm(`Refund Rs.${parseFloat(o.totalAmount).toFixed(2)}?`)) return;
+                            if (!confirm(`Refund ${CURRENCY}${formatPrice(o.totalAmount)}?`)) return;
                             await api.post(`/orders/${o.id}/refund`, { refundAmount: o.totalAmount });
                             toast.success('Refund processed');
                             api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
                           }}>Refund</button>
                       ) : (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-light)' }}>—</span>
+                        <span className="badge neutral plain">—</span>
                       )}
                     </td>
                     <td>
@@ -2470,7 +2493,7 @@ export default function Admin() {
                       <td>{q.companyName}</td>
                       <td>{Array.isArray(q.items) ? q.items.length : 0}</td>
                       <td>{q.quotedTotal ? `${CURRENCY}${parseFloat(q.quotedTotal).toFixed(2)}` : '—'}</td>
-                      <td><span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: q.status === 'paid' ? 'rgba(34,197,94,0.15)' : q.status === 'quoted' ? 'rgba(59,130,246,0.15)' : q.status === 'pending' ? 'rgba(250,204,21,0.18)' : 'rgba(148,163,184,0.15)', color: q.status === 'paid' ? '#15803d' : q.status === 'quoted' ? '#1d4ed8' : q.status === 'pending' ? '#a16207' : '#475569' }}>{q.status}</span></td>
+                      <td><StatusBadge value={q.status} /></td>
                       <td>
                         <button className="invoice-btn" onClick={() => {
                           // Prefill form with items priced from request; if a row has no unitPrice yet, leave it blank
@@ -3079,9 +3102,7 @@ export default function Admin() {
                       <td>{t.fromLocation?.name} → {t.toLocation?.name}</td>
                       <td>{Array.isArray(t.items) ? t.items.length : 0}</td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: 4,
-                          background: t.status === 'completed' ? 'rgba(34,197,94,0.15)' : t.status === 'in_transit' ? 'rgba(59,130,246,0.15)' : t.status === 'pending' ? 'rgba(250,204,21,0.18)' : 'rgba(148,163,184,0.15)',
-                          color: t.status === 'completed' ? '#15803d' : t.status === 'in_transit' ? '#1d4ed8' : t.status === 'pending' ? '#a16207' : '#475569' }}>{t.status}</span>
+                        <StatusBadge value={t.status} />
                       </td>
                       <td style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{new Date(t.createdAt).toLocaleDateString()}</td>
                       <td>
@@ -3301,9 +3322,7 @@ export default function Admin() {
                         {s.cashVariance != null ? `${s.cashVariance >= 0 ? '+' : ''}${parseFloat(s.cashVariance).toFixed(3)}` : '—'}
                       </td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem', borderRadius: 4,
-                          background: s.status === 'open' ? 'rgba(34,197,94,0.18)' : 'rgba(148,163,184,0.15)',
-                          color: s.status === 'open' ? '#15803d' : '#475569' }}>{s.status}</span>
+                        <StatusBadge value={s.status} />
                       </td>
                     </tr>
                   ))}
@@ -3758,15 +3777,10 @@ export default function Admin() {
                       <td style={{ textTransform: 'capitalize' }}>{r.refundMethod.replace('_', ' ')}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>{CURRENCY}{parseFloat(r.refundAmount).toFixed(3)}</td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px',
-                          background: r.status === 'completed' ? 'rgba(90,138,106,0.15)' : 'rgba(220,38,38,0.15)',
-                          color: r.status === 'completed' ? 'var(--success)' : 'var(--danger)',
-                          textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          {r.status}
-                        </span>
+                        <StatusBadge value={r.status} />
                       </td>
                       <td>
-                        <button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem' }}
+                        <button className="admin-btn sm secondary"
                           onClick={() => api.get(`/returns/${r.id}`).then((res) => setReturnDetail(res.data))}>
                           View
                         </button>
@@ -4026,21 +4040,13 @@ export default function Admin() {
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>{CURRENCY}{parseFloat(p.totalAmount).toFixed(3)}</td>
                       <td style={{ textAlign: 'right' }}>{CURRENCY}{parseFloat(p.amountPaid || 0).toFixed(3)}</td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', textTransform: 'uppercase',
-                          background: p.status === 'received' ? 'rgba(90,138,106,0.15)' : p.status === 'cancelled' ? 'rgba(220,38,38,0.15)' : 'rgba(196,120,74,0.15)',
-                          color: p.status === 'received' ? 'var(--success)' : p.status === 'cancelled' ? 'var(--danger)' : 'var(--copper)' }}>
-                          {p.status}
-                        </span>
+                        <StatusBadge value={p.status} />
                       </td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', textTransform: 'uppercase',
-                          background: p.paymentStatus === 'paid' ? 'rgba(90,138,106,0.15)' : 'rgba(100,116,139,0.15)',
-                          color: p.paymentStatus === 'paid' ? 'var(--success)' : 'var(--text-light)' }}>
-                          {p.paymentStatus}
-                        </span>
+                        <StatusBadge value={p.paymentStatus} />
                       </td>
                       <td>
-                        <button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem' }}
+                        <button className="admin-btn sm secondary"
                           onClick={() => api.get(`/purchase-orders/${p.id}`).then((res) => setPoDetail(res.data))}>View</button>
                       </td>
                     </tr>
@@ -4105,11 +4111,9 @@ export default function Admin() {
                       <td style={{ textTransform: 'capitalize' }}>{r.refundMethod.replace('_', ' ')}</td>
                       <td style={{ textAlign: 'right', fontWeight: 600 }}>{CURRENCY}{parseFloat(r.totalAmount).toFixed(3)}</td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', textTransform: 'uppercase',
-                          background: r.status === 'completed' ? 'rgba(90,138,106,0.15)' : 'rgba(220,38,38,0.15)',
-                          color: r.status === 'completed' ? 'var(--success)' : 'var(--danger)' }}>{r.status}</span>
+                        <StatusBadge value={r.status} />
                       </td>
-                      <td><button className="btn btn-secondary" style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem' }}
+                      <td><button className="admin-btn sm secondary"
                           onClick={() => api.get(`/purchase-returns/${r.id}`).then((res) => setPrDetail(res.data))}>View</button></td>
                     </tr>
                   ))}
@@ -4354,9 +4358,7 @@ export default function Admin() {
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                             <strong>{o.orderNumber}</strong>
-                            <span style={{ color: o.paymentStatus === 'paid' ? 'var(--success)' : 'var(--copper)', fontWeight: 600, fontSize: '0.78rem', textTransform: 'uppercase' }}>
-                              {o.paymentStatus}
-                            </span>
+                            <StatusBadge value={o.paymentStatus} />
                           </div>
                           <div style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
                             {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -4964,11 +4966,11 @@ export default function Admin() {
                       <td style={{ fontSize: '0.82rem' }}>{new Date(c.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                       <td>
                         {c.recovered ? (
-                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: 'rgba(16,185,129,0.1)', color: 'var(--success)' }}>Recovered</span>
+                          <span className="badge success">Recovered</span>
                         ) : c.emailSent ? (
-                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: 'rgba(37,99,235,0.1)', color: '#2563eb' }}>Sent</span>
+                          <span className="badge info">Sent</span>
                         ) : (
-                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>Pending</span>
+                          <span className="badge warning">Pending</span>
                         )}
                       </td>
                       <td>
