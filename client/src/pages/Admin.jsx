@@ -20,10 +20,10 @@ import {
 const MULTILOC_ENABLED = import.meta.env.VITE_FEATURE_MULTILOC === 'true';
 
 // Palette for the dashboard charts. Kept here so future widgets read the same
-// accents — copper is the admin's brand accent, slate is the muted comparison.
-const CHART_PRIMARY = '#c4784a';
+// accents — indigo is the admin's brand accent, slate is the muted comparison.
+const CHART_PRIMARY = '#4f46e5';
 const CHART_MUTED = '#94a3b8';
-const CHART_PALETTE = ['#c4784a', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#14b8a6'];
+const CHART_PALETTE = ['#4f46e5', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#14b8a6'];
 const STATUS_COLORS = { processing: '#f59e0b', confirmed: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444', returned: '#a855f7' };
 
 // Map an order/payment/refund/quote/PO status string → a .badge variant.
@@ -887,7 +887,7 @@ function ImageUploader({ images = [], onChange }) {
           textAlign: 'center',
           cursor: 'pointer',
           transition: 'all 0.3s var(--ease)',
-          background: dragOver ? 'rgba(196,120,74,0.04)' : 'var(--bg-warm)',
+          background: dragOver ? 'rgba(79,70,229,0.06)' : 'var(--bg-warm)',
         }}
       >
         {uploading ? (
@@ -1696,7 +1696,7 @@ export default function Admin() {
                           style={{
                             ...cellStyle,
                             background: count > 0
-                              ? `rgba(196,120,74,${0.12 + 0.88 * (count / max)})`
+                              ? `rgba(79,70,229,${0.12 + 0.88 * (count / max)})`
                               : 'rgba(148,163,184,0.10)',
                           }}
                           title={`${dayLabels[day]} ${String(hour).padStart(2, '0')}:00 — ${count} order${count !== 1 ? 's' : ''}`}
@@ -1922,7 +1922,7 @@ export default function Admin() {
                                   : [...cur, cat.name];
                                 setForm({ ...form, categories: next, category: next[0] || '' });
                               }}
-                              style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500, userSelect: 'none' }}
+                              style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--copper)' : 'var(--border)', background: selected ? 'rgba(79,70,229,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500, userSelect: 'none' }}
                             >
                               {isPrimary ? '★ ' : ''}{cat.name}
                             </span>
@@ -2085,12 +2085,7 @@ export default function Admin() {
                       <td>{p.stock}</td>
                       <td>{p.featured ? 'Yes' : 'No'}</td>
                       <td>
-                        <span style={{
-                          fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem',
-                          borderRadius: '100px',
-                          background: p.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)',
-                          color: p.active ? 'var(--success)' : 'var(--danger)',
-                        }}>
+                        <span className={`badge ${p.active ? 'success' : 'danger'}`}>
                           {p.active ? 'Active' : 'Unlisted'}
                         </span>
                       </td>
@@ -3026,7 +3021,7 @@ export default function Admin() {
                                         width: 70, padding: '0.3rem 0.4rem',
                                         border: `1px solid ${dirty ? 'var(--copper, #c4784a)' : 'var(--border)'}`,
                                         borderRadius: 4, textAlign: 'center',
-                                        background: dirty ? 'rgba(196, 120, 74, 0.06)' : 'transparent',
+                                        background: dirty ? 'rgba(79,70,229,0.06)' : 'transparent',
                                       }}
                                     />
                                   </td>
@@ -3418,7 +3413,7 @@ export default function Admin() {
               <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>{activityLog.length} entries</span>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.25rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.25rem', padding: '1rem', background: 'var(--bg-warm)', borderRadius: 8 }}>
               <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>From</label>
                 <input type="date" value={activityFilter.from} onChange={(e) => setActivityFilter({ ...activityFilter, from: e.target.value })} /></div>
               <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>To</label>
@@ -3496,7 +3491,7 @@ export default function Admin() {
               <h2>POS Reports</h2>
             </div>
 
-            <div className="report-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+            <div className="report-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-warm)', borderRadius: 8 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Group by</label>
                 <select value={reportType} onChange={(e) => { setReportType(e.target.value); setReportData(null); }}>
@@ -3697,7 +3692,7 @@ export default function Admin() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-warm)', borderRadius: 8 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>From</label>
                 <input type="date" value={returnsFilter.from} onChange={(e) => setReturnsFilter({ ...returnsFilter, from: e.target.value })} />
@@ -3872,9 +3867,7 @@ export default function Admin() {
                       <td>{s.phone || '—'}</td>
                       <td style={{ textTransform: 'uppercase', fontSize: '0.78rem' }}>{s.paymentTerms}</td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px',
-                          background: s.active ? 'rgba(90,138,106,0.15)' : 'rgba(100,116,139,0.15)',
-                          color: s.active ? 'var(--success)' : 'var(--text-light)' }}>
+                        <span className={`badge ${s.active ? 'success' : 'neutral'}`}>
                           {s.active ? 'ACTIVE' : 'INACTIVE'}
                         </span>
                       </td>
@@ -4002,7 +3995,7 @@ export default function Admin() {
               })}><HiPlus /> New PO</button>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-warm)', borderRadius: 8 }}>
               <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>Status</label>
                 <select value={poFilter.status} onChange={(e) => setPoFilter({ ...poFilter, status: e.target.value })}>
                   <option value="">All</option>
@@ -4077,7 +4070,7 @@ export default function Admin() {
               })}><HiPlus /> New Purchase Return</button>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface-alt, #f8f9fa)', borderRadius: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-warm)', borderRadius: 8 }}>
               <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>From</label>
                 <input type="date" value={prFilter.from} onChange={(e) => setPrFilter({ ...prFilter, from: e.target.value })} /></div>
               <div><label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>To</label>
@@ -4273,7 +4266,7 @@ export default function Admin() {
                       <td style={{ fontWeight: 500 }}>{c.name}</td>
                       <td>{c.sortOrder}</td>
                       <td>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: c.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)', color: c.active ? 'var(--success)' : 'var(--danger)' }}>
+                        <span className={`badge ${c.active ? 'success' : 'danger'}`}>
                           {c.active ? 'Active' : 'Hidden'}
                         </span>
                       </td>
@@ -4601,7 +4594,7 @@ export default function Admin() {
                                   : [...couponForm.applicableCategories, name];
                                 setCouponForm({ ...couponForm, applicableCategories: cats });
                               }}
-                              style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--success)' : 'var(--border)', background: selected ? 'rgba(90,138,106,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500, userSelect: 'none' }}
+                              style={{ padding: '0.4rem 0.8rem', borderRadius: '100px', border: '1px solid', borderColor: selected ? 'var(--copper)' : 'var(--border)', background: selected ? 'rgba(79,70,229,0.1)' : 'transparent', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text)', fontWeight: 500, userSelect: 'none' }}
                             >
                               {name}
                             </span>
@@ -4636,7 +4629,7 @@ export default function Admin() {
                         {couponForm.applicableProducts.map((pid) => {
                           const p = products.find((x) => x.id === pid);
                           return (
-                            <span key={pid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', borderRadius: '100px', background: 'rgba(90,138,106,0.1)', fontSize: '0.82rem', fontWeight: 500 }}>
+                            <span key={pid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', borderRadius: '100px', background: 'var(--bg-warm)', fontSize: '0.82rem', fontWeight: 500 }}>
                               {p ? p.name : `#${pid}`}
                               <button type="button" onClick={() => setCouponForm({ ...couponForm, applicableProducts: couponForm.applicableProducts.filter((x) => x !== pid) })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1, color: 'var(--danger)' }}>&times;</button>
                             </span>
@@ -4682,7 +4675,7 @@ export default function Admin() {
                           {couponForm.applicablePaymentMethods.map((mid) => {
                             const pm = availableGateways.find((x) => x.id === mid);
                             return (
-                              <span key={mid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', borderRadius: '100px', background: 'rgba(90,138,106,0.1)', fontSize: '0.82rem', fontWeight: 500, color: 'var(--text)' }}>
+                              <span key={mid} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', borderRadius: '100px', background: 'var(--bg-warm)', fontSize: '0.82rem', fontWeight: 500, color: 'var(--text)' }}>
                                 {pm ? pm.name : mid}
                                 <button type="button" onClick={() => setCouponForm({ ...couponForm, applicablePaymentMethods: couponForm.applicablePaymentMethods.filter((x) => x !== mid) || null })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1, color: 'var(--danger)' }}>&times;</button>
                               </span>
@@ -4740,7 +4733,7 @@ export default function Admin() {
                       </td>
                       <td>{c.usedCount}{c.usageLimit ? `/${c.usageLimit}` : ''}</td>
                       <td>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: c.active ? 'rgba(90,138,106,0.1)' : 'rgba(196,90,74,0.1)', color: c.active ? 'var(--success)' : 'var(--danger)' }}>
+                        <span className={`badge ${c.active ? 'success' : 'danger'}`}>
                           {c.active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
@@ -4864,9 +4857,9 @@ export default function Admin() {
                       </td>
                       <td>
                         {r.adminCreated ? (
-                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', borderRadius: '100px', background: 'rgba(196,120,74,0.1)', color: 'var(--copper)' }}>Admin</span>
+                          <span className="badge accent">Admin</span>
                         ) : r.verified ? (
-                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', borderRadius: '100px', background: 'rgba(90,138,106,0.1)', color: 'var(--success)' }}>Verified</span>
+                          <span className="badge success">Verified</span>
                         ) : (
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-light)' }}>Customer</span>
                         )}
@@ -5308,7 +5301,7 @@ export default function Admin() {
                       <td style={{ fontWeight: 500 }}>{s.name}</td>
                       <td>{s.email}</td>
                       <td>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.5rem', borderRadius: '100px', background: s.role === 'admin' ? 'rgba(37,99,235,0.1)' : 'rgba(90,138,106,0.1)', color: s.role === 'admin' ? '#2563eb' : 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <span className={`badge ${s.role === 'admin' ? 'info' : 'success'}`}>
                           {s.role}
                         </span>
                       </td>
