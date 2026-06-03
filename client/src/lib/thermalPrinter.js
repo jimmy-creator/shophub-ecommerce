@@ -31,12 +31,10 @@
  *  kind ∈ 'receipt' | 'barcode'
  */
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
+import { renderSaleReceiptCanvas } from './posReceiptCanvas.js';
 
 const KINDS = ['receipt', 'barcode'];
 const DEFAULTS = { receipt: 48, barcode: 32 };
-
-// Brand name printed bold at the top of every thermal receipt.
-const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
 
 const key = (kind, suffix) => `pos_${kind}_${suffix}`;
 
@@ -180,90 +178,17 @@ async function send(kind, bytes) {
 // ── Receipt templates ──────────────────────────────────────────────
 const fmt = (currency, n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
 
-function buildSale(payload, currency = 'KWD') {
-  const { order, change, amountTendered, location, cashier } = payload;
-  const breakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;
+// The sale receipt is fully bilingual (EN/AR), which ESC/POS text mode can't
+// shape — so it's drawn to a canvas and sent as a raster image. The same
+// canvas renders the on-screen preview, guaranteeing identical output.
+async function buildSale(payload) {
   const cols = getColumns('receipt');
-  const loc = getReceiptLocale();
-  // Override the param so every fmt(currency, …) call below renders the
-  // locale-correct symbol without touching each line.
-  currency = pickCurrency(currency, loc);
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
-
+  const canvas = await renderSaleReceiptCanvas(payload);
   enc.initialize()
-    .align('center').bold(true).size('normal').line(STORE_NAME).bold(false);
-  if (location?.name) enc.align('center').line(location.name);
-  if (location?.address) enc.align('center').line(location.address);
-  if (location?.phone) enc.align('center').line(`Tel: ${location.phone}`);
-  enc.rule();
-  enc.align('left')
-    .line(`Receipt: ${order.orderNumber}`)
-    .line(`Date: ${new Date(order.createdAt || Date.now()).toLocaleString()}`)
-    .line(`Cashier: ${cashier?.name || '—'}`);
-  if (order.shippingAddress?.fullName && order.shippingAddress.fullName !== 'Walk-in') {
-    enc.line(`Customer: ${order.shippingAddress.fullName}`);
-  }
-  enc.rule();
-
-  const colW = Math.floor(cols * 0.65);
-  for (const it of (order.items || [])) {
-    const lineTotal = fmt(currency, (parseFloat(it.price) || 0) * (parseInt(it.quantity, 10) || 0));
-    const displayName = pickName(it, loc);
-    enc.table(
-      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-      [[displayName, lineTotal]]
-    );
-    // Bilingual mode: print Arabic name as a second line under English.
-    if (loc === 'bi' && it.nameAr && it.nameAr !== it.name) {
-      enc.line(`  ${it.nameAr}`);
-    }
-    const sku = it.sku || it.variant?.sku || null;
-    enc.line(`  ${sku ? `${sku} · ` : ''}${it.quantity} x ${fmt(currency, it.price)}`);
-  }
-  enc.rule();
-
-  if (parseFloat(order.discount || 0) > 0) {
-    const subtotal = (order.items || []).reduce(
-      (s, it) => s + (parseFloat(it.price) || 0) * (parseInt(it.quantity, 10) || 0), 0
-    );
-    enc.table(
-      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-      [
-        ['Subtotal', fmt(currency, subtotal)],
-        [`Discount${order.couponCode ? ` (${order.couponCode})` : ''}`, `-${fmt(currency, order.discount)}`],
-      ]
-    );
-  }
-  enc.bold(true).table(
-    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-    [['TOTAL', fmt(currency, order.totalAmount)]]
-  ).bold(false);
-
-  const tenderLabel = (m) => m === 'cash' ? 'Cash' : m === 'knet' ? 'KNET' : 'Card';
-  if (breakdown) {
-    for (const tn of breakdown) {
-      enc.table(
-        [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-        [[`Paid (${tenderLabel(tn.method)})`, fmt(currency, tn.amount)]]
-      );
-    }
-  } else {
-    const method = order.paymentMethod === 'pos_cash' ? 'Cash'
-      : order.paymentMethod === 'pos_knet' ? 'KNET' : 'Card';
-    enc.table(
-      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-      [[`Paid (${method})`, fmt(currency, amountTendered ?? order.totalAmount)]]
-    );
-    if (change > 0) {
-      enc.table(
-        [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
-        [['Change', fmt(currency, change)]]
-      );
-    }
-  }
-
-  enc.rule().align('center').line('Thank you for shopping with us!').newline().newline();
-  enc.cut('partial');
+    .image(canvas, canvas.width, canvas.height, 'threshold', 170)
+    .newline()
+    .cut('partial');
   return enc.encode();
 }
 
@@ -390,7 +315,7 @@ export async function testPrint(kind) {
 }
 
 export async function printSale(payload, currency, openDrawer = false) {
-  await send('receipt', buildSale(payload, currency));
+  await send('receipt', await buildSale(payload));
   if (openDrawer) await kickDrawer();
 }
 
