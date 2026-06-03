@@ -2734,6 +2734,44 @@ input, textarea, select { font-family: var(--font-body); }
 /* Table lift — softer card, subtle shadow on the neutral canvas */
 .admin-page .admin-table table { box-shadow: var(--shadow-sm); }
 
+/* ===== ADMIN — Phase 2: normalise storefront buttons + form focus =====
+   The admin reuses the storefront `.btn` in ~70 modal/toolbar call sites.
+   Rather than churn every call site, normalise `.btn` to the compact flat
+   button here. `!important` is needed to beat per-store glass/pill overrides
+   (e.g. store4 forces `.btn { border-radius: 999px !important }`); the
+   `.admin-page` prefix keeps it from touching the storefront. */
+.admin-page .btn {
+  padding: 0.5rem 0.9rem !important;
+  font-size: 0.82rem !important; font-weight: 600 !important;
+  letter-spacing: normal !important; text-transform: none !important;
+  border-radius: var(--radius) !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease), color 0.15s var(--ease) !important;
+}
+.admin-page .btn::after { display: none !important; }
+.admin-page .btn-primary {
+  background: var(--copper) !important; color: #fff !important; border: 1px solid transparent !important;
+}
+.admin-page .btn-primary:hover {
+  background: var(--copper-dark) !important; transform: none !important; box-shadow: none !important;
+}
+.admin-page .btn-secondary {
+  background: var(--bg-card) !important; color: var(--text) !important; border: 1px solid var(--border) !important;
+}
+.admin-page .btn-secondary:hover {
+  background: var(--bg-warm) !important; border-color: var(--copper-light) !important; color: var(--copper) !important;
+}
+.admin-page .btn:disabled { opacity: 0.5 !important; transform: none !important; }
+
+/* Indigo focus ring on admin form fields (replaces the hardcoded copper ring) */
+.admin-page .form-group input:focus,
+.admin-page .form-group textarea:focus,
+.admin-page .form-group select:focus {
+  border-color: var(--copper);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+
 /* ===== EMPTY STATE ===== */
 .empty-state {
   text-align: center; padding: 6rem 2rem;
