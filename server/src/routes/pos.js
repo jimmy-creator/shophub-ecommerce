@@ -168,7 +168,7 @@ router.get('/sales/:id/receipt', protectCashier, async (req, res) => {
       return res.status(403).json({ message: 'Sale is not in your current shift' });
     }
     const location = order.locationId
-      ? await Location.findByPk(order.locationId, { attributes: ['id', 'name', 'code', 'address', 'phone'] })
+      ? await Location.findByPk(order.locationId, { attributes: ['id', 'name', 'nameAr', 'code', 'address', 'addressAr', 'phone']})
       : null;
     // Use the cashier from the session, not the actor on each row.
     let cashier = { id: req.user.id, name: req.user.name };
@@ -976,7 +976,7 @@ router.post('/sale', protectCashier, async (req, res) => {
     for (const pid of productIds) await recomputeProductStock(pid);
 
     const location = await Location.findByPk(req.cashierLocationId, {
-      attributes: ['id', 'name', 'code', 'address', 'phone'],
+      attributes: ['id', 'name', 'nameAr', 'code', 'address', 'addressAr', 'phone'],
     });
 
     res.status(201).json({

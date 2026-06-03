@@ -14,6 +14,7 @@
  */
 import JsBarcode from 'jsbarcode';
 import arabicFontUrl from '../assets/fonts/NotoSansArabic.ttf?url';
+import api from '../api/axios';
 
 const W = 576;          // 80mm printable width in dots @ 203dpi
 const PAD = 18;
@@ -46,6 +47,20 @@ const DEFAULT_STORE = {
   // NOTE: transcribed from the sample receipt — confirm/edit before go-live.
   policyAr: 'يسعدنا أن نقدم لكم المساعدة في استبدال أو استرجاع غير المستخدمة في معرضنا خلال خمسة عشر يوماً بشرط تقديم الفاتورة الأصلية وتكون السلع في حالتها الأصلية وأن لا تكون ملابس داخلية',
 };
+
+// Brand-level receipt config (Arabic name, tel, thanks, policy) from admin
+// Settings. Fetched once and cached; empty fields fall through to defaults.
+let storeCfgPromise = null;
+function loadStoreConfig() {
+  if (!storeCfgPromise) {
+    storeCfgPromise = api.get('/settings/receipt')
+      .then(({ data }) => Object.fromEntries(
+        Object.entries(data || {}).filter(([, v]) => v !== '' && v != null),
+      ))
+      .catch(() => ({}));
+  }
+  return storeCfgPromise;
+}
 
 let fontPromise = null;
 async function ensureFont() {
@@ -83,7 +98,7 @@ const methodLabel = (pm) => pm === 'pos_cash' || pm === 'cash' ? 'Cash'
  */
 export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   await ensureFont();
-  const cfg = { ...DEFAULT_STORE, ...(store || {}) };
+  const cfg = { ...DEFAULT_STORE, ...(store || await loadStoreConfig()) };
   const { order, change, amountTendered, location, cashier } = payload;
   const items = order.items || [];
   const breakdown = Array.isArray(order.paymentBreakdown) ? order.paymentBreakdown : null;

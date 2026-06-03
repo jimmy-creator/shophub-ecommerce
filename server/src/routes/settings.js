@@ -175,4 +175,51 @@ router.put('/b2b-bank-details', protect, admin, requirePermission('settings'), a
   }
 });
 
+// ── POS receipt config ──────────────────────────────────────────
+// Brand-level bilingual receipt text + invoice numbering. Public GET so the
+// (cashier-authed) POS terminal can read it at print time; admin-only PUT.
+router.get('/receipt', async (req, res) => {
+  try {
+    const [cfgRow, prefixRow, startRow] = await Promise.all([
+      Setting.findByPk('receipt-config'),
+      Setting.findByPk('pos_invoice_prefix'),
+      Setting.findByPk('pos_invoice_start'),
+    ]);
+    let cfg = {};
+    try { cfg = cfgRow?.value ? JSON.parse(cfgRow.value) : {}; } catch { cfg = {}; }
+    res.json({
+      nameAr: cfg.nameAr || '',
+      tel: cfg.tel || '',
+      thanksEn: cfg.thanksEn || '',
+      policyAr: cfg.policyAr || '',
+      invoicePrefix: prefixRow?.value ?? '',
+      invoiceStart: startRow?.value ?? '',
+    });
+  } catch {
+    res.json({});
+  }
+});
+
+router.put('/receipt', protect, admin, requirePermission('settings'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cfg = {
+      nameAr: String(b.nameAr || '').trim(),
+      tel: String(b.tel || '').trim(),
+      thanksEn: String(b.thanksEn || '').trim(),
+      policyAr: String(b.policyAr || '').trim(),
+    };
+    await Setting.upsert({ key: 'receipt-config', value: JSON.stringify(cfg) });
+    if (b.invoicePrefix !== undefined) {
+      await Setting.upsert({ key: 'pos_invoice_prefix', value: String(b.invoicePrefix).trim() });
+    }
+    if (b.invoiceStart !== undefined && String(b.invoiceStart).trim() !== '') {
+      await Setting.upsert({ key: 'pos_invoice_start', value: String(parseInt(b.invoiceStart, 10) || 1) });
+    }
+    res.json({ ...cfg, invoicePrefix: b.invoicePrefix, invoiceStart: b.invoiceStart });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

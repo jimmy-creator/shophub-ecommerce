@@ -26,7 +26,7 @@ router.get('/', protect, admin, async (req, res) => {
 
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { name, code, type, address, phone, isOnlineDefault, sortOrder } = req.body;
+    const { name, nameAr, code, type, address, addressAr, phone, isOnlineDefault, sortOrder } = req.body;
     if (!name?.trim()) return res.status(400).json({ message: 'Name is required' });
 
     // If the new location wants to be the online default, unset any prior default.
@@ -35,9 +35,11 @@ router.post('/', protect, admin, async (req, res) => {
     }
     const loc = await Location.create({
       name: name.trim(),
+      nameAr: nameAr?.trim() || null,
       code: code?.trim() || null,
       type: type || 'store',
       address: address?.trim() || null,
+      addressAr: addressAr?.trim() || null,
       phone: phone?.trim() || null,
       isOnlineDefault: !!isOnlineDefault,
       sortOrder: parseInt(sortOrder, 10) || 0,
@@ -52,7 +54,7 @@ router.patch('/:id', protect, admin, async (req, res) => {
   try {
     const loc = await Location.findByPk(req.params.id);
     if (!loc) return res.status(404).json({ message: 'Location not found' });
-    const fields = ['name', 'code', 'type', 'address', 'phone', 'active', 'sortOrder'];
+    const fields = ['name', 'nameAr', 'code', 'type', 'address', 'addressAr', 'phone', 'active', 'sortOrder'];
     const updates = {};
     for (const f of fields) if (req.body[f] !== undefined) updates[f] = req.body[f];
     if (req.body.isOnlineDefault) {

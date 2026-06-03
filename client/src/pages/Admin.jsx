@@ -642,6 +642,75 @@ function B2BBankDetailsEditor() {
   );
 }
 
+function ReceiptSettingsEditor() {
+  const [cfg, setCfg] = useState({ nameAr: '', tel: '', thanksEn: '', policyAr: '', invoicePrefix: '', invoiceStart: '' });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.get('/settings/receipt').then((res) => setCfg((c) => ({ ...c, ...res.data }))).catch(() => {});
+  }, []);
+
+  const up = (k, v) => setCfg((c) => ({ ...c, [k]: v }));
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put('/settings/receipt', cfg);
+      toast.success('Receipt settings saved');
+    } catch {
+      toast.error('Failed to save receipt settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const taStyle = { width: '100%', padding: '0.85rem', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.88rem', fontFamily: 'inherit', background: 'var(--bg-warm)', resize: 'vertical' };
+
+  return (
+    <div style={{ marginTop: '3rem' }}>
+      <h3 style={{ fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '1rem' }}>
+        POS Receipt
+      </h3>
+      <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
+        Bilingual header/footer and invoice numbering for the in-store thermal receipt. The per-branch building &amp; city Arabic lines are set on each <strong>Location</strong>.
+      </p>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Store name (Arabic)</label>
+          <input dir="rtl" value={cfg.nameAr} onChange={(e) => up('nameAr', e.target.value)} placeholder="الأنفال للمستلزمات الرياضية" />
+        </div>
+        <div className="form-group">
+          <label>Telephone</label>
+          <input value={cfg.tel} onChange={(e) => up('tel', e.target.value)} placeholder="60035056" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label>Thank-you line (English)</label>
+        <input value={cfg.thanksEn} onChange={(e) => up('thanksEn', e.target.value)} placeholder="Thanks for shopping with us ....Visit Again!" />
+      </div>
+      <div className="form-group">
+        <label>Return policy (Arabic)</label>
+        <textarea dir="rtl" rows={3} value={cfg.policyAr} onChange={(e) => up('policyAr', e.target.value)} style={taStyle} />
+      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label>Invoice prefix</label>
+          <input value={cfg.invoicePrefix} onChange={(e) => up('invoicePrefix', e.target.value)} placeholder="INV-" />
+        </div>
+        <div className="form-group">
+          <label>Invoice start no.</label>
+          <input type="number" value={cfg.invoiceStart} onChange={(e) => up('invoiceStart', e.target.value)} placeholder="100" />
+        </div>
+      </div>
+      <p style={{ fontSize: '0.78rem', color: 'var(--text-light)', marginTop: '-0.5rem' }}>
+        Start number only applies before the first POS sale; once invoices exist the counter continues from the last one.
+      </p>
+      <button type="button" onClick={save} disabled={saving} className="btn btn-primary" style={{ marginTop: '0.75rem' }}>
+        {saving ? 'Saving…' : 'Save receipt settings'}
+      </button>
+    </div>
+  );
+}
+
 function AnnouncementEditor() {
   const [items, setItems] = useState([]);
   const [draft, setDraft] = useState('');
@@ -2841,6 +2910,10 @@ export default function Admin() {
                       <input value={locationForm.code || ''} onChange={(e) => setLocationForm({ ...locationForm, code: e.target.value })} placeholder="YAAL" maxLength={20} />
                     </div>
                   </div>
+                  <div className="form-group">
+                    <label>Name (Arabic) — building line on receipt</label>
+                    <input dir="rtl" value={locationForm.nameAr || ''} onChange={(e) => setLocationForm({ ...locationForm, nameAr: e.target.value })} placeholder="برج الاخضر" />
+                  </div>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Type</label>
@@ -2857,6 +2930,10 @@ export default function Admin() {
                   <div className="form-group">
                     <label>Address</label>
                     <input value={locationForm.address || ''} onChange={(e) => setLocationForm({ ...locationForm, address: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label>Address (Arabic) — city line on receipt</label>
+                    <input dir="rtl" value={locationForm.addressAr || ''} onChange={(e) => setLocationForm({ ...locationForm, addressAr: e.target.value })} placeholder="الفحيحيل، الكويت" />
                   </div>
                   <div className="form-group">
                     <label>Phone</label>
@@ -5202,6 +5279,9 @@ export default function Admin() {
 
             {/* B2B bank transfer details — included in quote emails on bank_transfer */}
             <B2BBankDetailsEditor />
+
+            {/* POS thermal receipt — bilingual header/footer + invoice numbering */}
+            {MULTILOC_ENABLED && <ReceiptSettingsEditor />}
           </div>
         )}
 
