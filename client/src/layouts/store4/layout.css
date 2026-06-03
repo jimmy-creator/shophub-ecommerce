@@ -4351,3 +4351,17 @@ body:has(.cart-page)::after {
     padding: 0.6rem 0.65rem;
   }
 }
+
+/* ── Admin → adopt the unified neutral SaaS theme (index.css `.admin-page`).
+   This layout themes the storefront with a glass aesthetic via generic
+   `table`/`th`/`td` `!important` rules, which leak into the admin tables.
+   Neutralise them inside `.admin-page` only (token values resolve to the
+   neutral admin palette) so the storefront glass theme stays untouched. ── */
+.admin-page table { border-color: var(--border) !important; }
+.admin-page th {
+  background: var(--bg-warm) !important;
+  border-color: var(--border-light) !important;
+  color: var(--text-secondary) !important;
+}
+.admin-page td { border-color: var(--border-light) !important; }
+.admin-page tr:hover td { background: var(--bg-warm) !important; }

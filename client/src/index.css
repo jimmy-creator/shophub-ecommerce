@@ -2442,11 +2442,51 @@ input, textarea, select { font-family: var(--font-body); }
 }
 
 /* ===== ADMIN ===== */
-.admin-page { padding: 3rem 0; }
+.admin-page {
+  padding: 3rem 0;
+  background: var(--bg);
+  min-height: 100vh;
+
+  /* ===== Phase 0 — neutral "flat SaaS" admin theme =====
+     Scoped overrides: redefining tokens here re-themes every descendant
+     that uses var(--…), including inline styles, without touching the
+     storefront. Hardcoded hex colors get migrated in later phases. */
+  --bg: #f6f7f9;
+  --bg-warm: #f1f3f6;
+  --bg-card: #ffffff;
+  --bg-dark: #1f2937;       /* slate — active nav, dark chips */
+  --bg-dark-warm: #111827;
+
+  --text: #111827;
+  --text-secondary: #6b7280;
+  --text-light: #9ca3af;
+  --text-inverse: #ffffff;
+
+  --border: #e5e7eb;
+  --border-light: #eef1f4;
+
+  /* accent: indigo replaces copper within the admin */
+  --copper: #4f46e5;
+  --copper-light: #6366f1;
+  --copper-dark: #4338ca;
+
+  --success: #16a34a;
+  --danger: #dc2626;
+  --warning: #d97706;
+  --info: #2563eb;
+
+  --radius: 8px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.05);
+  --shadow: 0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 4px 12px rgba(15,23,42,0.08);
+  --shadow-lg: 0 12px 32px rgba(15,23,42,0.12);
+}
 .admin-page h1 {
-  font-family: var(--font-display);
-  font-size: 2.2rem; font-weight: 500;
-  margin-bottom: 2rem; letter-spacing: -0.5px;
+  font-family: var(--font-body);
+  font-size: 1.75rem; font-weight: 700;
+  margin-bottom: 2rem; letter-spacing: -0.02em;
 }
 .admin-tabs {
   display: flex; gap: 0.25rem; margin-bottom: 2rem;
@@ -2596,15 +2636,103 @@ input, textarea, select { font-family: var(--font-body); }
   border-radius: var(--radius-lg);
   width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;
   border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-lg);
   animation: scaleIn 0.3s var(--ease-out);
 }
 .admin-form h3 {
-  font-family: var(--font-display);
-  margin-bottom: 2rem; font-size: 1.5rem; font-weight: 500;
+  font-family: var(--font-body);
+  margin-bottom: 2rem; font-size: 1.2rem; font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .form-actions { display: flex; gap: 0.75rem; margin-top: 2rem; }
 .checkbox-label { display: flex; align-items: center; gap: 0.5rem; padding-top: 1.5rem; }
 .checkbox-label input { accent-color: var(--copper); }
+
+/* ===== ADMIN — modern SaaS primitives (Phase 0) =====
+   Shared vocabulary to replace the ad-hoc inline styles (migrated in later
+   phases). All scoped to .admin-page so the storefront is untouched. */
+
+/* Buttons */
+.admin-page .admin-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 0.5rem 0.9rem; border-radius: var(--radius);
+  font-family: inherit; font-size: 0.82rem; font-weight: 600; line-height: 1;
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease),
+              color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.admin-page .admin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin-page .admin-btn.sm { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
+.admin-page .admin-btn.block { width: 100%; }
+.admin-page .admin-btn.primary { background: var(--copper); color: #fff; }
+.admin-page .admin-btn.primary:hover:not(:disabled) { background: var(--copper-dark); }
+.admin-page .admin-btn.secondary { background: var(--bg-card); color: var(--text); border-color: var(--border); }
+.admin-page .admin-btn.secondary:hover:not(:disabled) { border-color: var(--copper-light); color: var(--copper); }
+.admin-page .admin-btn.ghost { background: transparent; color: var(--text-secondary); }
+.admin-page .admin-btn.ghost:hover:not(:disabled) { background: var(--bg-warm); color: var(--text); }
+.admin-page .admin-btn.danger { background: var(--bg-card); color: var(--danger); border-color: rgba(220,38,38,0.25); }
+.admin-page .admin-btn.danger:hover:not(:disabled) { background: rgba(220,38,38,0.06); }
+.admin-page .admin-btn.danger-solid { background: var(--danger); color: #fff; }
+.admin-page .admin-btn.danger-solid:hover:not(:disabled) { filter: brightness(0.94); }
+
+/* Status pills / badges */
+.admin-page .badge {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.2rem 0.55rem; border-radius: 999px;
+  font-size: 0.7rem; font-weight: 600; line-height: 1.4;
+  text-transform: capitalize; letter-spacing: 0.2px; white-space: nowrap;
+}
+.admin-page .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.admin-page .badge.plain::before { display: none; }
+.admin-page .badge.success { background: rgba(22,163,74,0.10); color: #15803d; }
+.admin-page .badge.warning { background: rgba(217,119,6,0.12); color: #b45309; }
+.admin-page .badge.danger  { background: rgba(220,38,38,0.10); color: #b91c1c; }
+.admin-page .badge.info    { background: rgba(37,99,235,0.10); color: #1d4ed8; }
+.admin-page .badge.accent  { background: rgba(79,70,229,0.10); color: var(--copper-dark); }
+.admin-page .badge.neutral { background: var(--bg-warm); color: var(--text-secondary); }
+
+/* Inputs / fields */
+.admin-page .admin-input,
+.admin-page .admin-select,
+.admin-page .admin-textarea {
+  width: 100%; padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-card); color: var(--text);
+  font-family: inherit; font-size: 0.88rem;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.admin-page .admin-input:focus,
+.admin-page .admin-select:focus,
+.admin-page .admin-textarea:focus {
+  outline: none; border-color: var(--copper-light);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+.admin-page .admin-textarea { resize: vertical; min-height: 80px; }
+.admin-page .admin-field { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; min-width: 0; }
+.admin-page .admin-field > label {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-secondary);
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+.admin-page .admin-field .hint { font-size: 0.74rem; color: var(--text-light); }
+
+/* Content containers / toolbar */
+.admin-page .admin-panel {
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.admin-page .admin-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+.admin-page .admin-toolbar .spacer { flex: 1; }
+.admin-page .admin-section-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--text-light); margin-bottom: 0.6rem;
+}
+
+/* Table lift — softer card, subtle shadow on the neutral canvas */
+.admin-page .admin-table table { box-shadow: var(--shadow-sm); }
 
 /* ===== EMPTY STATE ===== */
 .empty-state {
