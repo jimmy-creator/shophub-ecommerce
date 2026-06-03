@@ -26,6 +26,7 @@ import CashTransfer from './CashTransfer.js';
 import ActivityLog from './ActivityLog.js';
 import StockCount from './StockCount.js';
 import StockCountLine from './StockCountLine.js';
+import Counter from './Counter.js';
 
 // ── Existing associations ────────────────────────────────────────
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -198,6 +199,7 @@ export {
   CashAccount, CashTransaction, ExpenseCategory, Expense, CashTransfer,
   ActivityLog,
   StockCount, StockCountLine,
+  Counter,
 };
 
 // ── Activity log + manager-override helpers ─────────────────────

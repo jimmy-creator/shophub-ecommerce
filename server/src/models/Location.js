@@ -19,6 +19,11 @@ const Location = sequelize.define('Location', {
     allowNull: false,
     unique: true,
   },
+  nameAr: {
+    // Arabic branch/building name for bilingual receipts (e.g. "برج الاخضر")
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   code: {
     // Short code for receipts / labels (e.g. "YAAL", "BR2")
     type: DataTypes.STRING(20),
@@ -30,6 +35,11 @@ const Location = sequelize.define('Location', {
     defaultValue: 'store',
   },
   address: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  addressAr: {
+    // Arabic city/area line for bilingual receipts (e.g. "الفحيحيل، الكويت")
     type: DataTypes.STRING,
     allowNull: true,
   },

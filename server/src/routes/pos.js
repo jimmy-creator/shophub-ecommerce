@@ -24,12 +24,9 @@ import {
 const DISCOUNT_PCT_THRESHOLD = 15;     // percent
 const REFUND_AMOUNT_THRESHOLD = 50;    // currency units (KWD)
 import { protectCashier } from '../middleware/auth.js';
+import { nextInvoiceNumber } from '../services/invoiceSequence.js';
 
 const router = Router();
-
-function genOrderNumber() {
-  return `POS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-}
 
 // ─── Search products for the cart panel ────────────────────────────
 // Optimised for a barcode-scanner workflow: tries an exact code/SKU
@@ -852,7 +849,7 @@ router.post('/sale', protectCashier, async (req, res) => {
     const totalDiscount = +(manualOff + couponOff).toFixed(3);
     const totalAmount = +(Math.max(0, subTotal - totalDiscount)).toFixed(3);
 
-    const orderNumber = genOrderNumber();
+    const orderNumber = await nextInvoiceNumber(t);
 
     // Resolve tenders. Single-tender back-compat: amount comes from the
     // legacy `amountTendered` field (any overage is the cash change).
