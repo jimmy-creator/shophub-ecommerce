@@ -186,7 +186,7 @@ async function buildSale(payload) {
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
   const canvas = await renderSaleReceiptCanvas(payload);
   enc.initialize()
-    .image(canvas, canvas.width, canvas.height, 'threshold', 170)
+    .image(canvas, canvas.width, canvas.height, 'threshold', 180)
     .newline()
     .cut('partial');
   return enc.encode();

@@ -198,7 +198,7 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   let y = PAD;
 
   const setFont = (size, weight = 'normal') => { ctx.font = `${weight} ${size}px '${AR_FONT}', Arial, sans-serif`; };
-  const text = (str, { align = 'left', size = 19, weight = 'normal', gap = 6, x } = {}) => {
+  const text = (str, { align = 'left', size = 19, weight = '600', gap = 6, x } = {}) => {
     setFont(size, weight);
     ctx.textAlign = align;
     const px = x != null ? x : align === 'center' ? W / 2 : align === 'right' ? R : L;
@@ -206,7 +206,7 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
     y += size + gap;
   };
   const rule = (thick = 2, before = 6, after = 8) => { y += before; ctx.fillRect(L, y, CW, thick); y += thick + after; };
-  const cellRight = (str, rightX, size, weight = 'normal') => {
+  const cellRight = (str, rightX, size, weight = '600') => {
     setFont(size, weight);
     ctx.textAlign = 'right';
     ctx.fillText(str, rightX, y);
