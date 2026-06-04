@@ -807,26 +807,33 @@ export default function Pos() {
       <style>{`
         /* ── Palette (dark = default) ───────────── */
         .pos-app {
-          --pos-bg: #0a0f1e;
-          --pos-surface: #131a2e;
-          --pos-elevated: #1a2340;
-          --pos-border: rgba(255,255,255,0.06);
-          --pos-border-strong: rgba(255,255,255,0.12);
-          --pos-text: #f3f4f6;
-          --pos-text-2: #94a3b8;
-          --pos-text-3: #64748b;
-          --pos-accent: #d97757;       /* warmer copper */
-          --pos-accent-soft: rgba(217,119,87,0.12);
-          --pos-success: #34d399;
-          --pos-card: #2563eb;
+          --pos-bg: #090d16;
+          --pos-surface: #121826;
+          --pos-elevated: #1b2333;
+          --pos-border: rgba(255,255,255,0.07);
+          --pos-border-strong: rgba(255,255,255,0.14);
+          --pos-text: #f4f7fb;
+          --pos-text-2: #98a6bd;
+          --pos-text-3: #5d6a82;
+          --pos-accent: #ff7a45;       /* vivid copper-orange */
+          --pos-accent-2: #ff9d54;     /* gradient partner */
+          --pos-accent-soft: rgba(255,122,69,0.14);
+          --pos-success: #2dd4a4;
+          --pos-card: #4f7cff;
+          --pos-knet: #8b5cf6;
           --pos-warn: #fbbf24;
-          --pos-danger: #ef4444;
+          --pos-danger: #fb5e6d;
           /* modal/component roles (used by the inline-styled Pos* dialogs) */
-          --pos-panel: #1e293b;        /* modal & card surface */
-          --pos-line: #334155;         /* borders, dividers, inactive chips */
-          --pos-line-2: #475569;       /* stronger border */
-          --pos-label: #cbd5e1;        /* form labels / secondary text */
-          --pos-on-accent: #fff;       /* text on accent/active fills */
+          --pos-panel: #141b2a;        /* modal & card surface */
+          --pos-line: #28324a;         /* borders, dividers, inactive chips */
+          --pos-line-2: #3a4763;       /* stronger border */
+          --pos-label: #c4cee0;        /* form labels / secondary text */
+          --pos-on-accent: #fff;       /* text on accent/card/knet fills */
+          /* depth + motion */
+          --pos-accent-grad: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-2));
+          --pos-shadow-1: 0 1px 2px rgba(0,0,0,0.35);
+          --pos-shadow-2: 0 10px 30px -10px rgba(0,0,0,0.55);
+          --pos-ease: cubic-bezier(0.4, 0, 0.2, 1);
 
           min-height: 100vh; background: var(--pos-bg); color: var(--pos-text);
           display: grid;
@@ -839,25 +846,29 @@ export default function Pos() {
 
         /* ── Light theme override ───────────────── */
         .pos-app.pos-light {
-          --pos-bg: #eef2f7;
+          --pos-bg: #f3f6fb;
           --pos-surface: #ffffff;
-          --pos-elevated: #f1f5f9;
-          --pos-border: rgba(15,23,42,0.10);
-          --pos-border-strong: rgba(15,23,42,0.18);
+          --pos-elevated: #eef2f8;
+          --pos-border: rgba(15,23,42,0.09);
+          --pos-border-strong: rgba(15,23,42,0.16);
           --pos-text: #0f172a;
           --pos-text-2: #475569;
           --pos-text-3: #94a3b8;
-          --pos-accent: #c4784a;
-          --pos-accent-soft: rgba(196,120,74,0.14);
-          --pos-success: #059669;
-          --pos-card: #2563eb;
+          --pos-accent: #f2683c;
+          --pos-accent-2: #ff9b4d;
+          --pos-accent-soft: rgba(242,104,60,0.12);
+          --pos-success: #10b981;
+          --pos-card: #3b6cf6;
+          --pos-knet: #7c3aed;
           --pos-warn: #b45309;
-          --pos-danger: #dc2626;
+          --pos-danger: #ef4444;
           --pos-panel: #ffffff;
-          --pos-line: #e2e8f0;
-          --pos-line-2: #cbd5e1;
+          --pos-line: #e6ebf2;
+          --pos-line-2: #cdd6e3;
           --pos-label: #334155;
           --pos-on-accent: #fff;
+          --pos-shadow-1: 0 1px 2px rgba(15,23,42,0.06);
+          --pos-shadow-2: 0 12px 32px -12px rgba(15,23,42,0.18);
         }
         /* Lift modal/panel surfaces off a white background with a soft shadow */
         .pos-app.pos-light .modal,
@@ -872,9 +883,10 @@ export default function Pos() {
           gap: 4px; padding: 12px 6px;
         }
         .rail-brand {
-          width: 44px; height: 44px; border-radius: 12px;
-          background: linear-gradient(135deg, var(--pos-accent), var(--pos-accent));
-          color: var(--pos-on-accent); display: grid; place-items: center;
+          width: 44px; height: 44px; border-radius: 13px;
+          background: var(--pos-accent-grad);
+          box-shadow: 0 6px 16px -4px var(--pos-accent-soft), var(--pos-shadow-1);
+          color: #fff; display: grid; place-items: center;
           font-weight: 700; font-size: 18px; letter-spacing: -0.5px;
           margin-bottom: 8px;
         }
@@ -1008,17 +1020,21 @@ export default function Pos() {
           display: flex; justify-content: space-between; align-items: center;
           background: var(--pos-surface);
           border: 1px solid var(--pos-border);
-          border-radius: 12px;
+          border-radius: 13px;
           padding: 0.9rem 1.1rem; cursor: pointer; text-align: left;
           font-family: inherit; color: var(--pos-text);
-          transition: transform .12s ease, border-color .12s ease, background .12s ease;
+          box-shadow: var(--pos-shadow-1);
+          transition: transform .14s var(--pos-ease), border-color .14s var(--pos-ease),
+                      background .14s var(--pos-ease), box-shadow .14s var(--pos-ease);
         }
         .result-item:hover:not(:disabled),
         .result-item.is-highlighted:not(:disabled) {
           background: var(--pos-elevated);
           border-color: var(--pos-accent);
-          transform: translateX(2px);
+          transform: translateY(-2px);
+          box-shadow: var(--pos-shadow-2);
         }
+        .result-item:active:not(:disabled) { transform: scale(0.98); }
         .result-item:disabled { opacity: 0.4; cursor: not-allowed; }
         .result-name { font-size: 0.95rem; font-weight: 500; }
         .result-meta { display: flex; gap: 0.5rem; font-size: 0.72rem; margin-top: 0.3rem; align-items: center; flex-wrap: wrap; }
@@ -1108,13 +1124,15 @@ export default function Pos() {
           font-size: 1.05rem; font-weight: 700;
           color: var(--pos-on-accent); cursor: pointer; font-family: inherit;
           display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-          transition: transform .12s ease, filter .12s ease;
+          box-shadow: var(--pos-shadow-2);
+          transition: transform .12s var(--pos-ease), filter .12s var(--pos-ease), box-shadow .12s var(--pos-ease);
         }
-        .pay-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .pay-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
-        .pay-btn-cash { background: var(--pos-success); color: #052e23; }
+        .pay-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+        .pay-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); }
+        .pay-btn:active:not(:disabled) { transform: scale(0.97); }
+        .pay-btn-cash { background: var(--pos-success); color: #04261d; }
         .pay-btn-card { background: var(--pos-card); }
-        .pay-btn-knet { background: #7c3aed; }    /* purple — distinct from card blue */
+        .pay-btn-knet { background: var(--pos-knet); }    /* violet — distinct from card blue */
         .split-link {
           display: block; width: 100%; margin-top: 0.6rem;
           padding: 0.5rem;
@@ -1126,12 +1144,16 @@ export default function Pos() {
         .split-link:disabled { opacity: 0.3; cursor: not-allowed; }
 
         .modal-backdrop {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100;
+          position: fixed; inset: 0; background: rgba(5,8,15,0.62); z-index: 100;
+          backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
           display: grid; place-items: center; padding: 1rem;
+          animation: pos-fade .18s var(--pos-ease);
         }
         .modal {
-          background: var(--pos-panel); border: 1px solid var(--pos-line); border-radius: 14px;
+          background: var(--pos-panel); border: 1px solid var(--pos-border-strong); border-radius: 16px;
           padding: 1.5rem; max-width: 480px; width: 100%;
+          box-shadow: var(--pos-shadow-2);
+          animation: pos-modal-in .22s var(--pos-ease);
         }
         .modal h3 { margin: 0 0 1rem; color: var(--pos-text); }
         .pay-total { font-size: 2rem; font-weight: 700; color: var(--pos-accent); text-align: center; margin: 0.5rem 0 1rem; }
@@ -1168,6 +1190,29 @@ export default function Pos() {
         }
         .variant-btn:hover:not(:disabled) { background: var(--pos-line); border-color: var(--pos-accent); }
         .variant-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── Phase 0: depth + motion ────────────── */
+        .search-bar:focus-within {
+          border-color: var(--pos-accent);
+          box-shadow: 0 0 0 3px var(--pos-accent-soft);
+        }
+        .rail-btn, .quick-tabs button, .variant-btn, .modal-btn,
+        .cart-line-controls button, .discount-btn, .pay-btn, .result-item {
+          will-change: transform;
+        }
+        .rail-btn:active, .quick-tabs button:active:not(:disabled),
+        .variant-btn:active:not(:disabled), .modal-btn:active:not(:disabled),
+        .cart-line-controls button:active, .discount-btn:active:not(:disabled) {
+          transform: scale(0.95);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pos-app *, .modal, .modal-backdrop { animation: none !important; transition: none !important; }
+        }
+        @keyframes pos-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pos-modal-in {
+          from { opacity: 0; transform: translateY(8px) scale(0.98); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
       `}</style>
     </div>
   );
