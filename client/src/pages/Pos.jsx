@@ -375,6 +375,17 @@ export default function Pos() {
 
   const fmt = (n) => `${CURRENCY} ${(parseFloat(n) || 0).toFixed(3)}`;
   const cashChange = payOpen === 'cash' && tendered ? +(parseFloat(tendered) - total).toFixed(3) : 0;
+  const cashShort = payOpen === 'cash' && parseFloat(tendered || 0) < total;
+
+  // On-screen numpad for the cash tender field.
+  const tenderKey = (k) => setTendered((t) => {
+    if (k === 'back') return t.slice(0, -1);
+    if (k === '.') return t.includes('.') ? t : `${t || '0'}.`;
+    if (k === '0' && t === '0') return t;
+    const next = `${t === '0' ? '' : t}${k}`;
+    if (next.includes('.') && next.split('.')[1].length > 3) return t;   // KWD = 3 decimals
+    return next;
+  });
 
   return (
     <div className={`pos-app${theme === 'light' ? ' pos-light' : ''}`}>
@@ -606,7 +617,7 @@ export default function Pos() {
           <div className="pay-buttons">
             <button
               disabled={cart.length === 0}
-              onClick={() => { setPayOpen('cash'); setTendered(total.toFixed(3)); }}
+              onClick={() => { setPayOpen('cash'); setTendered(''); }}
               className="pay-btn pay-btn-cash">
               <HiCash size={22} /> Cash
             </button>
@@ -671,20 +682,23 @@ export default function Pos() {
             <div className="pay-total">{fmt(total)}</div>
             {payOpen === 'cash' && (
               <>
-                <label className="modal-label">Amount tendered (<CurrencySymbol />)</label>
-                <input
-                  type="number" step="0.001" min={total}
-                  value={tendered}
-                  onChange={(e) => setTendered(e.target.value)}
-                  className="modal-input"
-                  autoFocus
-                />
-                <div className="pay-change">
-                  Change: <strong>{fmt(Math.max(0, cashChange))}</strong>
+                <div className="pay-amount-display">
+                  <span className="pay-amount-label">Tendered</span>
+                  <span className="pay-amount-value"><CurrencySymbol /> {tendered || '0'}</span>
+                </div>
+                <div className={`pay-change ${cashShort ? 'is-short' : ''}`}>
+                  {cashShort ? 'Short by' : 'Change'} <strong>{fmt(Math.abs(cashChange))}</strong>
                 </div>
                 <div className="quick-cash">
-                  {[total, Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10].map((v, i) => (
-                    <button key={i} onClick={() => setTendered(v.toFixed(3))}>{fmt(v)}</button>
+                  {[...new Set([total, Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10])].map((v, i) => (
+                    <button key={i} className={parseFloat(tendered || 0) === v ? 'is-active' : ''} onClick={() => setTendered(v.toFixed(3))}>{v.toFixed(3)}</button>
+                  ))}
+                </div>
+                <div className="numpad">
+                  {['7', '8', '9', '4', '5', '6', '1', '2', '3', '.', '0', 'back'].map((k) => (
+                    <button key={k} type="button" className={`numpad-key${k === 'back' ? ' numpad-back' : ''}`} onClick={() => tenderKey(k)}>
+                      {k === 'back' ? '⌫' : k}
+                    </button>
                   ))}
                 </div>
               </>
@@ -698,7 +712,7 @@ export default function Pos() {
               <button onClick={() => setPayOpen(null)} disabled={submitting} className="modal-btn modal-btn-secondary">Cancel</button>
               <button
                 onClick={submitSale}
-                disabled={submitting || (payOpen === 'cash' && cashChange < 0)}
+                disabled={submitting || cashShort}
                 className="modal-btn modal-btn-primary">
                 {submitting ? 'Processing…' : 'Confirm'}
               </button>
@@ -1242,14 +1256,36 @@ export default function Pos() {
           width: 100%; padding: 0.75rem 1rem; background: var(--pos-bg); border: 1px solid var(--pos-line);
           color: var(--pos-text); border-radius: 8px; font-size: 1.1rem; font-family: inherit;
         }
-        .pay-change { margin-top: 0.75rem; font-size: 1.1rem; text-align: center; color: var(--pos-label); }
-        .pay-change strong { color: var(--pos-success); }
-        .quick-cash { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.75rem; }
+        .pay-amount-display {
+          display: flex; justify-content: space-between; align-items: baseline;
+          padding: 0.7rem 1rem; background: var(--pos-bg); border: 1px solid var(--pos-line);
+          border-radius: 12px; margin-bottom: 0.6rem;
+        }
+        .pay-amount-label { font-size: 0.8rem; color: var(--pos-text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+        .pay-amount-value { font-size: 1.65rem; font-weight: 700; color: var(--pos-text); font-variant-numeric: tabular-nums; }
+        .pay-change { font-size: 1.05rem; text-align: center; color: var(--pos-text-2); margin-bottom: 0.4rem; }
+        .pay-change strong { color: var(--pos-success); font-size: 1.15rem; }
+        .pay-change.is-short { color: var(--pos-danger); }
+        .pay-change.is-short strong { color: var(--pos-danger); }
+        .quick-cash { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.4rem; }
         .quick-cash button {
-          padding: 0.6rem 0.3rem; background: var(--pos-bg); border: 1px solid var(--pos-line);
-          color: var(--pos-label); border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem;
+          padding: 0.55rem 0.3rem; background: var(--pos-elevated); border: 1px solid var(--pos-line);
+          color: var(--pos-label); border-radius: 8px; cursor: pointer; font-family: inherit;
+          font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums;
+          transition: background .1s var(--pos-ease), border-color .1s var(--pos-ease);
         }
         .quick-cash button:hover { background: var(--pos-line); }
+        .quick-cash button.is-active { border-color: var(--pos-accent); color: var(--pos-accent); background: var(--pos-accent-soft); }
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 0.75rem; }
+        .numpad-key {
+          padding: 0.95rem 0; font-size: 1.4rem; font-weight: 600;
+          background: var(--pos-elevated); border: 1px solid var(--pos-line);
+          color: var(--pos-text); border-radius: 12px; cursor: pointer; font-family: inherit;
+          transition: background .1s var(--pos-ease), transform .08s var(--pos-ease);
+        }
+        .numpad-key:hover { background: var(--pos-line); }
+        .numpad-key:active { transform: scale(0.94); background: var(--pos-accent-soft); color: var(--pos-accent); }
+        .numpad-back { color: var(--pos-text-2); }
 
         .modal-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; }
         .modal-btn {
