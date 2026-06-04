@@ -189,6 +189,8 @@ export default function Pos() {
         price: item.price,
         quantity: 1,
         stockAtLocation: item.stockAtLocation,
+        image: item.image || null,
+        category: item.category || null,
       }];
     });
     setQuery('');
@@ -206,6 +208,8 @@ export default function Pos() {
       code: v.sku,
       price: parseFloat(v.price ?? variantPicker.price) || 0,
       stockAtLocation: v.stockAtLocation || 0,
+      image: variantPicker.image || null,
+      category: variantPicker.category || null,
       hasVariants: false,
     });
   };
@@ -472,6 +476,7 @@ export default function Pos() {
                   disabled={!r.hasVariants && r.stockAtLocation < 1}
                   ref={i === highlightIdx ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
                 >
+                  <div className="result-thumb"><ProductImage product={{ images: r.image ? [r.image] : [], category: r.category }} size="normal" /></div>
                   <div className="result-main">
                     <div className="result-name">{r.name}</div>
                     <div className="result-meta">
@@ -553,6 +558,7 @@ export default function Pos() {
             {cart.length === 0 && <div className="cart-empty">No items yet</div>}
             {cart.map((c, i) => (
               <div key={i} className="cart-line">
+                <div className="cart-thumb"><ProductImage product={{ images: c.image ? [c.image] : [], category: c.category }} size="normal" /></div>
                 <div className="cart-line-info">
                   <div className="cart-line-name">{c.name}</div>
                   <div className="cart-line-price">{fmt(c.price)} ea</div>
@@ -1081,7 +1087,7 @@ export default function Pos() {
         .stock-dot-pill.stock-ok { color: var(--pos-success); background: rgba(45,212,164,0.13); }
         .stock-dot-pill.stock-out { color: var(--pos-danger); background: rgba(251,94,109,0.13); }
         .result-item {
-          display: flex; justify-content: space-between; align-items: center;
+          display: flex; justify-content: space-between; align-items: center; gap: 12px;
           background: var(--pos-surface);
           border: 1px solid var(--pos-border);
           border-radius: 13px;
@@ -1100,6 +1106,11 @@ export default function Pos() {
         }
         .result-item:active:not(:disabled) { transform: scale(0.98); }
         .result-item:disabled { opacity: 0.4; cursor: not-allowed; }
+        .result-thumb {
+          width: 46px; height: 46px; flex-shrink: 0;
+          border-radius: 10px; overflow: hidden; background: var(--pos-elevated);
+        }
+        .result-main { flex: 1; min-width: 0; }
         .result-name { font-size: 0.95rem; font-weight: 500; }
         .result-meta { display: flex; gap: 0.5rem; font-size: 0.72rem; margin-top: 0.3rem; align-items: center; flex-wrap: wrap; }
         .result-sku { color: var(--pos-text-3); font-family: 'SF Mono', monospace; font-size: 0.7rem; }
@@ -1126,11 +1137,16 @@ export default function Pos() {
         .cart-list { flex: 1; overflow-y: auto; min-height: 100px; margin: 0 -0.25rem; padding: 0 0.25rem; }
         .cart-empty { padding: 3rem 0; text-align: center; color: var(--pos-text-3); font-size: 0.85rem; }
         .cart-line {
-          display: grid; grid-template-columns: 1fr auto auto; gap: 0.6rem;
+          display: grid; grid-template-columns: 40px 1fr auto auto; gap: 0.6rem;
           align-items: center; padding: 0.7rem 0;
           border-bottom: 1px solid var(--pos-border);
         }
         .cart-line:last-child { border-bottom: none; }
+        .cart-thumb {
+          width: 40px; height: 40px; border-radius: 9px;
+          overflow: hidden; background: var(--pos-elevated);
+        }
+        .cart-line-info { min-width: 0; }
         .cart-line-name { font-size: 0.88rem; font-weight: 500; line-height: 1.25; }
         .cart-line-price { font-size: 0.72rem; color: var(--pos-text-2); margin-top: 2px; }
         .cart-line-controls { display: flex; align-items: center; gap: 4px; }
