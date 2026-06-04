@@ -40,6 +40,23 @@ function issueToken(payload) {
 }
 
 // ─── Public picker for the POS login page ──────────────────────────
+// Active locations for the terminal's store picker. Public (the terminal
+// isn't authenticated yet) and lists EVERY active store — not just those
+// that happen to be a cashier's home location, so an admin-added branch
+// (e.g. a second store) is immediately selectable.
+router.get('/locations', async (req, res) => {
+  try {
+    const rows = await Location.findAll({
+      where: { active: true },
+      attributes: ['id', 'name', 'code'],
+      order: [['sortOrder', 'ASC'], ['id', 'ASC']],
+    });
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 router.get('/cashiers', async (req, res) => {
   try {
     const where = { role: 'cashier' };

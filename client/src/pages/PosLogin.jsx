@@ -36,12 +36,14 @@ export default function PosLogin() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/locations').catch(() => api.get('/cashier/cashiers').then(() => ({ data: [] }))),
+      // Public POS endpoint that lists EVERY active store (admin /locations is
+      // auth-gated and can't be read by the unauthenticated terminal).
+      api.get('/cashier/locations').catch(() => ({ data: [] })),
       api.get('/cashier/cashiers'),
     ]).then(([locRes, cashRes]) => {
-      // /api/locations is admin-protected so an unauth'd POS terminal can't list them.
-      // Fallback: derive locations from the cashiers' homeLocation field.
       let locs = Array.isArray(locRes?.data) ? locRes.data : [];
+      // Fallback for older servers without /cashier/locations: derive the
+      // pickable stores from the cashiers' homeLocation field.
       if (locs.length === 0) {
         const seen = new Map();
         for (const c of cashRes.data) {
