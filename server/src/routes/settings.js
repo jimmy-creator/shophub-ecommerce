@@ -189,6 +189,7 @@ router.get('/receipt', async (req, res) => {
     try { cfg = cfgRow?.value ? JSON.parse(cfgRow.value) : {}; } catch { cfg = {}; }
     res.json({
       nameAr: cfg.nameAr || '',
+      logoUrl: cfg.logoUrl || '',
       tel: cfg.tel || '',
       thanksEn: cfg.thanksEn || '',
       policyAr: cfg.policyAr || '',
@@ -205,6 +206,7 @@ router.put('/receipt', protect, admin, requirePermission('settings'), async (req
     const b = req.body || {};
     const cfg = {
       nameAr: String(b.nameAr || '').trim(),
+      logoUrl: String(b.logoUrl || '').trim(),
       tel: String(b.tel || '').trim(),
       thanksEn: String(b.thanksEn || '').trim(),
       policyAr: String(b.policyAr || '').trim(),

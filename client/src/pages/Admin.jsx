@@ -643,7 +643,7 @@ function B2BBankDetailsEditor() {
 }
 
 function ReceiptSettingsEditor() {
-  const [cfg, setCfg] = useState({ nameAr: '', tel: '', thanksEn: '', policyAr: '', invoicePrefix: '', invoiceStart: '' });
+  const [cfg, setCfg] = useState({ nameAr: '', logoUrl: '', tel: '', thanksEn: '', policyAr: '', invoicePrefix: '', invoiceStart: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -682,6 +682,10 @@ function ReceiptSettingsEditor() {
           <label>Telephone</label>
           <input value={cfg.tel} onChange={(e) => up('tel', e.target.value)} placeholder="60035056" />
         </div>
+      </div>
+      <div className="form-group">
+        <label>Logo URL (printed at the top)</label>
+        <input value={cfg.logoUrl} onChange={(e) => up('logoUrl', e.target.value)} placeholder="/images/anfal-logo.png" />
       </div>
       <div className="form-group">
         <label>Thank-you line (English)</label>

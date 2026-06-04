@@ -42,6 +42,7 @@ const LBL = {
 const DEFAULT_STORE = {
   name: 'ANFAL SPORTS',
   nameAr: 'الأنفال للمستلزمات الرياضية',
+  logoUrl: '/images/anfal-logo.png',
   tel: '60035056',
   thanksEn: 'Thanks for shopping with us ....Visit Again!',
   // NOTE: transcribed from the sample receipt — confirm/edit before go-live.
@@ -74,6 +75,17 @@ async function ensureFont() {
 }
 
 const money = (n) => (parseFloat(n) || 0).toFixed(3);
+
+// Load an image for the canvas; resolves null on error so a missing/broken
+// logo just falls back to the text wordmark.
+function loadImage(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
 
 // Wrap a value in an LTR isolate (U+2066…U+2069) so Latin/numeric text keeps
 // its order when it sits next to an Arabic (RTL) label on the same line.
@@ -139,7 +151,17 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   };
 
   // ── Header ──────────────────────────────────────────────────────
-  text(cfg.name, { align: 'center', size: 34, weight: 'bold', gap: 4 });
+  const logo = cfg.logoUrl ? await loadImage(cfg.logoUrl) : null;
+  if (logo && logo.naturalWidth) {
+    const maxW = CW * 0.7, maxH = 150;
+    const scale = Math.min(maxW / logo.naturalWidth, maxH / logo.naturalHeight);
+    const lw = Math.round(logo.naturalWidth * scale);
+    const lh = Math.round(logo.naturalHeight * scale);
+    ctx.drawImage(logo, Math.round((W - lw) / 2), y, lw, lh);
+    y += lh + 8;
+  } else {
+    text(cfg.name, { align: 'center', size: 34, weight: 'bold', gap: 4 });
+  }
   text(cfg.nameAr, { align: 'center', size: 23, weight: 'bold', gap: 8 });
   const building = [location?.name && ltr(location.name), location?.nameAr].filter(Boolean).join(' ');
   const city = [location?.address && ltr(location.address), location?.addressAr].filter(Boolean).join(' ');
