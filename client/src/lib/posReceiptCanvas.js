@@ -119,13 +119,20 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   const discount = parseFloat(order.discount) || 0;
   const totalQty = items.reduce((s, it) => s + (parseInt(it.quantity, 10) || 0), 0);
 
-  // Draw on a tall scratch canvas, track the final y, then crop.
+  // Draw on a tall scratch canvas at SS× resolution, then downscale to the
+  // printer's native width before the ESC/POS threshold. Supersampling gives
+  // smoother glyph/Arabic edges and lets faint logo lines average to white
+  // instead of binarising into speckle.
+  const SS = 2;
   const scratch = document.createElement('canvas');
-  scratch.width = W;
-  scratch.height = 2400;
+  scratch.width = W * SS;
+  scratch.height = 2400 * SS;
   const ctx = scratch.getContext('2d');
   ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, W, scratch.height);
+  ctx.fillRect(0, 0, scratch.width, scratch.height);
+  ctx.scale(SS, SS);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   ctx.fillStyle = '#000';
   ctx.textBaseline = 'top';
   ctx.direction = 'ltr';
@@ -257,13 +264,15 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   // ── Barcode (Code-39 of invoice no.) ────────────────────────────
   try {
     const bc = document.createElement('canvas');
+    // Render the barcode at SS resolution so it stays crisp (bars are 1:1
+    // with the supersampled pixels — no interpolation blur on the edges).
     JsBarcode(bc, String(order.orderNumber), {
-      format: 'CODE39', displayValue: false, height: 70, width: 2, margin: 0, background: '#fff', lineColor: '#000',
+      format: 'CODE39', displayValue: false, height: 70 * SS, width: 2 * SS, margin: 0, background: '#fff', lineColor: '#000',
     });
-    const bw = Math.min(CW, bc.width);
+    const bw = Math.min(CW, bc.width / SS);
     const bx = (W - bw) / 2;
-    ctx.drawImage(bc, bx, y, bw, bc.height);
-    y += bc.height + 4;
+    ctx.drawImage(bc, bx, y, bw, bc.height / SS);
+    y += bc.height / SS + 4;
   } catch { /* invalid chars — skip barcode */ }
   text(`*${order.orderNumber}*`, { align: 'center', size: 20, weight: 'bold', gap: 10 });
 
@@ -282,7 +291,9 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   const octx = out.getContext('2d');
   octx.fillStyle = '#fff';
   octx.fillRect(0, 0, W, finalH);
-  octx.drawImage(scratch, 0, 0);
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.drawImage(scratch, 0, 0, W * SS, finalH * SS, 0, 0, W, finalH);
   return out;
 }
 
