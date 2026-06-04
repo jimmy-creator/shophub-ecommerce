@@ -122,6 +122,77 @@ router.get('/products', protectCashier, async (req, res) => {
   }
 });
 
+// ─── Quick-pick tiles: featured + best-selling products ───────────
+// Returns two lists in the SAME shape as /products search results, so the
+// terminal can add them to the cart with the same flow (incl. variant picker).
+router.get('/quick-products', protectCashier, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 12, 30);
+    const PROD_ATTRS = ['id', 'name', 'code', 'price', 'images', 'variants'];
+
+    // Featured (admin-flagged) products.
+    const featuredRows = await Product.findAll({
+      where: { active: true, featured: true },
+      attributes: PROD_ATTRS,
+      order: [['name', 'ASC']],
+      limit,
+    });
+
+    // Best sellers — units sold across paid orders in the last 90 days.
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const paidOrders = await Order.findAll({
+      where: { paymentStatus: 'paid', createdAt: { [Op.gte]: since } },
+      attributes: ['items'],
+      raw: true,
+    });
+    const qtyByProduct = new Map();
+    for (const o of paidOrders) {
+      for (const it of (o.items || [])) {
+        if (!it.productId) continue;
+        qtyByProduct.set(it.productId, (qtyByProduct.get(it.productId) || 0) + (parseInt(it.quantity, 10) || 0));
+      }
+    }
+    const topIds = [...qtyByProduct.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([id]) => id);
+    const topRows = topIds.length
+      ? await Product.findAll({ where: { id: { [Op.in]: topIds }, active: true }, attributes: PROD_ATTRS })
+      : [];
+    const topById = new Map(topRows.map((p) => [p.id, p]));
+    const topSorted = topIds.map((id) => topById.get(id)).filter(Boolean);   // keep sold-rank order
+
+    // Per-location stock for everything returned.
+    const allIds = [...new Set([...featuredRows, ...topSorted].map((p) => p.id))];
+    const stocks = allIds.length
+      ? await ProductStock.findAll({ where: { productId: { [Op.in]: allIds }, locationId: req.cashierLocationId } })
+      : [];
+    const skey = (pid, vIdx) => `${pid}:${vIdx ?? 'b'}`;
+    const stockMap = new Map(stocks.map((s) => [skey(s.productId, s.variantIndex), s.quantity]));
+
+    const shape = (product) => {
+      const obj = product.toJSON();
+      const hasVariants = Array.isArray(obj.variants) && obj.variants.length > 0;
+      return {
+        productId: obj.id,
+        name: obj.name,
+        code: obj.code || null,
+        price: parseFloat(obj.price) || 0,
+        variantIndex: null,
+        variantOptions: null,
+        image: obj.images?.[0] || null,
+        stockAtLocation: stockMap.get(skey(obj.id, null)) || 0,
+        hasVariants,
+        variants: hasVariants
+          ? obj.variants.map((vr, idx) => ({ ...vr, stockAtLocation: stockMap.get(skey(obj.id, idx)) || 0 }))
+          : undefined,
+      };
+    };
+
+    res.json({ featured: featuredRows.map(shape), topSellers: topSorted.map(shape) });
+  } catch (err) {
+    console.error('[pos/quick-products]', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── Managers (for override PIN picker) ───────────────────────────
 router.get('/managers', protectCashier, async (req, res) => {
   try {

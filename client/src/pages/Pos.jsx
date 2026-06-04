@@ -61,6 +61,8 @@ export default function Pos() {
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(0);
+  const [quick, setQuick] = useState({ featured: [], topSellers: [] });
+  const [qTab, setQTab] = useState('featured');   // 'featured' | 'top'
   const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation}
   const [variantPicker, setVariantPicker] = useState(null);  // product-search-result with hasVariants
   const [linkedCustomer, setLinkedCustomer] = useState(null);   // null = walk-in
@@ -89,6 +91,16 @@ export default function Pos() {
       .catch(() => navigate(`${STAFF_BASE}/login`))
       .finally(() => setLoading(false));
   }, [navigate]);
+
+  // Quick-pick tiles (featured + best sellers) shown when the search is empty.
+  useEffect(() => {
+    api.get('/pos/quick-products')
+      .then((res) => {
+        setQuick(res.data || { featured: [], topSellers: [] });
+        if (!(res.data?.featured?.length) && res.data?.topSellers?.length) setQTab('top');
+      })
+      .catch(() => {});
+  }, []);
 
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
@@ -432,15 +444,51 @@ export default function Pos() {
           )}
 
           <div className="results-list">
-            {results.length === 0 && !query.trim() && (
-              <div className="results-empty">
-                <HiSearch size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-                <div>Scan a barcode or type a product name</div>
-                <div style={{ fontSize: 12, marginTop: 8, color: 'var(--pos-text-3)' }}>
-                  Press <kbd className="kbd-inline">↵</kbd> to add · <kbd className="kbd-inline">Esc</kbd> to clear
-                </div>
-              </div>
-            )}
+            {!query.trim() && (() => {
+              const list = qTab === 'featured' ? quick.featured : quick.topSellers;
+              const hasAny = quick.featured.length > 0 || quick.topSellers.length > 0;
+              if (!hasAny) {
+                return (
+                  <div className="results-empty">
+                    <HiSearch size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
+                    <div>Scan a barcode or type a product name</div>
+                    <div style={{ fontSize: 12, marginTop: 8, color: 'var(--pos-text-3)' }}>
+                      Press <kbd className="kbd-inline">↵</kbd> to add · <kbd className="kbd-inline">Esc</kbd> to clear
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <>
+                  <div className="quick-tabs">
+                    <button className={qTab === 'featured' ? 'is-active' : ''} onClick={() => setQTab('featured')} disabled={quick.featured.length === 0}>★ Featured</button>
+                    <button className={qTab === 'top' ? 'is-active' : ''} onClick={() => setQTab('top')} disabled={quick.topSellers.length === 0}>🔥 Best Sellers</button>
+                  </div>
+                  {list.map((r, i) => (
+                    <button
+                      key={`q-${r.productId}-${i}`}
+                      className="result-item"
+                      onClick={() => addToCart(r)}
+                      disabled={!r.hasVariants && r.stockAtLocation < 1}
+                    >
+                      <div className="result-main">
+                        <div className="result-name">{r.name}</div>
+                        <div className="result-meta">
+                          {r.code && <span className="result-sku">SKU {r.code}</span>}
+                          {r.hasVariants
+                            ? <span className="badge">{r.variants.length} variants</span>
+                            : <span className={`stock-pill ${r.stockAtLocation < 1 ? 'stock-out' : 'stock-ok'}`}>
+                                <span className="stock-dot" />
+                                {r.stockAtLocation} in stock
+                              </span>}
+                        </div>
+                      </div>
+                      <div className="result-price">{fmt(r.price)}</div>
+                    </button>
+                  ))}
+                </>
+              );
+            })()}
             {results.map((r, i) => (
               <button
                 key={`${r.productId}-${r.variantIndex ?? 'b'}-${i}`}
@@ -947,6 +995,15 @@ export default function Pos() {
           padding: 3rem 1rem; text-align: center; color: var(--pos-text-2);
           font-size: 0.9rem; display: flex; flex-direction: column; align-items: center;
         }
+        .quick-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+        .quick-tabs button {
+          flex: 1; padding: 8px 10px; border-radius: 10px;
+          border: 1px solid var(--pos-border); background: var(--pos-surface);
+          color: var(--pos-text-2); font-family: inherit; font-size: 0.8rem; font-weight: 600;
+          cursor: pointer; transition: background .12s ease, border-color .12s ease, color .12s ease;
+        }
+        .quick-tabs button.is-active { background: var(--pos-accent-soft); color: var(--pos-accent); border-color: var(--pos-accent); }
+        .quick-tabs button:disabled { opacity: 0.4; cursor: not-allowed; }
         .result-item {
           display: flex; justify-content: space-between; align-items: center;
           background: var(--pos-surface);
