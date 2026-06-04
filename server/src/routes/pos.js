@@ -15,7 +15,7 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
-  Product, ProductStock, Order, CashierSession, Location, CashAccount, User, Coupon, SalesReturn,
+  Product, ProductStock, Order, CashierSession, Location, CashAccount, User, Coupon, SalesReturn, Category,
   recomputeProductStock, writeCashTxn, logActivity, verifyManagerPin,
 } from '../models/index.js';
 
@@ -28,12 +28,79 @@ import { nextInvoiceNumber } from '../services/invoiceSequence.js';
 
 const router = Router();
 
+// ── Shared product shaping for the terminal (search, quick-pick, browse) ──
+const posStockKey = (pid, vIdx) => `${pid}:${vIdx ?? 'b'}`;
+
+// Build a {productId:variantIndex -> qty} map of per-location stock.
+async function posStockMap(productIds, locationId) {
+  if (!productIds.length) return new Map();
+  const stocks = await ProductStock.findAll({
+    where: { productId: { [Op.in]: productIds }, locationId },
+  });
+  return new Map(stocks.map((s) => [posStockKey(s.productId, s.variantIndex), s.quantity]));
+}
+
+// Shape a product (no specific variant chosen) into the uniform result the
+// terminal's add-to-cart flow expects, with per-location stock attached.
+function shapeProduct(product, stockMap) {
+  const obj = product.toJSON ? product.toJSON() : product;
+  const hasVariants = Array.isArray(obj.variants) && obj.variants.length > 0;
+  return {
+    productId: obj.id,
+    name: obj.name,
+    code: obj.code || null,
+    price: parseFloat(obj.price) || 0,
+    variantIndex: null,
+    variantOptions: null,
+    image: obj.images?.[0] || null,
+    stockAtLocation: stockMap.get(posStockKey(obj.id, null)) || 0,
+    hasVariants,
+    variants: hasVariants
+      ? obj.variants.map((vr, idx) => ({ ...vr, stockAtLocation: stockMap.get(posStockKey(obj.id, idx)) || 0 }))
+      : undefined,
+  };
+}
+
+// ─── Categories for the browse chips ───────────────────────────────
+router.get('/categories', protectCashier, async (req, res) => {
+  try {
+    const rows = await Category.findAll({
+      where: { active: true },
+      attributes: ['id', 'name', 'nameAr', 'image'],
+      order: [['sortOrder', 'ASC'], ['name', 'ASC']],
+    });
+    res.json(rows);
+  } catch (err) {
+    console.error('[pos/categories]', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ─── Search products for the cart panel ────────────────────────────
 // Optimised for a barcode-scanner workflow: tries an exact code/SKU
 // match first, then a "starts with" name match, capped at 15 results.
 router.get('/products', protectCashier, async (req, res) => {
   try {
     const q = (req.query.q || '').toString().trim();
+    const category = (req.query.category || '').toString().trim();
+
+    // Browse by category (image grid) — matches the primary `category` OR any
+    // entry in the `categories` array. No search query in this mode.
+    if (category && !q) {
+      const catJson = sequelize.escape(JSON.stringify(category));
+      const rows = await Product.findAll({
+        where: {
+          active: true,
+          [Op.or]: [{ category }, sequelize.literal(`JSON_CONTAINS(categories, ${catJson})`)],
+        },
+        attributes: ['id', 'name', 'code', 'price', 'images', 'variants'],
+        order: [['name', 'ASC']],
+        limit: 60,
+      });
+      const stockMap = await posStockMap(rows.map((p) => p.id), req.cashierLocationId);
+      return res.json(rows.map((p) => shapeProduct(p, stockMap)));
+    }
+
     if (!q) return res.json([]);
 
     // 1. Exact code match (barcode scanned)
@@ -161,32 +228,11 @@ router.get('/quick-products', protectCashier, async (req, res) => {
 
     // Per-location stock for everything returned.
     const allIds = [...new Set([...featuredRows, ...topSorted].map((p) => p.id))];
-    const stocks = allIds.length
-      ? await ProductStock.findAll({ where: { productId: { [Op.in]: allIds }, locationId: req.cashierLocationId } })
-      : [];
-    const skey = (pid, vIdx) => `${pid}:${vIdx ?? 'b'}`;
-    const stockMap = new Map(stocks.map((s) => [skey(s.productId, s.variantIndex), s.quantity]));
-
-    const shape = (product) => {
-      const obj = product.toJSON();
-      const hasVariants = Array.isArray(obj.variants) && obj.variants.length > 0;
-      return {
-        productId: obj.id,
-        name: obj.name,
-        code: obj.code || null,
-        price: parseFloat(obj.price) || 0,
-        variantIndex: null,
-        variantOptions: null,
-        image: obj.images?.[0] || null,
-        stockAtLocation: stockMap.get(skey(obj.id, null)) || 0,
-        hasVariants,
-        variants: hasVariants
-          ? obj.variants.map((vr, idx) => ({ ...vr, stockAtLocation: stockMap.get(skey(obj.id, idx)) || 0 }))
-          : undefined,
-      };
-    };
-
-    res.json({ featured: featuredRows.map(shape), topSellers: topSorted.map(shape) });
+    const stockMap = await posStockMap(allIds, req.cashierLocationId);
+    res.json({
+      featured: featuredRows.map((p) => shapeProduct(p, stockMap)),
+      topSellers: topSorted.map((p) => shapeProduct(p, stockMap)),
+    });
   } catch (err) {
     console.error('[pos/quick-products]', err);
     res.status(500).json({ message: err.message });
