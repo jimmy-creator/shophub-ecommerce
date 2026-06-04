@@ -538,7 +538,12 @@ export default function Pos() {
                     : browseTab === 'top' ? quick.topSellers
                     : browseItems;
                   if (browseLoading && browseTab !== 'featured' && browseTab !== 'top') {
-                    return <div className="browse-empty">Loading…</div>;
+                    return Array.from({ length: 8 }).map((_, i) => (
+                      <div key={`sk-${i}`} className="tile tile-skeleton">
+                        <div className="tile-img skel" />
+                        <div className="tile-body"><div className="skel-line" /><div className="skel-line short" /></div>
+                      </div>
+                    ));
                   }
                   if (list.length === 0) {
                     return (
@@ -580,14 +585,20 @@ export default function Pos() {
         {/* ─── Right: cart + checkout ────────────── */}
         <aside className="pos-right">
           <div className="cart-header">
-            <h2>Cart</h2>
+            <h2>Cart{cart.length > 0 && <span className="cart-count">{cart.reduce((s, c) => s + c.quantity, 0)}</span>}</h2>
             {cart.length > 0 && <button className="link-btn" onClick={() => setCart([])}>Clear</button>}
           </div>
 
           <div className="cart-list">
-            {cart.length === 0 && <div className="cart-empty">No items yet</div>}
+            {cart.length === 0 && (
+              <div className="cart-empty">
+                <HiShoppingCart size={30} style={{ opacity: 0.25, marginBottom: 10 }} />
+                <div>No items yet</div>
+                <div style={{ fontSize: 12, marginTop: 4, color: 'var(--pos-text-3)' }}>Tap a product to add it</div>
+              </div>
+            )}
             {cart.map((c, i) => (
-              <div key={i} className="cart-line">
+              <div key={`${c.productId}:${c.variantIndex ?? 'b'}`} className="cart-line">
                 <div className="cart-thumb"><ProductImage product={{ images: c.image ? [c.image] : [], category: c.category }} size="normal" /></div>
                 <div className="cart-line-info">
                   <div className="cart-line-name">{c.name}</div>
@@ -629,7 +640,7 @@ export default function Pos() {
             )}
             <div className="total-row">
               <span>Total</span>
-              <strong>{fmt(total)}</strong>
+              <strong key={total} className="total-value">{fmt(total)}</strong>
             </div>
           </div>
 
@@ -1163,12 +1174,18 @@ export default function Pos() {
 
         /* ── Cart ───────────────────────────────── */
         .cart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.75rem; }
-        .cart-header h2 { font-size: 0.78rem; margin: 0; color: var(--pos-text-3); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .cart-header h2 { font-size: 0.78rem; margin: 0; color: var(--pos-text-3); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .cart-count {
+          background: var(--pos-accent); color: #fff; border-radius: 100px;
+          font-size: 0.72rem; font-weight: 700; min-width: 20px; height: 20px;
+          padding: 0 6px; display: inline-grid; place-items: center; letter-spacing: 0;
+        }
         .link-btn { background: transparent; border: none; color: var(--pos-accent); cursor: pointer; font-size: 0.82rem; padding: 0; font-family: inherit; }
         .link-btn:hover { color: #f08d6c; text-decoration: underline; }
 
         .cart-list { flex: 1; overflow-y: auto; min-height: 100px; margin: 0 -0.25rem; padding: 0 0.25rem; }
-        .cart-empty { padding: 3rem 0; text-align: center; color: var(--pos-text-3); font-size: 0.85rem; }
+        .cart-empty { padding: 3rem 0; text-align: center; color: var(--pos-text-2); font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; }
+        .cart-line { animation: cart-in .2s var(--pos-ease); }
         .cart-line {
           display: grid; grid-template-columns: 40px 1fr auto auto; gap: 0.6rem;
           align-items: center; padding: 0.7rem 0;
@@ -1208,6 +1225,7 @@ export default function Pos() {
           font-variant-numeric: tabular-nums;
         }
         .total-row strong { color: var(--pos-accent); font-weight: 700; }
+        .total-value { display: inline-block; animation: total-pop .32s var(--pos-ease); }
         .discount-btn {
           width: 100%; padding: 0.6rem 0.85rem; margin-bottom: 0.5rem;
           background: transparent; border: 1px dashed var(--pos-border-strong);
@@ -1343,6 +1361,17 @@ export default function Pos() {
         @media (prefers-reduced-motion: reduce) {
           .pos-app *, .modal, .modal-backdrop { animation: none !important; transition: none !important; }
         }
+        /* ── Phase 5: motion + skeletons ────────── */
+        .tile-skeleton { pointer-events: none; }
+        .skel, .skel-line {
+          background: linear-gradient(90deg, var(--pos-elevated) 25%, var(--pos-line) 37%, var(--pos-elevated) 63%);
+          background-size: 280% 100%; animation: skel-shimmer 1.3s ease-in-out infinite;
+        }
+        .skel-line { height: 10px; border-radius: 5px; margin-top: 4px; }
+        .skel-line.short { width: 55%; }
+        @keyframes skel-shimmer { from { background-position: 180% 0; } to { background-position: -180% 0; } }
+        @keyframes cart-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+        @keyframes total-pop { 0% { transform: scale(1); } 40% { transform: scale(1.09); } 100% { transform: scale(1); } }
         @keyframes pos-fade { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pos-modal-in {
           from { opacity: 0; transform: translateY(8px) scale(0.98); }
