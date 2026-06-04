@@ -87,6 +87,61 @@ function loadImage(url) {
   });
 }
 
+// Make the logo print perfectly clean on a 1-bit thermal head:
+//   1. knock out light pixels (>= knockout luminance) to white — drops the
+//      faint floor-grid lines while the bold dark logo keeps its edges;
+//   2. remove small dark connected components (< minBlob px) — kills the
+//      residual dark grid specks the knockout can't reach, without touching
+//      the large letter/ball/frame shapes.
+// Returns a canvas, or the source image untouched if its pixels can't be read.
+function cleanLogo(img, { knockout = 90, minBlob = 300 } = {}) {
+  try {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d');
+    cx.drawImage(img, 0, 0);
+    const im = cx.getImageData(0, 0, w, h);
+    const d = im.data;
+    const N = w * h;
+
+    const dark = new Uint8Array(N);
+    for (let p = 0, i = 0; p < N; p++, i += 4) {
+      const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      if (d[i + 3] < 128 || lum >= knockout) { d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = 255; }
+      else dark[p] = 1;
+    }
+
+    const seen = new Uint8Array(N);
+    const stack = [];
+    const whiteOut = (p) => { const i = p * 4; d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = 255; };
+    for (let p0 = 0; p0 < N; p0++) {
+      if (!dark[p0] || seen[p0]) continue;
+      stack.length = 0; stack.push(p0); seen[p0] = 1;
+      const comp = [p0];
+      while (stack.length) {
+        const q = stack.pop();
+        const x = q % w, y = (q / w) | 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (!dx && !dy) continue;
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+            const np = ny * w + nx;
+            if (dark[np] && !seen[np]) { seen[np] = 1; stack.push(np); comp.push(np); }
+          }
+        }
+      }
+      if (comp.length < minBlob) comp.forEach(whiteOut);
+    }
+
+    cx.putImageData(im, 0, 0);
+    return cv;
+  } catch {
+    return img;   // cross-origin taint etc. — print the logo as-is
+  }
+}
+
 // Wrap a value in an LTR isolate (U+2066…U+2069) so Latin/numeric text keeps
 // its order when it sits next to an Arabic (RTL) label on the same line.
 const LRI = String.fromCharCode(0x2066), PDI = String.fromCharCode(0x2069);
@@ -160,11 +215,12 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   // ── Header ──────────────────────────────────────────────────────
   const logo = cfg.logoUrl ? await loadImage(cfg.logoUrl) : null;
   if (logo && logo.naturalWidth) {
+    const cleaned = cleanLogo(logo);
     const maxW = CW * 0.7, maxH = 150;
-    const scale = Math.min(maxW / logo.naturalWidth, maxH / logo.naturalHeight);
-    const lw = Math.round(logo.naturalWidth * scale);
-    const lh = Math.round(logo.naturalHeight * scale);
-    ctx.drawImage(logo, Math.round((W - lw) / 2), y, lw, lh);
+    const scale = Math.min(maxW / cleaned.width, maxH / cleaned.height);
+    const lw = Math.round(cleaned.width * scale);
+    const lh = Math.round(cleaned.height * scale);
+    ctx.drawImage(cleaned, Math.round((W - lw) / 2), y, lw, lh);
     y += lh + 8;
   } else {
     text(cfg.name, { align: 'center', size: 34, weight: 'bold', gap: 4 });
