@@ -155,6 +155,25 @@ export default function Pos() {
   // Reset highlight when results change.
   useEffect(() => { setHighlightIdx(0); }, [results]);
 
+  // Physical keyboard / USB numpad while the pay modal is open: digits, ".",
+  // Backspace drive the cash tender; Enter confirms, Escape cancels. (Defined
+  // before the early returns to satisfy the rules of hooks; the handlers it
+  // calls only run once a modal is open — i.e. after the POS has loaded.)
+  useEffect(() => {
+    if (!payOpen) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') { if (!submitting) setPayOpen(null); return; }
+      if (e.key === 'Enter') { if (!submitting && !cashShort) submitSale(); return; }
+      if (payOpen !== 'cash') return;
+      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); tenderKey(e.key); }
+      else if (e.key === '.') { e.preventDefault(); tenderKey('.'); }
+      else if (e.key === 'Backspace') { e.preventDefault(); tenderKey('back'); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payOpen, submitting, tendered]);
+
   if (loading) return <div style={{ minHeight: '100vh', background: '#0f172a', color: '#94a3b8', display: 'grid', placeItems: 'center' }}>Loading…</div>;
   if (!me) return null;
 
