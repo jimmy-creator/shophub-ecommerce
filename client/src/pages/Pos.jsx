@@ -24,6 +24,7 @@ import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
 import { usePosTheme } from '../lib/usePosTheme';
 import PosReceipt from '../components/PosReceipt';
+import ProductImage from '../components/ProductImage';
 import PosReportReceipt from '../components/PosReportReceipt';
 import PosReturnModal from '../components/PosReturnModal';
 import PosReturnReceipt from '../components/PosReturnReceipt';
@@ -62,7 +63,10 @@ export default function Pos() {
   const [searching, setSearching] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(0);
   const [quick, setQuick] = useState({ featured: [], topSellers: [] });
-  const [qTab, setQTab] = useState('featured');   // 'featured' | 'top'
+  const [categories, setCategories] = useState([]);
+  const [browseTab, setBrowseTab] = useState('featured');   // 'featured' | 'top' | <category name>
+  const [browseItems, setBrowseItems] = useState([]);        // products for the selected category
+  const [browseLoading, setBrowseLoading] = useState(false);
   const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation}
   const [variantPicker, setVariantPicker] = useState(null);  // product-search-result with hasVariants
   const [linkedCustomer, setLinkedCustomer] = useState(null);   // null = walk-in
@@ -92,15 +96,29 @@ export default function Pos() {
       .finally(() => setLoading(false));
   }, [navigate]);
 
-  // Quick-pick tiles (featured + best sellers) shown when the search is empty.
+  // Browse data — featured/best-seller tiles + category chips — shown when the
+  // search box is empty.
   useEffect(() => {
     api.get('/pos/quick-products')
       .then((res) => {
         setQuick(res.data || { featured: [], topSellers: [] });
-        if (!(res.data?.featured?.length) && res.data?.topSellers?.length) setQTab('top');
+        if (!(res.data?.featured?.length) && res.data?.topSellers?.length) setBrowseTab('top');
       })
       .catch(() => {});
+    api.get('/pos/categories')
+      .then((res) => setCategories(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
   }, []);
+
+  // Load a category's products when its chip is selected.
+  useEffect(() => {
+    if (browseTab === 'featured' || browseTab === 'top') return;
+    setBrowseLoading(true);
+    api.get('/pos/products', { params: { category: browseTab } })
+      .then((res) => setBrowseItems(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setBrowseItems([]))
+      .finally(() => setBrowseLoading(false));
+  }, [browseTab]);
 
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
@@ -443,77 +461,85 @@ export default function Pos() {
             </div>
           )}
 
-          <div className="results-list">
-            {!query.trim() && (() => {
-              const list = qTab === 'featured' ? quick.featured : quick.topSellers;
-              const hasAny = quick.featured.length > 0 || quick.topSellers.length > 0;
-              if (!hasAny) {
-                return (
-                  <div className="results-empty">
-                    <HiSearch size={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-                    <div>Scan a barcode or type a product name</div>
-                    <div style={{ fontSize: 12, marginTop: 8, color: 'var(--pos-text-3)' }}>
-                      Press <kbd className="kbd-inline">↵</kbd> to add · <kbd className="kbd-inline">Esc</kbd> to clear
+          {query.trim() ? (
+            <div className="results-list">
+              {results.map((r, i) => (
+                <button
+                  key={`${r.productId}-${r.variantIndex ?? 'b'}-${i}`}
+                  className={`result-item ${i === highlightIdx ? 'is-highlighted' : ''}`}
+                  onClick={() => addToCart(r)}
+                  onMouseEnter={() => setHighlightIdx(i)}
+                  disabled={!r.hasVariants && r.stockAtLocation < 1}
+                  ref={i === highlightIdx ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
+                >
+                  <div className="result-main">
+                    <div className="result-name">{r.name}</div>
+                    <div className="result-meta">
+                      {r.code && <span className="result-sku">SKU {r.code}</span>}
+                      {r.hasVariants
+                        ? <span className="badge">{r.variants.length} variants</span>
+                        : <span className={`stock-pill ${r.stockAtLocation < 1 ? 'stock-out' : 'stock-ok'}`}>
+                            <span className="stock-dot" />
+                            {r.stockAtLocation} in stock
+                          </span>}
                     </div>
                   </div>
-                );
-              }
-              return (
-                <>
-                  <div className="quick-tabs">
-                    <button className={qTab === 'featured' ? 'is-active' : ''} onClick={() => setQTab('featured')} disabled={quick.featured.length === 0}>★ Featured</button>
-                    <button className={qTab === 'top' ? 'is-active' : ''} onClick={() => setQTab('top')} disabled={quick.topSellers.length === 0}>🔥 Best Sellers</button>
-                  </div>
-                  {list.map((r, i) => (
+                  <div className="result-price">{fmt(r.price)}</div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="browse">
+              <div className="chip-bar">
+                <button className={`chip ${browseTab === 'featured' ? 'is-active' : ''}`} onClick={() => setBrowseTab('featured')}>★ Featured</button>
+                <button className={`chip ${browseTab === 'top' ? 'is-active' : ''}`} onClick={() => setBrowseTab('top')}>🔥 Best Sellers</button>
+                {categories.map((c) => (
+                  <button key={c.id} className={`chip ${browseTab === c.name ? 'is-active' : ''}`} onClick={() => setBrowseTab(c.name)}>{c.name}</button>
+                ))}
+              </div>
+              <div className="tile-grid">
+                {(() => {
+                  const list = browseTab === 'featured' ? quick.featured
+                    : browseTab === 'top' ? quick.topSellers
+                    : browseItems;
+                  if (browseLoading && browseTab !== 'featured' && browseTab !== 'top') {
+                    return <div className="browse-empty">Loading…</div>;
+                  }
+                  if (list.length === 0) {
+                    return (
+                      <div className="browse-empty">
+                        {browseTab === 'featured' ? 'No featured products — flag some in Admin → Products'
+                          : browseTab === 'top' ? 'No sales yet'
+                          : 'No products in this category'}
+                      </div>
+                    );
+                  }
+                  return list.map((r, i) => (
                     <button
-                      key={`q-${r.productId}-${i}`}
-                      className="result-item"
+                      key={`t-${r.productId}-${i}`}
+                      className="tile"
                       onClick={() => addToCart(r)}
                       disabled={!r.hasVariants && r.stockAtLocation < 1}
                     >
-                      <div className="result-main">
-                        <div className="result-name">{r.name}</div>
-                        <div className="result-meta">
-                          {r.code && <span className="result-sku">SKU {r.code}</span>}
+                      <div className="tile-img">
+                        <ProductImage product={{ images: r.image ? [r.image] : [], category: r.category }} size="normal" />
+                        {!r.hasVariants && r.stockAtLocation < 1 && <span className="tile-oos">Out</span>}
+                      </div>
+                      <div className="tile-body">
+                        <div className="tile-name">{r.name}</div>
+                        <div className="tile-foot">
+                          <span className="tile-price">{fmt(r.price)}</span>
                           {r.hasVariants
-                            ? <span className="badge">{r.variants.length} variants</span>
-                            : <span className={`stock-pill ${r.stockAtLocation < 1 ? 'stock-out' : 'stock-ok'}`}>
-                                <span className="stock-dot" />
-                                {r.stockAtLocation} in stock
-                              </span>}
+                            ? <span className="badge">{r.variants.length}</span>
+                            : <span className={`stock-dot-pill ${r.stockAtLocation < 1 ? 'stock-out' : 'stock-ok'}`}>{r.stockAtLocation}</span>}
                         </div>
                       </div>
-                      <div className="result-price">{fmt(r.price)}</div>
                     </button>
-                  ))}
-                </>
-              );
-            })()}
-            {results.map((r, i) => (
-              <button
-                key={`${r.productId}-${r.variantIndex ?? 'b'}-${i}`}
-                className={`result-item ${i === highlightIdx ? 'is-highlighted' : ''}`}
-                onClick={() => addToCart(r)}
-                onMouseEnter={() => setHighlightIdx(i)}
-                disabled={!r.hasVariants && r.stockAtLocation < 1}
-                ref={i === highlightIdx ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
-              >
-                <div className="result-main">
-                  <div className="result-name">{r.name}</div>
-                  <div className="result-meta">
-                    {r.code && <span className="result-sku">SKU {r.code}</span>}
-                    {r.hasVariants
-                      ? <span className="badge">{r.variants.length} variants</span>
-                      : <span className={`stock-pill ${r.stockAtLocation < 1 ? 'stock-out' : 'stock-ok'}`}>
-                          <span className="stock-dot" />
-                          {r.stockAtLocation} in stock
-                        </span>}
-                  </div>
-                </div>
-                <div className="result-price">{fmt(r.price)}</div>
-              </button>
-            ))}
-          </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ─── Right: cart + checkout ────────────── */}
@@ -1007,15 +1033,53 @@ export default function Pos() {
           padding: 3rem 1rem; text-align: center; color: var(--pos-text-2);
           font-size: 0.9rem; display: flex; flex-direction: column; align-items: center;
         }
-        .quick-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
-        .quick-tabs button {
-          flex: 1; padding: 8px 10px; border-radius: 10px;
-          border: 1px solid var(--pos-border); background: var(--pos-surface);
-          color: var(--pos-text-2); font-family: inherit; font-size: 0.8rem; font-weight: 600;
-          cursor: pointer; transition: background .12s ease, border-color .12s ease, color .12s ease;
+        /* ── Browse: category chips + product tiles ─ */
+        .browse { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+        .chip-bar {
+          display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0;
+          padding-bottom: 10px; margin-bottom: 4px; scrollbar-width: none;
         }
-        .quick-tabs button.is-active { background: var(--pos-accent-soft); color: var(--pos-accent); border-color: var(--pos-accent); }
-        .quick-tabs button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .chip-bar::-webkit-scrollbar { display: none; }
+        .chip {
+          white-space: nowrap; flex-shrink: 0;
+          padding: 7px 15px; border-radius: 100px;
+          border: 1px solid var(--pos-border); background: var(--pos-surface);
+          color: var(--pos-text-2); font-family: inherit; font-weight: 600; font-size: 0.82rem;
+          cursor: pointer; transition: background .14s var(--pos-ease), color .14s var(--pos-ease), border-color .14s var(--pos-ease);
+        }
+        .chip:hover { color: var(--pos-text); border-color: var(--pos-border-strong); }
+        .chip.is-active { background: var(--pos-accent); color: #fff; border-color: var(--pos-accent); box-shadow: 0 4px 12px -4px var(--pos-accent-soft); }
+        .tile-grid {
+          flex: 1; overflow-y: auto; display: grid; align-content: start;
+          grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+          gap: 10px; padding: 2px 4px 8px 0;
+        }
+        .browse-empty { grid-column: 1 / -1; padding: 3rem 1rem; text-align: center; color: var(--pos-text-2); font-size: 0.9rem; }
+        .tile {
+          display: flex; flex-direction: column; text-align: left; padding: 0;
+          background: var(--pos-surface); border: 1px solid var(--pos-border);
+          border-radius: 14px; overflow: hidden; cursor: pointer; font-family: inherit;
+          color: var(--pos-text); box-shadow: var(--pos-shadow-1);
+          transition: transform .14s var(--pos-ease), box-shadow .14s var(--pos-ease), border-color .14s var(--pos-ease);
+        }
+        .tile:hover:not(:disabled) { transform: translateY(-3px); box-shadow: var(--pos-shadow-2); border-color: var(--pos-accent); }
+        .tile:active:not(:disabled) { transform: scale(0.97); }
+        .tile:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tile-img { position: relative; aspect-ratio: 1 / 1; background: var(--pos-elevated); overflow: hidden; }
+        .tile-oos {
+          position: absolute; top: 6px; left: 6px; background: var(--pos-danger); color: #fff;
+          font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; letter-spacing: 0.3px;
+        }
+        .tile-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+        .tile-name {
+          font-size: 0.82rem; font-weight: 500; line-height: 1.25; min-height: 2.1em;
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .tile-foot { display: flex; justify-content: space-between; align-items: center; }
+        .tile-price { font-weight: 700; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+        .stock-dot-pill { font-size: 0.68rem; font-weight: 700; padding: 1px 8px; border-radius: 100px; font-variant-numeric: tabular-nums; }
+        .stock-dot-pill.stock-ok { color: var(--pos-success); background: rgba(45,212,164,0.13); }
+        .stock-dot-pill.stock-out { color: var(--pos-danger); background: rgba(251,94,109,0.13); }
         .result-item {
           display: flex; justify-content: space-between; align-items: center;
           background: var(--pos-surface);
@@ -1196,11 +1260,11 @@ export default function Pos() {
           border-color: var(--pos-accent);
           box-shadow: 0 0 0 3px var(--pos-accent-soft);
         }
-        .rail-btn, .quick-tabs button, .variant-btn, .modal-btn,
+        .rail-btn, .chip, .tile, .variant-btn, .modal-btn,
         .cart-line-controls button, .discount-btn, .pay-btn, .result-item {
           will-change: transform;
         }
-        .rail-btn:active, .quick-tabs button:active:not(:disabled),
+        .rail-btn:active, .chip:active,
         .variant-btn:active:not(:disabled), .modal-btn:active:not(:disabled),
         .cart-line-controls button:active, .discount-btn:active:not(:disabled) {
           transform: scale(0.95);

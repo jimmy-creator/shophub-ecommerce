@@ -52,6 +52,7 @@ function shapeProduct(product, stockMap) {
     price: parseFloat(obj.price) || 0,
     variantIndex: null,
     variantOptions: null,
+    category: obj.category || null,
     image: obj.images?.[0] || null,
     stockAtLocation: stockMap.get(posStockKey(obj.id, null)) || 0,
     hasVariants,
@@ -93,7 +94,7 @@ router.get('/products', protectCashier, async (req, res) => {
           active: true,
           [Op.or]: [{ category }, sequelize.literal(`JSON_CONTAINS(categories, ${catJson})`)],
         },
-        attributes: ['id', 'name', 'code', 'price', 'images', 'variants'],
+        attributes: ['id', 'name', 'code', 'price', 'images', 'variants', 'category'],
         order: [['name', 'ASC']],
         limit: 60,
       });
@@ -195,7 +196,7 @@ router.get('/products', protectCashier, async (req, res) => {
 router.get('/quick-products', protectCashier, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 12, 30);
-    const PROD_ATTRS = ['id', 'name', 'code', 'price', 'images', 'variants'];
+    const PROD_ATTRS = ['id', 'name', 'code', 'price', 'images', 'variants', 'category'];
 
     // Featured (admin-flagged) products.
     const featuredRows = await Product.findAll({
