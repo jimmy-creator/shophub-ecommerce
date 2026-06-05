@@ -109,7 +109,7 @@ function cleanLogo(img, { knockout = 90, minBlob = 300 } = {}) {
     for (let p = 0, i = 0; p < N; p++, i += 4) {
       const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
       if (d[i + 3] < 128 || lum >= knockout) { d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = 255; }
-      else dark[p] = 1;
+      else { d[i] = d[i + 1] = d[i + 2] = 0; d[i + 3] = 255; dark[p] = 1; }   // force kept pixels to pure black
     }
 
     const seen = new Uint8Array(N);
@@ -221,7 +221,8 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
     const lw = Math.round(cleaned.width * scale);
     const lh = Math.round(cleaned.height * scale);
     ctx.drawImage(cleaned, Math.round((W - lw) / 2), y, lw, lh);
-    y += lh + 8;
+    y += lh + 6;
+    text(cfg.name, { align: 'center', size: 30, weight: 'bold', gap: 4 });
   } else {
     text(cfg.name, { align: 'center', size: 34, weight: 'bold', gap: 4 });
   }
