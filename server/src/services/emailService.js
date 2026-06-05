@@ -1,19 +1,24 @@
 import nodemailer from 'nodemailer';
 
+// SMTP auth username. Usually the same as the from address (Gmail), but some
+// providers differ — Resend uses "resend" (or the API key) as the username while
+// the from address must be on a verified domain. SMTP_USER overrides when set.
+const smtpUser = process.env.SMTP_USER || process.env.SMTP_EMAIL;
+
 const smtpConfig = process.env.SMTP_HOST
   ? {
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT || '465'),
       secure: parseInt(process.env.SMTP_PORT || '465') === 465,
       auth: {
-        user: process.env.SMTP_EMAIL,
+        user: smtpUser,
         pass: process.env.SMTP_APP_PASSWORD,
       },
     }
   : {
       service: 'gmail',
       auth: {
-        user: process.env.SMTP_EMAIL,
+        user: smtpUser,
         pass: process.env.SMTP_APP_PASSWORD,
       },
     };
