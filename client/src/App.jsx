@@ -29,6 +29,7 @@ import WholesaleQuoteDetail from './pages/WholesaleQuoteDetail';
 import ShiprocketCheckout from './pages/ShiprocketCheckout';
 import PosLogin from './pages/PosLogin';
 import Pos from './pages/Pos';
+import NotFound from './pages/NotFound';
 
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
 const SHIPROCKET_CHECKOUT = import.meta.env.VITE_FEATURE_SHIPROCKET_CHECKOUT === 'true';
@@ -166,6 +167,9 @@ export default function App() {
                       {B2B_ENABLED && <Route path={p('/wholesale/my-quotes/:id')} element={<WholesaleQuoteDetail />} />}
                       {MULTILOC_ENABLED && <Route path={p(`${STAFF_BASE}/login`)} element={<PosLogin />} />}
                       {MULTILOC_ENABLED && <Route path={p(STAFF_BASE)} element={<Pos />} />}
+                      {/* Catch-all 404 — per locale: `*` for English, `/ar/*` for Arabic.
+                          v6 ranks the more-specific /ar/* above the bare * automatically. */}
+                      <Route path={loc ? `/${loc}/*` : '*'} element={<NotFound />} />
                     </Fragment>
                   );
                 })}

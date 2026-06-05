@@ -41,6 +41,12 @@
     "seoTitle": "Anfal Sports",
     "seoDescription": "Anfal Sports — Kuwait's home for authentic athletic footwear, sportswear, equipment and accessories. Shop in-store or online."
   },
+  "notFound": {
+    "title": "Page not found",
+    "message": "The page you're looking for doesn't exist or has moved.",
+    "home": "Back to home",
+    "shop": "Browse products"
+  },
   "products": {
     "allProducts": "All Products",
     "filters": "Filters",
