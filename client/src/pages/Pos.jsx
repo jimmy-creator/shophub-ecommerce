@@ -1252,6 +1252,7 @@ export default function Pos() {
         .modal {
           background: var(--pos-panel); border: 1px solid var(--pos-border-strong); border-radius: 16px;
           padding: 1.5rem; max-width: 480px; width: 100%;
+          max-height: calc(100vh - 2rem); overflow-y: auto;
           box-shadow: var(--pos-shadow-2);
           animation: pos-modal-in .22s var(--pos-ease);
         }
@@ -1293,7 +1294,11 @@ export default function Pos() {
         .numpad-key:active { transform: scale(0.94); background: var(--pos-accent-soft); color: var(--pos-accent); }
         .numpad-back { color: var(--pos-text-2); }
 
-        .modal-actions { display: flex; gap: 0.5rem; margin-top: 1.25rem; }
+        .modal-actions {
+          display: flex; gap: 0.5rem; margin-top: 1.25rem;
+          position: sticky; bottom: -1.5rem; background: var(--pos-panel);
+          padding: 0.75rem 0; margin-bottom: -0.75rem;
+        }
         .modal-btn {
           flex: 1; padding: 0.85rem; border-radius: 10px; font-size: 1rem; font-weight: 600;
           cursor: pointer; font-family: inherit; border: none;

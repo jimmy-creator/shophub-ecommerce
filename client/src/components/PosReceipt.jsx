@@ -67,7 +67,9 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
           #pos-receipt {
             margin: 0 !important; padding: 0 !important;
             box-shadow: none !important; background: #fff !important;
+            max-height: none !important; display: block !important;
           }
+          #pos-receipt .receipt-scroll { overflow: visible !important; }
           #pos-receipt img { width: 80mm !important; }
           #pos-receipt .no-print { display: none !important; }
           @page { size: 80mm auto; margin: 0; }
@@ -75,10 +77,11 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
         #pos-receipt {
           background: white; padding: 12px;
           box-shadow: 0 4px 24px rgba(0,0,0,0.3);
-          max-height: 90vh; overflow: auto;
+          max-height: 92vh; display: flex; flex-direction: column;
         }
+        #pos-receipt .receipt-scroll { overflow: auto; min-height: 0; }
         #pos-receipt img { width: 320px; max-width: 86vw; display: block; }
-        #pos-receipt .actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }
+        #pos-receipt .actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-shrink: 0; }
         #pos-receipt .actions button {
           padding: 8px 16px; border: 1px solid #444; background: white;
           font-family: inherit; cursor: pointer;
@@ -87,9 +90,11 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
       `}</style>
 
       <div id="pos-receipt">
-        {imgUrl
-          ? <img src={imgUrl} alt="Receipt" />
-          : <div className="preparing">Preparing receipt…</div>}
+        <div className="receipt-scroll">
+          {imgUrl
+            ? <img src={imgUrl} alt="Receipt" />
+            : <div className="preparing">Preparing receipt…</div>}
+        </div>
         <div className="actions no-print">
           <button onClick={() => window.print()}>Print again</button>
           <button onClick={onClose}>Close</button>
