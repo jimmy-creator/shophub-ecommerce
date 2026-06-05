@@ -6,6 +6,16 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const arabicFontPath = path.join(__dirname, '../assets/fonts/NotoSansArabic.ttf');
 
+// Header logo. Other stores can point INVOICE_LOGO_PATH at their own file
+// (absolute, or relative to server/src/assets); store4 (i18n) defaults to the
+// bundled Anfal Sports logo. No logo for stores that set neither.
+const invoiceLogoPath = (() => {
+  const p = process.env.INVOICE_LOGO_PATH;
+  if (p) return path.isAbsolute(p) ? p : path.join(__dirname, '../assets', p);
+  if (process.env.FEATURE_I18N === 'true') return path.join(__dirname, '../assets/anfal-logo.png');
+  return null;
+})();
+
 const storeName = process.env.STORE_NAME || 'ShopHub';
 const storeNameAr = process.env.STORE_NAME_AR || '';
 const storeState = process.env.STORE_STATE || '';
@@ -65,12 +75,21 @@ export function generateInvoice(order) {
       // ===== HEADER =====
       doc.rect(0, 0, 595.28, 100).fill(dark);
 
-      doc.fontSize(22).fill('#ffffff').font('Helvetica-Bold')
-        .text(storeName, 50, 35, { width: 250 });
+      // Logo on a white badge (the wordmark is blue/black — unreadable on dark).
+      const hasLogo = invoiceLogoPath && fs.existsSync(invoiceLogoPath);
+      if (hasLogo) {
+        doc.roundedRect(40, 26, 96, 48, 6).fill('#ffffff');
+        doc.image(invoiceLogoPath, 46, 32, { fit: [84, 36], align: 'center', valign: 'center' });
+      }
+      const textX = hasLogo ? 150 : 50;
+      const textW = hasLogo ? 240 : 250;
+
+      doc.fontSize(hasLogo ? 20 : 22).fill('#ffffff').font('Helvetica-Bold')
+        .text(storeName, textX, 35, { width: textW });
 
       if (arabic && storeNameAr) {
         doc.fontSize(12).fill('#cccccc').font('Arabic')
-          .text(storeNameAr, 50, 66, { width: 250 });
+          .text(storeNameAr, textX, 66, { width: textW });
       }
 
       doc.fontSize(24).fill(copper).font('Helvetica-Bold')
