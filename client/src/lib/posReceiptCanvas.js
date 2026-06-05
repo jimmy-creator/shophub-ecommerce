@@ -198,7 +198,7 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   let y = PAD;
 
   const setFont = (size, weight = 'normal') => { ctx.font = `${weight} ${size}px '${AR_FONT}', Arial, sans-serif`; };
-  const text = (str, { align = 'left', size = 19, weight = '600', gap = 6, x } = {}) => {
+  const text = (str, { align = 'left', size = 19, weight = '700', gap = 6, x } = {}) => {
     setFont(size, weight);
     ctx.textAlign = align;
     const px = x != null ? x : align === 'center' ? W / 2 : align === 'right' ? R : L;
@@ -206,7 +206,7 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
     y += size + gap;
   };
   const rule = (thick = 2, before = 6, after = 8) => { y += before; ctx.fillRect(L, y, CW, thick); y += thick + after; };
-  const cellRight = (str, rightX, size, weight = '600') => {
+  const cellRight = (str, rightX, size, weight = '700') => {
     setFont(size, weight);
     ctx.textAlign = 'right';
     ctx.fillText(str, rightX, y);
@@ -248,10 +248,10 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   cellRight(LBL.amount[0], colAmount, 18, 'bold');
   cellRight(LBL.total[0], colTotal, 18, 'bold');
   y += 20;
-  cellRight(LBL.rate[1], colRate, 17);
-  cellRight(LBL.qty[1], colQty, 17);
-  cellRight(LBL.amount[1], colAmount, 17);
-  cellRight(LBL.total[1], colTotal, 17);
+  cellRight(LBL.rate[1], colRate, 18);
+  cellRight(LBL.qty[1], colQty, 18);
+  cellRight(LBL.amount[1], colAmount, 18);
+  cellRight(LBL.total[1], colTotal, 18);
   y += 19;
   void hy;
   rule(1, 4, 8);
@@ -262,7 +262,7 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
     const rate = parseFloat(it.price) || 0;
     text(it.name, { size: 20, gap: 2 });
     if (it.nameAr && it.nameAr !== it.name) {
-      ctx.textAlign = 'right'; setFont(18); ctx.fillText(it.nameAr, R, y); y += 22;
+      ctx.textAlign = 'right'; setFont(19, '700'); ctx.fillText(it.nameAr, R, y); y += 22;
     }
     cellRight(money(rate), colRate, 19);
     cellRight(`${qty} EA`, colQty, 19);
@@ -306,7 +306,7 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   y += 14;
 
   // ── Totals ──────────────────────────────────────────────────────
-  const totalsRow = (label, value, weight = 'normal', size = 20) => {
+  const totalsRow = (label, value, weight = '600', size = 20) => {
     setFont(size, weight); ctx.textAlign = 'left';
     ctx.fillText(label, L, y);
     ctx.textAlign = 'right'; ctx.fillText(value, R, y);
@@ -336,8 +336,8 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   // ── Footer ──────────────────────────────────────────────────────
   text(cfg.thanksEn, { align: 'center', size: 20, weight: 'bold', gap: 8 });
   // wrap the Arabic policy to the content width
-  setFont(18); ctx.textAlign = 'center';
-  for (const ln of wrapText(ctx, cfg.policyAr, CW)) { ctx.fillText(ln, W / 2, y); y += 24; }
+  setFont(19, '600'); ctx.textAlign = 'center';
+  for (const ln of wrapText(ctx, cfg.policyAr, CW)) { ctx.fillText(ln, W / 2, y); y += 25; }
   y += PAD;
 
   // ── Crop to exact height (multiple of 8 for ESC/POS raster) ──────
