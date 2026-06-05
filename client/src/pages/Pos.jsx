@@ -63,10 +63,7 @@ export default function Pos() {
   const [searching, setSearching] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(0);
   const [quick, setQuick] = useState({ featured: [], topSellers: [] });
-  const [categories, setCategories] = useState([]);
-  const [browseTab, setBrowseTab] = useState('featured');   // 'featured' | 'top' | <category name>
-  const [browseItems, setBrowseItems] = useState([]);        // products for the selected category
-  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseTab, setBrowseTab] = useState('featured');   // 'featured' | 'top'
   const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation}
   const [variantPicker, setVariantPicker] = useState(null);  // product-search-result with hasVariants
   const [linkedCustomer, setLinkedCustomer] = useState(null);   // null = walk-in
@@ -96,8 +93,7 @@ export default function Pos() {
       .finally(() => setLoading(false));
   }, [navigate]);
 
-  // Browse data — featured/best-seller tiles + category chips — shown when the
-  // search box is empty.
+  // Browse data — featured/best-seller tiles — shown when the search box is empty.
   useEffect(() => {
     api.get('/pos/quick-products')
       .then((res) => {
@@ -105,20 +101,7 @@ export default function Pos() {
         if (!(res.data?.featured?.length) && res.data?.topSellers?.length) setBrowseTab('top');
       })
       .catch(() => {});
-    api.get('/pos/categories')
-      .then((res) => setCategories(Array.isArray(res.data) ? res.data : []))
-      .catch(() => {});
   }, []);
-
-  // Load a category's products when its chip is selected.
-  useEffect(() => {
-    if (browseTab === 'featured' || browseTab === 'top') return;
-    setBrowseLoading(true);
-    api.get('/pos/products', { params: { category: browseTab } })
-      .then((res) => setBrowseItems(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setBrowseItems([]))
-      .finally(() => setBrowseLoading(false));
-  }, [browseTab]);
 
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
@@ -528,29 +511,15 @@ export default function Pos() {
               <div className="chip-bar">
                 <button className={`chip ${browseTab === 'featured' ? 'is-active' : ''}`} onClick={() => setBrowseTab('featured')}>★ Featured</button>
                 <button className={`chip ${browseTab === 'top' ? 'is-active' : ''}`} onClick={() => setBrowseTab('top')}>🔥 Best Sellers</button>
-                {categories.map((c) => (
-                  <button key={c.id} className={`chip ${browseTab === c.name ? 'is-active' : ''}`} onClick={() => setBrowseTab(c.name)}>{c.name}</button>
-                ))}
               </div>
               <div className="tile-grid">
                 {(() => {
-                  const list = browseTab === 'featured' ? quick.featured
-                    : browseTab === 'top' ? quick.topSellers
-                    : browseItems;
-                  if (browseLoading && browseTab !== 'featured' && browseTab !== 'top') {
-                    return Array.from({ length: 8 }).map((_, i) => (
-                      <div key={`sk-${i}`} className="tile tile-skeleton">
-                        <div className="tile-img skel" />
-                        <div className="tile-body"><div className="skel-line" /><div className="skel-line short" /></div>
-                      </div>
-                    ));
-                  }
+                  const list = browseTab === 'featured' ? quick.featured : quick.topSellers;
                   if (list.length === 0) {
                     return (
                       <div className="browse-empty">
                         {browseTab === 'featured' ? 'No featured products — flag some in Admin → Products'
-                          : browseTab === 'top' ? 'No sales yet'
-                          : 'No products in this category'}
+                          : 'No sales yet'}
                       </div>
                     );
                   }
