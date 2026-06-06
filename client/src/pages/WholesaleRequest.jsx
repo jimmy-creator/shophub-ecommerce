@@ -8,6 +8,12 @@ import SEO from '../components/SEO';
 
 const emptyAddress = { line1: '', line2: '', city: '', state: '', postalCode: '', country: 'India' };
 
+const UNIT_OPTIONS = [
+  { value: 'units', label: 'Units' },
+  { value: 'kg', label: 'Kg' },
+  { value: 'ton', label: 'TON' },
+];
+
 export default function WholesaleRequest() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -15,6 +21,7 @@ export default function WholesaleRequest() {
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState(user?.name || '');
   const [contactPhone, setContactPhone] = useState(user?.phone || '');
+  const [gstNumber, setGstNumber] = useState('');
   const [contactAddress, setContactAddress] = useState(emptyAddress);
   const [customerNote, setCustomerNote] = useState('');
   const [items, setItems] = useState([]);
@@ -53,13 +60,13 @@ export default function WholesaleRequest() {
       toast.error('Already added');
       return;
     }
-    setItems([...items, { productId: product.id, name: product.name, quantity: 1, image: product.images?.[0] || null }]);
+    setItems([...items, { productId: product.id, name: product.name, quantity: 1, unit: 'units', image: product.images?.[0] || null }]);
     setQuery('');
     setSuggestions([]);
   };
 
   const addCustomRow = () => {
-    setItems([...items, { productId: null, name: '', quantity: 1 }]);
+    setItems([...items, { productId: null, name: '', quantity: 1, unit: 'units' }]);
   };
 
   const updateItem = (idx, patch) => {
@@ -85,7 +92,7 @@ export default function WholesaleRequest() {
       return;
     }
     const cleanItems = items
-      .map((i) => ({ productId: i.productId, name: i.name.trim(), quantity: parseInt(i.quantity, 10) }))
+      .map((i) => ({ productId: i.productId, name: i.name.trim(), quantity: parseInt(i.quantity, 10), unit: i.unit || 'units' }))
       .filter((i) => i.quantity > 0 && (i.productId || i.name));
 
     setSubmitting(true);
@@ -94,6 +101,7 @@ export default function WholesaleRequest() {
         companyName: companyName.trim(),
         contactName: contactName.trim(),
         contactPhone: contactPhone.trim(),
+        gstNumber: gstNumber.trim(),
         contactAddress,
         customerNote: customerNote.trim(),
         items: cleanItems,
@@ -138,6 +146,9 @@ export default function WholesaleRequest() {
               <div className="s2-field"><label>Phone</label>
                 <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+91 …" /></div>
             </div>
+            <div className="s2-field"><label>GST number (optional)</label>
+              <input value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} placeholder="22AAAAA0000A1Z5" maxLength={15} style={{ textTransform: 'uppercase' }} />
+              <small style={{ color: 'var(--s2-text-dim)', fontSize: '0.78rem' }}>For GST-registered businesses — we'll add it to your invoice.</small></div>
           </section>
 
           <section>
@@ -201,8 +212,15 @@ export default function WholesaleRequest() {
                       type="number" min={1}
                       value={it.quantity}
                       onChange={(e) => updateItem(idx, { quantity: e.target.value })}
-                      style={{ width: 80, padding: '0.4rem 0.6rem', border: '1px solid var(--s2-border)', borderRadius: 4, fontSize: '0.88rem' }}
+                      style={{ width: 70, padding: '0.4rem 0.6rem', border: '1px solid var(--s2-border)', borderRadius: 4, fontSize: '0.88rem' }}
                     />
+                    <select
+                      value={it.unit || 'units'}
+                      onChange={(e) => updateItem(idx, { unit: e.target.value })}
+                      style={{ width: 80, padding: '0.4rem 0.4rem', border: '1px solid var(--s2-border)', borderRadius: 4, fontSize: '0.88rem', background: '#fff' }}
+                    >
+                      {UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                    </select>
                     <button type="button" onClick={() => removeItem(idx)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--s2-text-dim)' }}>
                       <X size={16} />
                     </button>

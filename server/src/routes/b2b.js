@@ -7,6 +7,9 @@ import { sendQuoteEmail } from '../services/emailService.js';
 
 const router = Router();
 
+const ALLOWED_UNITS = ['units', 'kg', 'ton'];
+const normaliseUnit = (u) => (ALLOWED_UNITS.includes(u) ? u : 'units');
+
 function genRequestNumber() {
   return `B2B-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 }
@@ -36,6 +39,7 @@ async function normaliseRequestItems(rawItems) {
           productId: product.id,
           name: product.name,
           quantity: qty,
+          unit: normaliseUnit(item.unit),
           image: product.images?.[0] || null,
           category: product.category || null,
           // No unitPrice here — admin sets it when quoting
@@ -45,7 +49,7 @@ async function normaliseRequestItems(rawItems) {
       // Free-form row — customer typed a name
       const name = String(item.name || '').trim();
       if (!name) return null;
-      return { name, quantity: qty };
+      return { name, quantity: qty, unit: normaliseUnit(item.unit) };
     })
     .filter(Boolean);
 }
@@ -57,7 +61,7 @@ async function normaliseRequestItems(rawItems) {
 // Create a price request
 router.post('/requests', protect, async (req, res) => {
   try {
-    const { companyName, contactName, contactPhone, contactAddress, customerNote, items } = req.body;
+    const { companyName, contactName, contactPhone, gstNumber, contactAddress, customerNote, items } = req.body;
 
     if (!companyName?.trim() || !contactName?.trim()) {
       return res.status(400).json({ message: 'Company and contact name are required' });
@@ -78,6 +82,7 @@ router.post('/requests', protect, async (req, res) => {
       companyName: companyName.trim(),
       contactName: contactName.trim(),
       contactPhone: contactPhone?.trim() || null,
+      gstNumber: gstNumber?.trim() || null,
       contactAddress,
       customerNote: customerNote?.trim() || null,
       items: normalisedItems,
@@ -265,6 +270,7 @@ router.patch('/requests/:id/quote', protect, admin, async (req, res) => {
       productId: it.productId || null,
       name: String(it.name || '').trim(),
       quantity: parseInt(it.quantity, 10) || 0,
+      unit: normaliseUnit(it.unit),
       unitPrice: parseFloat(it.unitPrice) || 0,
       lineTotal: it.lineTotal != null ? parseFloat(it.lineTotal) : (parseFloat(it.unitPrice) || 0) * (parseInt(it.quantity, 10) || 0),
       image: it.image || null,
@@ -354,6 +360,7 @@ async function convertRequestToOrder(request) {
     category: it.category || null,
     price: parseFloat(it.unitPrice || 0),
     quantity: parseInt(it.quantity, 10) || 0,
+    unit: it.unit || 'units',
     image: it.image || null,
     taxable: false,
     taxRate: 0,

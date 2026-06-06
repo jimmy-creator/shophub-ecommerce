@@ -28,6 +28,11 @@ const PriceRequest = sequelize.define('PriceRequest', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  gstNumber: {
+    // GSTIN supplied by the buyer for B2B invoicing — optional (unregistered buyers leave it blank)
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   contactAddress: {
     // JSON so we can reuse this directly as Order.shippingAddress when converted
     // shape: { fullName, phone, line1, line2, city, state, postalCode, country }
@@ -40,7 +45,8 @@ const PriceRequest = sequelize.define('PriceRequest', {
   },
   items: {
     // Free-form line items. Shape per row:
-    //   { productId?, name, quantity, unitPrice?, lineTotal?, image? }
+    //   { productId?, name, quantity, unit?, unitPrice?, lineTotal?, image? }
+    //   unit ∈ 'units' | 'kg' | 'ton' (defaults to 'units')
     // productId is optional — admin can quote for off-catalogue items.
     type: DataTypes.JSON,
     allowNull: false,

@@ -2569,6 +2569,7 @@ export default function Admin() {
                             productId: it.productId || null,
                             name: it.name,
                             quantity: parseInt(it.quantity, 10) || 1,
+                            unit: it.unit || 'units',
                             unitPrice: it.unitPrice != null ? it.unitPrice : '',
                             image: it.image || null,
                             category: it.category || null,
@@ -2599,6 +2600,7 @@ export default function Admin() {
                     {b2bQuoteForm.contactPhone && <> · {b2bQuoteForm.contactPhone}</>}
                     <br />
                     {b2bQuoteForm.companyName}
+                    {b2bQuoteForm.gstNumber && <> · GST: <strong>{b2bQuoteForm.gstNumber}</strong></>}
                     <br />
                     {[
                       b2bQuoteForm.contactAddress?.line1,
@@ -2620,7 +2622,8 @@ export default function Admin() {
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--border)' }}>
                         <th style={{ textAlign: 'left', padding: '0.5rem' }}>Item</th>
-                        <th style={{ width: 80, padding: '0.5rem' }}>Qty</th>
+                        <th style={{ width: 70, padding: '0.5rem' }}>Qty</th>
+                        <th style={{ width: 90, padding: '0.5rem' }}>Unit</th>
                         <th style={{ width: 130, padding: '0.5rem' }}>Unit price</th>
                         <th style={{ width: 110, padding: '0.5rem', textAlign: 'right' }}>Line total</th>
                         <th style={{ width: 30 }} />
@@ -2656,6 +2659,21 @@ export default function Admin() {
                               />
                             </td>
                             <td style={{ padding: '0.5rem' }}>
+                              <select
+                                value={it.unit || 'units'}
+                                onChange={(e) => {
+                                  const items = [...b2bQuoteForm.items];
+                                  items[idx] = { ...items[idx], unit: e.target.value };
+                                  setB2bQuoteForm({ ...b2bQuoteForm, items });
+                                }}
+                                style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: '4px', fontSize: '0.85rem', background: 'var(--bg-warm)' }}
+                              >
+                                <option value="units">Units</option>
+                                <option value="kg">Kg</option>
+                                <option value="ton">TON</option>
+                              </select>
+                            </td>
+                            <td style={{ padding: '0.5rem' }}>
                               <input
                                 type="number"
                                 step="0.01"
@@ -2682,7 +2700,7 @@ export default function Admin() {
                     </tbody>
                   </table>
 
-                  <button type="button" onClick={() => setB2bQuoteForm({ ...b2bQuoteForm, items: [...b2bQuoteForm.items, { productId: null, name: '', quantity: 1, unitPrice: '' }] })}
+                  <button type="button" onClick={() => setB2bQuoteForm({ ...b2bQuoteForm, items: [...b2bQuoteForm.items, { productId: null, name: '', quantity: 1, unit: 'units', unitPrice: '' }] })}
                     className="btn btn-secondary" style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
                     <HiPlus /> Add item
                   </button>
@@ -2775,6 +2793,7 @@ export default function Admin() {
                               productId: i.productId || null,
                               name: i.name,
                               quantity: parseInt(i.quantity, 10),
+                              unit: i.unit || 'units',
                               unitPrice: parseFloat(i.unitPrice) || 0,
                               lineTotal: (parseFloat(i.unitPrice) || 0) * (parseInt(i.quantity, 10) || 0),
                               image: i.image || null,

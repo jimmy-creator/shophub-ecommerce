@@ -469,7 +469,7 @@ export async function sendQuoteEmail({ to, customerName, request, bankDetails })
   const itemsRows = (request.items || []).map((it) => `
     <tr>
       <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textMain};">${it.name}</td>
-      <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textDim};text-align:center;">${it.quantity}</td>
+      <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textDim};text-align:center;">${it.quantity}${it.unit === 'kg' ? ' Kg' : it.unit === 'ton' ? ' TON' : ''}</td>
       <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textDim};text-align:right;">${fmt(it.unitPrice)}</td>
       <td style="padding:12px 16px;border-bottom:1px solid ${brandBorder};font-size:14px;color:${textMain};text-align:right;font-weight:600;">${fmt(it.lineTotal)}</td>
     </tr>

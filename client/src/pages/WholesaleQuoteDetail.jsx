@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import { CURRENCY } from '../utils/currency';
 import SEO from '../components/SEO';
 
+const unitSuffix = (u) => (u === 'kg' ? ' Kg' : u === 'ton' ? ' TON' : '');
+
 function loadScript(src) {
   return new Promise((resolve) => {
     if (document.querySelector(`script[src="${src}"]`)) return resolve(true);
@@ -162,7 +164,7 @@ export default function WholesaleQuoteDetail() {
             {(quote.items || []).map((it, idx) => (
               <tr key={idx} style={{ borderTop: '1px solid var(--s2-border)' }}>
                 <td style={{ padding: '0.7rem 0.85rem', fontSize: '0.9rem' }}>{it.name}</td>
-                <td style={{ padding: '0.7rem 0.85rem', textAlign: 'center', fontSize: '0.9rem' }}>{it.quantity}</td>
+                <td style={{ padding: '0.7rem 0.85rem', textAlign: 'center', fontSize: '0.9rem' }}>{it.quantity}{unitSuffix(it.unit)}</td>
                 {(isQuoted || isPaid) && (
                   <>
                     <td style={{ padding: '0.7rem 0.85rem', textAlign: 'right', fontSize: '0.9rem', color: 'var(--s2-text-dim)' }}>{CURRENCY}{parseFloat(it.unitPrice || 0).toFixed(2)}</td>
