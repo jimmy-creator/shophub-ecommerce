@@ -192,6 +192,17 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   ctx.textBaseline = 'top';
   ctx.direction = 'ltr';
 
+  // Embolden: thermal heads under-print, so fatten every glyph by stroking it
+  // with a thin black outline on top of the fill. Centralised here so all text
+  // (incl. the many raw ctx.fillText calls) gets it; drawImage (logo/barcode)
+  // is unaffected. lineJoin 'round' keeps Arabic curves from spiking.
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 0.7;
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
+  const _fillText = ctx.fillText.bind(ctx);
+  ctx.fillText = (...args) => { _fillText(...args); ctx.strokeText(...args); };
+
   const L = PAD;
   const R = W - PAD;
   const CW = W - 2 * PAD;
