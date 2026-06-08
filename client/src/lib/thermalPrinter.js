@@ -340,18 +340,22 @@ export async function printLabels(labels, { currency = 'KWD' } = {}) {
   const cols = getColumns('barcode');
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
   enc.initialize();
+  const storeName = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
   for (const label of labels) {
-    const show = label.show || { name: true, barcode: true, sku: true, price: true };
+    const show = label.show || { brand: true, name: true, barcode: true, sku: true, price: true };
+    const value = label.code || `P${label.productId}`;
     enc.initialize();
+    if (show.brand && storeName) {
+      enc.align('center').bold(true).line(storeName.toUpperCase()).bold(false);
+    }
     if (show.name && label.name) {
-      enc.align('center').bold(true).line(label.name).bold(false);
+      enc.align('center').line(label.name);
     }
     if (show.barcode && (label.code || label.productId)) {
-      const value = label.code || `P${label.productId}`;
       enc.align('center').barcode(value, 'code128', { height: 60, text: false });
     }
-    if (show.sku && label.code) {
-      enc.align('center').size('small').line(label.code).size('normal');
+    if (show.sku) {
+      enc.align('center').size('small').line(value).size('normal');
     }
     if (show.price && label.price != null) {
       enc.align('center').bold(true)

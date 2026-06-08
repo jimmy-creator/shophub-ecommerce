@@ -105,10 +105,22 @@ router.get('/products', protectCashier, async (req, res) => {
     if (!q) return res.json([]);
 
     // 1. Exact code match (barcode scanned)
-    const exact = await Product.findAll({
+    let exact = await Product.findAll({
       where: { active: true, code: q },
       limit: 5,
     });
+
+    // 1b. Synthetic "P<id>" barcode. The admin label printer falls back to
+    //     `P${product.id}` when a product has no `code` (see BarcodeLabels.jsx),
+    //     so resolve that scheme back to the product by id — otherwise scanned
+    //     code-less products would never be found.
+    if (exact.length === 0) {
+      const m = /^P(\d+)$/i.exec(q);
+      if (m) {
+        const byId = await Product.findOne({ where: { id: parseInt(m[1], 10), active: true } });
+        if (byId) exact = [byId];
+      }
+    }
 
     // 2. Variant-SKU match — Product.variants is JSON, can't index easily,
     //    so we fetch a small slice and filter in JS. For larger catalogues

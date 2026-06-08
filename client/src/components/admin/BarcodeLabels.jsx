@@ -48,6 +48,8 @@ function BarcodeSvg({ value, height = 30 }) {
   return <svg ref={ref} style={{ width: '100%', height: 'auto', display: 'block' }} />;
 }
 
+const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
+
 function Label({ product, size, show, currency }) {
   const codeForBarcode = product.code || `P${product.productId}`;
   return (
@@ -55,24 +57,31 @@ function Label({ product, size, show, currency }) {
       width: `${size.width}mm`,
       minHeight: `${size.height}mm`,
       padding: '1mm 1.2mm',
+      alignItems: 'center',
+      textAlign: 'center',
     }}>
+      {show.brand && (
+        <div className="bc-brand" style={{ fontSize: `${Math.max(6, size.fontPt - 1)}pt`, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', lineHeight: 1.05 }}>
+          {STORE_NAME}
+        </div>
+      )}
       {show.name && (
-        <div className="bc-name" style={{ fontSize: `${size.fontPt}pt`, lineHeight: 1.1, fontWeight: 600 }}>
+        <div className="bc-name" style={{ fontSize: `${size.fontPt}pt`, lineHeight: 1.1, fontWeight: 600, marginTop: show.brand ? '0.3mm' : 0 }}>
           {product.name}
         </div>
       )}
       {show.barcode && (
-        <div style={{ marginTop: '0.5mm' }}>
+        <div style={{ width: '100%', marginTop: '0.6mm' }}>
           <BarcodeSvg value={codeForBarcode} height={size.barcodeH} />
         </div>
       )}
-      {show.sku && product.code && (
-        <div className="bc-sku" style={{ fontSize: `${size.fontPt - 2}pt`, textAlign: 'center', letterSpacing: '0.5px' }}>
-          {product.code}
+      {show.sku && (
+        <div className="bc-sku" style={{ fontSize: `${size.fontPt - 1}pt`, letterSpacing: '1.5px', fontFamily: 'ui-monospace, monospace', marginTop: '0.2mm' }}>
+          {codeForBarcode}
         </div>
       )}
       {show.price && (
-        <div className="bc-price" style={{ fontSize: `${size.fontPt + 1}pt`, fontWeight: 700, textAlign: 'right', marginTop: '0.5mm' }}>
+        <div className="bc-price" style={{ fontSize: `${size.fontPt + 2}pt`, fontWeight: 800, marginTop: '0.4mm' }}>
           {currency} {(parseFloat(product.price) || 0).toFixed(3)}
         </div>
       )}
@@ -86,7 +95,7 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
   const [queue, setQueue] = useState([]);                // [{ productId, name, code, price, qty }]
   const [sizeId, setSizeId] = useState('medium');
   const [layout, setLayout] = useState('roll');   // 'roll' (one per row, label-printer) | 'sheet' (multi-col, A4)
-  const [show, setShow] = useState({ name: true, barcode: true, sku: true, price: true });
+  const [show, setShow] = useState({ brand: true, name: true, barcode: true, sku: true, price: true });
 
   useEffect(() => {
     api.get('/products/admin/all?limit=10000')
@@ -245,6 +254,7 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
           <label style={lblStyle}>Show on label</label>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: '0.85rem' }}>
             {[
+              { key: 'brand', label: 'Store name' },
               { key: 'name', label: 'Name' },
               { key: 'barcode', label: 'Barcode' },
               { key: 'sku', label: 'SKU' },
