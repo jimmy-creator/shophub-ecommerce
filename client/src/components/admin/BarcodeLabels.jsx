@@ -11,6 +11,7 @@
  * single-column roll printers and Avery-style A4 sheets.
  */
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import JsBarcode from 'jsbarcode';
 import { HiPlus, HiX, HiPrinter } from 'react-icons/hi';
 import toast from 'react-hot-toast';
@@ -55,9 +56,10 @@ function Label({ product, size, show, currency }) {
   return (
     <div className="bc-label" style={{
       width: `${size.width}mm`,
-      minHeight: `${size.height}mm`,
+      height: `${size.height}mm`,
       padding: '1mm 1.2mm',
       alignItems: 'center',
+      justifyContent: 'center',
       textAlign: 'center',
     }}>
       {show.brand && (
@@ -66,7 +68,7 @@ function Label({ product, size, show, currency }) {
         </div>
       )}
       {show.name && (
-        <div className="bc-name" style={{ fontSize: `${size.fontPt}pt`, lineHeight: 1.1, fontWeight: 600, marginTop: show.brand ? '0.3mm' : 0 }}>
+        <div className="bc-name" style={{ fontSize: `${size.fontPt}pt`, lineHeight: 1.1, fontWeight: 600, marginTop: show.brand ? '0.3mm' : 0, WebkitLineClamp: size.id === 'small' ? 1 : 2 }}>
           {product.name}
         </div>
       )}
@@ -329,16 +331,28 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
         )}
       </div>
 
-      {/* Preview (also the print target) */}
+      {/* On-screen preview */}
       {queue.length > 0 && (
         <>
           <h3 className="no-print" style={{ marginTop: '1.5rem' }}>Preview</h3>
-          <div id="bc-print-area" className={`bc-layout-${layout}`} data-w={size.width}>
+          <div className={`bc-preview no-print bc-layout-${layout}`} data-w={size.width}>
             {flatLabels.map((q, i) => (
               <Label key={i} product={q} size={size} show={show} currency={currency} />
             ))}
           </div>
         </>
+      )}
+
+      {/* Print target — portaled to <body> so it's the ONLY thing that lays out
+          when printing (#root is hidden in print). Without this, the rest of
+          the admin screen stays in flow and spills blank trailing pages. */}
+      {queue.length > 0 && createPortal(
+        <div id="bc-print-area" className={`bc-print-only bc-layout-${layout}`} data-w={size.width}>
+          {flatLabels.map((q, i) => (
+            <Label key={`p${i}`} product={q} size={size} show={show} currency={currency} />
+          ))}
+        </div>,
+        document.body,
       )}
 
       <style>{`
@@ -378,12 +392,13 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
         .qty-btn-x { color: var(--danger); }
 
         /* Preview area on screen */
-        #bc-print-area {
+        .bc-preview {
           margin-top: 0.5rem;
           padding: 8px; background: #e5e7eb; border-radius: 6px;
         }
-        #bc-print-area.bc-layout-sheet { display: flex; flex-wrap: wrap; gap: 2mm; }
-        #bc-print-area.bc-layout-roll { display: flex; flex-direction: column; gap: 1mm; align-items: flex-start; }
+        .bc-layout-sheet { display: flex; flex-wrap: wrap; gap: 2mm; }
+        .bc-layout-roll { display: flex; flex-direction: column; gap: 1mm; align-items: flex-start; }
+        .bc-print-only { display: none; }
         .bc-label {
           background: white; color: black;
           border: 1px solid #cbd5e1;
@@ -398,27 +413,30 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
         }
 
         @media print {
-          body * { visibility: hidden !important; }
-          #bc-print-area, #bc-print-area * { visibility: visible !important; }
-          #bc-print-area {
-            position: absolute !important; left: 0 !important; top: 0 !important;
+          /* Collapse the entire app; only the portaled labels remain in flow,
+             so the printed page count == the labels (no blank trailing pages). */
+          #root { display: none !important; }
+          .no-print { display: none !important; }
+
+          .bc-print-only {
+            display: block !important;
+            position: static !important;
             padding: 0 !important; margin: 0 !important;
-            background: white !important; border: none !important;
+            background: #fff !important;
           }
           .bc-label {
             border: none !important;
             margin: 0 !important;
             page-break-inside: avoid;
           }
-          .no-print { display: none !important; }
 
           /* Sheet layout — multi-column on a normal A4 / Letter page */
-          #bc-print-area.bc-layout-sheet {
+          .bc-print-only.bc-layout-sheet {
             display: flex !important; flex-wrap: wrap !important; gap: 0 !important;
           }
 
           /* Roll layout — one label per "page", paper size = label size */
-          #bc-print-area.bc-layout-roll {
+          .bc-print-only.bc-layout-roll {
             display: block !important;
           }
           .bc-layout-roll .bc-label {
@@ -430,21 +448,20 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
             break-after: auto !important;
           }
         }
-        /* Per-size @page sizing for roll printers. The roll @page rule
-           narrows the print area to one label; the printer driver
-           feeds one label per page. Sheet layout uses default @page. */
+        ${layout === 'roll' ? `
+        /* Roll printing: one global @page sized to the selected label, so the
+           printer feeds one label per page. A single unnamed @page is honored
+           reliably (named pages + the page: property leak a leading blank A4).
+           The label prints 1mm under the page height so its content never
+           reaches the page boundary — that boundary touch is what split the
+           price onto the next sticker and spawned phantom pages. */
         @media print {
-          .bc-layout-roll[data-w="40"] ~ * { display: none; }
+          @page { size: ${size.width}mm ${size.height}mm; margin: 0; }
+          .bc-print-only.bc-layout-roll .bc-label {
+            height: ${size.height - 1}mm !important;
+          }
         }
-        @page bc-roll-40 { size: 40mm 25mm; margin: 0; }
-        @page bc-roll-50 { size: 50mm 30mm; margin: 0; }
-        @page bc-roll-80 { size: 80mm 50mm; margin: 0; }
-        @media print {
-          .bc-layout-roll[data-w="40"] { page: bc-roll-40; }
-          .bc-layout-roll[data-w="50"] { page: bc-roll-50; }
-          .bc-layout-roll[data-w="80"] { page: bc-roll-80; }
-          .bc-layout-sheet { page: auto; }
-        }
+        ` : ''}
       `}</style>
     </div>
   );

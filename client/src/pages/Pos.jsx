@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 import {
   HiShoppingCart, HiClock, HiReply, HiChartBar,
   HiLogout, HiOutlineLogout, HiUserCircle, HiCash, HiCreditCard,
-  HiSearch, HiX, HiPrinter, HiSun, HiMoon,
+  HiSearch, HiX, HiPrinter, HiSun, HiMoon, HiTag,
 } from 'react-icons/hi';
 import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
@@ -35,6 +35,7 @@ import PosRecentSales from '../components/PosRecentSales';
 import PosSplitPayment from '../components/PosSplitPayment';
 import PosPrinterSettings from '../components/PosPrinterSettings';
 import PosBillEditor from '../components/PosBillEditor';
+import PosLabelPrint from '../components/PosLabelPrint';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
@@ -73,6 +74,7 @@ export default function Pos() {
   const [recentOpen, setRecentOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const [printerOpen, setPrinterOpen] = useState(false);
+  const [labelOpen, setLabelOpen] = useState(false);
   const [editBill, setEditBill] = useState(null);   // orderNumber | null
   const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'card' | null
   const [tendered, setTendered] = useState('');
@@ -106,14 +108,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen || printerOpen || editBill) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen || printerOpen || editBill || labelOpen) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen, printerOpen, editBill]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen, printerOpen, editBill, labelOpen]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -407,6 +409,9 @@ export default function Pos() {
           <HiChartBar size={22} /><span>X-report</span>
         </button>
         <div className="rail-spacer" />
+        <button className="rail-btn" onClick={() => setLabelOpen(true)} title="Print barcode label">
+          <HiTag size={22} /><span>Labels</span>
+        </button>
         <button className="rail-btn" onClick={() => setPrinterOpen(true)} title="Printer">
           <HiPrinter size={22} /><span>Printer</span>
         </button>
@@ -764,6 +769,11 @@ export default function Pos() {
       {/* ─── Printer settings ─────────────────── */}
       {printerOpen && (
         <PosPrinterSettings onClose={() => setPrinterOpen(false)} />
+      )}
+
+      {/* ─── Print barcode label ──────────────── */}
+      {labelOpen && (
+        <PosLabelPrint currency={CURRENCY} onClose={() => setLabelOpen(false)} />
       )}
 
       {/* ─── Split payment ────────────────────── */}
@@ -1151,6 +1161,32 @@ export default function Pos() {
         }
         .link-btn { background: transparent; border: none; color: var(--pos-accent); cursor: pointer; font-size: 0.82rem; padding: 0; font-family: inherit; }
         .link-btn:hover { color: #f08d6c; text-decoration: underline; }
+
+        /* Print-label modal */
+        .label-result {
+          display: flex; align-items: center; gap: 0.75rem; width: 100%;
+          padding: 0.6rem 0.7rem; background: var(--pos-elevated);
+          border: 1px solid var(--pos-line); border-radius: 10px;
+          color: var(--pos-text); cursor: pointer; font-family: inherit;
+          margin-bottom: 0.4rem; transition: border-color .1s var(--pos-ease);
+        }
+        .label-result:hover { border-color: var(--pos-accent); }
+        .label-selected {
+          display: flex; align-items: center; gap: 0.75rem;
+          padding: 0.7rem 0.8rem; background: var(--pos-elevated);
+          border: 1px solid var(--pos-line); border-radius: 10px;
+        }
+        .qty-step {
+          width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
+          background: var(--pos-elevated); border: 1px solid var(--pos-line);
+          color: var(--pos-text); font-size: 1.2rem; cursor: pointer; font-family: inherit;
+        }
+        .qty-step:hover { border-color: var(--pos-border-strong); }
+        .icon-btn {
+          background: transparent; border: none; color: var(--pos-text-2);
+          cursor: pointer; padding: 4px; display: inline-flex; border-radius: 6px;
+        }
+        .icon-btn:hover { color: var(--pos-text); background: var(--pos-line); }
 
         .cart-list { flex: 1; overflow-y: auto; min-height: 100px; margin: 0 -0.25rem; padding: 0 0.25rem; }
         .cart-empty { padding: 3rem 0; text-align: center; color: var(--pos-text-2); font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; }
