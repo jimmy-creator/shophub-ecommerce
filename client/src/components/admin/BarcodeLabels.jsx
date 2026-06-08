@@ -42,11 +42,20 @@ function BarcodeSvg({ value, height = 30 }) {
         background: '#ffffff',
         lineColor: '#000000',
       });
+      // Fill the label width at a FIXED height. Without this, width:100% +
+      // height:auto scales a short barcode up proportionally on wide labels,
+      // making it tall enough to collide with a 2-line product name above.
+      const w = ref.current.getAttribute('width');
+      const h = ref.current.getAttribute('height');
+      if (w && h) {
+        ref.current.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        ref.current.setAttribute('preserveAspectRatio', 'none');
+      }
     } catch {
       /* invalid value — render empty */
     }
   }, [value, height]);
-  return <svg ref={ref} style={{ width: '100%', height: 'auto', display: 'block' }} />;
+  return <svg ref={ref} style={{ width: '100%', height: `${height}px`, display: 'block' }} />;
 }
 
 const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
@@ -407,6 +416,10 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
           overflow: hidden; box-sizing: border-box;
           page-break-inside: avoid;
         }
+        /* Never let a child shrink below its content — otherwise a long name's
+           box collapses and its text overlaps the barcode. Excess clips at the
+           bottom (overflow:hidden) instead. */
+        .bc-label > * { flex-shrink: 0; }
         .bc-name {
           overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
           -webkit-line-clamp: 2; -webkit-box-orient: vertical;
