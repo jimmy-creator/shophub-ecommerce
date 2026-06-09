@@ -32,7 +32,9 @@ function loadScript(src) {
 }
 
 export default function Checkout() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+  const shipDays = (opt) => (isAr && opt?.daysAr ? opt.daysAr : opt?.days);
   // Locale-aware currency symbol; re-evaluates per render when locale flips.
   const cur = localizedCurrency();
   const { cart, cartTotal, clearCart } = useCart();
@@ -821,11 +823,11 @@ export default function Checkout() {
                 >
                   <input type="radio" name="shipping" checked={shippingMethod === 'standard'} readOnly />
                   <div className="shipping-option-info">
-                    <span className="shipping-option-name">{shippingOptions.standard.label}</span>
-                    <span className="shipping-option-days">{shippingOptions.standard.days}</span>
+                    <span className="shipping-option-name">{t('checkout.shippingStandard')}</span>
+                    <span className="shipping-option-days">{shipDays(shippingOptions.standard)}</span>
                   </div>
                   <span className="shipping-option-price">
-                    {shippingOptions.standard.rate === 0 ? 'Free' : `${cur}${formatPrice(shippingOptions.standard.rate)}`}
+                    {shippingOptions.standard.rate === 0 ? t('checkout.free') : `${cur}${formatPrice(shippingOptions.standard.rate)}`}
                   </span>
                 </label>
                 <label
@@ -834,8 +836,8 @@ export default function Checkout() {
                 >
                   <input type="radio" name="shipping" checked={shippingMethod === 'express'} readOnly />
                   <div className="shipping-option-info">
-                    <span className="shipping-option-name">{shippingOptions.express.label}</span>
-                    <span className="shipping-option-days">{shippingOptions.express.days}</span>
+                    <span className="shipping-option-name">{t('checkout.shippingExpress')}</span>
+                    <span className="shipping-option-days">{shipDays(shippingOptions.express)}</span>
                   </div>
                   <span className="shipping-option-price">{cur}{formatPrice(shippingOptions.express.rate)}</span>
                 </label>

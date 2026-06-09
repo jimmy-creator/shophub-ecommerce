@@ -123,7 +123,10 @@
     "paymentCash": "Cash on delivery",
     "paymentCard": "Card",
     "paymentKnet": "KNET",
-    "paymentBank": "Bank transfer"
+    "paymentBank": "Bank transfer",
+    "shippingStandard": "Standard Shipping",
+    "shippingExpress": "Express Shipping",
+    "free": "Free"
   },
   "footer": {
     "shop": "Shop",
