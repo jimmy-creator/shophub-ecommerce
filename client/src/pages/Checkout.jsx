@@ -5,9 +5,25 @@ import { localizedCurrency } from '../utils/i18nHelpers';
 import { formatPrice } from '../utils/currency';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import { HiShieldCheck, HiLockClosed, HiUser } from 'react-icons/hi';
+import { HiShieldCheck, HiLockClosed, HiUser, HiChevronDown, HiOutlineQuestionMarkCircle } from 'react-icons/hi';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
+
+// Shopify-style floating-label text field (store4 Delivery form).
+function S4Field({ label, optional, optionalText = '(optional)', name, value, onChange, type = 'text', required, inputMode, maxLength, help }) {
+  return (
+    <div className="s4f-field">
+      <input
+        className="s4f-input" id={`s4-${name}`} name={name} type={type}
+        value={value} onChange={onChange} placeholder=" "
+        required={required} inputMode={inputMode} maxLength={maxLength}
+        autoComplete="off"
+      />
+      <label className="s4f-label" htmlFor={`s4-${name}`}>{label}{optional ? ` ${optionalText}` : ''}</label>
+      {help && <span className="s4f-help" title={help}><HiOutlineQuestionMarkCircle size={20} /></span>}
+    </div>
+  );
+}
 
 const toastStyle = {
   style: {
@@ -88,14 +104,19 @@ export default function Checkout() {
 
   const [form, setForm] = useState({
     fullName: user?.name || '',
+    firstName: isStore4 ? (user?.name?.split(' ')[0] || '') : '',
+    lastName: isStore4 ? (user?.name?.split(' ').slice(1).join(' ') || '') : '',
     email: user?.email || '',
     address: '',
+    apartment: '',
     city: '',
-    state: isStore2 ? 'Fujairah' : isStore4 ? 'Al Asimah (Capital)' : '',
+    // store4 (Kuwait) starts unselected so the governorate label acts as a placeholder.
+    state: isStore2 ? 'Fujairah' : '',
     zipCode: '',
     phone: user?.phone || '',
     paymentMethod: 'cod',
   });
+  const [saveInfo, setSaveInfo] = useState(false);
 
   // Save abandoned cart when checkout page loads
   useEffect(() => {
@@ -158,6 +179,21 @@ export default function Checkout() {
       });
   }, [isGuest]);
 
+  // Prefill the store4 delivery form from a previous "save this information".
+  useEffect(() => {
+    if (!isStore4) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem('store4_delivery') || 'null');
+      if (!saved) return;
+      setForm((f) => ({
+        ...f, ...saved,
+        fullName: `${saved.firstName || ''} ${saved.lastName || ''}`.trim() || f.fullName,
+      }));
+      setSaveInfo(true);
+    } catch { /* ignore corrupt storage */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (cart.length === 0 && !processingPayment.current) {
     navigate('/cart');
     return null;
@@ -167,6 +203,16 @@ export default function Checkout() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // store4 splits the name into first/last; keep fullName in sync for the
+  // rest of the flow (payment customer name, shipping address, invoice).
+  const handleNameChange = (e) => {
+    setForm((f) => {
+      const next = { ...f, [e.target.name]: e.target.value };
+      next.fullName = `${next.firstName || ''} ${next.lastName || ''}`.trim();
+      return next;
+    });
+  };
+
   const successUrl = (orderNum, failed) => {
     let url = `/order-success?orderNumber=${orderNum}`;
     if (failed) url += '&status=failed';
@@ -174,11 +220,21 @@ export default function Checkout() {
     return url;
   };
 
-  const getShippingAddress = () => ({
-    fullName: form.fullName, address: form.address,
-    city: form.city, state: form.state,
-    zipCode: form.zipCode, phone: form.phone,
-  });
+  const getShippingAddress = () => {
+    if (isStore4) {
+      return {
+        fullName: form.fullName,
+        address: [form.address, form.apartment].filter(Boolean).join(', '),
+        city: form.city, state: form.state, zipCode: form.zipCode,
+        phone: form.phone, country: 'Kuwait',
+      };
+    }
+    return {
+      fullName: form.fullName, address: form.address,
+      city: form.city, state: form.state,
+      zipCode: form.zipCode, phone: form.phone,
+    };
+  };
 
   const handleApplyCoupon = async (codeOverride) => {
     const code = (codeOverride ?? couponCode).trim();
@@ -496,6 +552,18 @@ export default function Checkout() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (isStore4) {
+      if (saveInfo) {
+        localStorage.setItem('store4_delivery', JSON.stringify({
+          firstName: form.firstName, lastName: form.lastName, email: form.email,
+          address: form.address, apartment: form.apartment, city: form.city,
+          state: form.state, zipCode: form.zipCode, phone: form.phone,
+        }));
+      } else {
+        localStorage.removeItem('store4_delivery');
+      }
+    }
+
     if (isStore3) {
       if (!form.zipCode || form.zipCode.length < 4) {
         toast.error('Please enter a valid pincode');
@@ -546,9 +614,90 @@ export default function Checkout() {
   const isOnlinePayment = !['cod', 'bank_transfer'].includes(form.paymentMethod);
 
   return (
-    <div className="checkout-page">
+    <div className={`checkout-page${isStore4 ? ' s4-checkout' : ''}`}>
+      {isStore4 && (
+        <style>{`
+          .s4-checkout { --anfal-blue: #1e3a8a; --anfal-bright: #1a64e8; background: #f5f6f8; }
+          .s4-checkout .container { max-width: 1120px; }
+          .s4-checkout > .container > h1 { display: none; }
+          .s4-co-header {
+            display: flex; align-items: center; gap: 14px;
+            padding: 0.25rem 0 1.4rem; margin-bottom: 1.7rem; border-bottom: 1px solid #e7e9ed;
+          }
+          .s4-co-logo { height: 42px; width: auto; }
+          .s4-co-secure {
+            margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+            color: #16a34a; font-size: 0.85rem; font-weight: 600;
+          }
+          [dir="rtl"] .s4-co-secure { margin-left: 0; margin-right: auto; }
+          .s4-checkout .checkout-layout { gap: 2rem; align-items: start; }
+          .s4-checkout .checkout-section,
+          .s4-checkout .checkout-summary {
+            background: #fff !important; border: 1px solid #e6e8eb !important;
+            border-radius: 16px !important; padding: 1.6rem 1.5rem !important;
+            box-shadow: 0 1px 3px rgba(16,24,40,0.05) !important; backdrop-filter: none !important;
+          }
+          .s4-checkout .checkout-section h3,
+          .s4-checkout .checkout-summary h3 {
+            color: #111827 !important; font-weight: 700; font-size: 1.15rem;
+            border: none !important; padding: 0 !important;
+          }
+          .s4-checkout .checkout-summary h3 { margin-bottom: 1rem; }
+          /* Payment options → modern selectable cards */
+          .s4-checkout .payment-option {
+            border: 1px solid #d8dce1 !important; border-radius: 12px !important;
+            padding: 14px 16px !important; margin-bottom: 10px;
+            background: #fff !important; transition: border-color .15s, box-shadow .15s;
+          }
+          .s4-checkout .payment-option:hover { border-color: #9bb4f5 !important; }
+          .s4-checkout .payment-option:has(input:checked) {
+            border-color: var(--anfal-bright) !important; box-shadow: 0 0 0 1px var(--anfal-bright);
+            background: #f4f8ff !important;
+          }
+          .s4-checkout .payment-option input[type="radio"] { accent-color: var(--anfal-bright); }
+          .s4-checkout .payment-option-name { font-weight: 600; color: #1a1a1a; }
+          /* Place-order button → Anfal blue */
+          .s4-checkout .btn-primary,
+          .s4-checkout .btn-block {
+            background: var(--anfal-bright) !important; background-image: none !important;
+            border: none !important; border-radius: 10px !important;
+            font-weight: 700 !important; min-height: 52px; font-size: 1rem; color: #fff !important;
+            box-shadow: 0 8px 18px -8px rgba(26,100,232,0.6) !important;
+          }
+          .s4-checkout .btn-primary:hover { background: #1550c9 !important; }
+          /* Order summary */
+          .s4-checkout .checkout-summary { position: sticky; top: 20px; }
+          .s4-checkout .summary-row { color: #475467; }
+          .s4-checkout .summary-row.total {
+            color: var(--anfal-blue) !important; font-weight: 800; font-size: 1.2rem;
+            padding-top: 0.85rem; border-top: 1px solid #eef0f2; margin-top: 0.4rem;
+          }
+          .s4-checkout .shipping-option { border-radius: 12px !important; }
+          .s4-checkout .shipping-option.active {
+            border-color: var(--anfal-bright) !important; box-shadow: 0 0 0 1px var(--anfal-bright);
+          }
+          .s4-checkout .shipping-option input { accent-color: var(--anfal-bright); }
+          .s4-checkout .shipping-option-price { color: var(--anfal-blue) !important; font-weight: 700; }
+          /* Coupon */
+          .s4-checkout .coupon-input button { background: var(--anfal-blue) !important; border-radius: 8px !important; }
+          .s4-checkout .coupon-tag { background: rgba(30,58,138,0.10) !important; color: var(--anfal-blue) !important; }
+          /* Guest banner + trust */
+          .s4-checkout .guest-banner {
+            background: #eff4ff !important; border: 1px solid #d6e0ff !important; border-radius: 12px !important;
+          }
+          .s4-checkout .guest-banner-link { color: var(--anfal-bright) !important; }
+          .s4-checkout .checkout-trust { color: #667085 !important; }
+        `}</style>
+      )}
       <div className="container">
-        <h1>Checkout</h1>
+        {isStore4 ? (
+          <div className="s4-co-header">
+            <img src="/images/anfal-logo.png" alt="Anfal Sports" className="s4-co-logo" />
+            <span className="s4-co-secure"><HiLockClosed /> {t('checkout.secure', 'Secure checkout')}</span>
+          </div>
+        ) : (
+          <h1>Checkout</h1>
+        )}
 
         {isGuest && (
           <div className="guest-banner">
@@ -563,109 +712,174 @@ export default function Checkout() {
         <form className="checkout-layout" onSubmit={handleSubmit}>
           {/* Section 1: Address */}
           <div className="checkout-section checkout-address">
+            {isStore4 ? (
+              <div className="s4-delivery">
+                <style>{`
+                  .s4-delivery h3 { font-size: 1.55rem; font-weight: 700; margin: 0 0 1.1rem; color: #1a1a1a; }
+                  .s4-delivery h3:not(:first-child) { margin-top: 1.6rem; }
+                  .s4f-field { position: relative; margin-bottom: 12px; }
+                  .s4f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+                  /* scoped under .s4-delivery so these beat layout.css's
+                     input[type=...] !important glass rules (higher specificity). */
+                  .s4-delivery .s4f-input, .s4-delivery .s4f-select {
+                    width: 100%; height: 56px; box-sizing: border-box;
+                    padding: 22px 14px 6px; font-size: 16px; line-height: 1.2;
+                    border: 1px solid #c9cdd2 !important; border-radius: 8px !important;
+                    background: #fff !important; color: #1a1a1a !important;
+                    -webkit-appearance: none; appearance: none; font-family: inherit;
+                    box-shadow: none !important;
+                  }
+                  .s4-delivery .s4f-select { padding-right: 38px; cursor: pointer; }
+                  .s4-delivery .s4f-input:focus, .s4-delivery .s4f-select:focus {
+                    border-color: #1a64e8 !important; box-shadow: 0 0 0 1px #1a64e8 !important; outline: none;
+                  }
+                  .s4f-label {
+                    position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+                    color: #6b7280; font-size: 16px; pointer-events: none;
+                    transition: top .12s ease, font-size .12s ease; max-width: calc(100% - 44px);
+                    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+                  }
+                  .s4f-input:focus ~ .s4f-label,
+                  .s4f-input:not(:placeholder-shown) ~ .s4f-label,
+                  .s4f-select ~ .s4f-label { top: 10px; transform: none; font-size: 11px; color: #6b7280; }
+                  .s4f-select:required:invalid ~ .s4f-label { top: 50%; transform: translateY(-50%); font-size: 16px; }
+                  .s4f-caret { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #4b5563; display: flex; }
+                  .s4f-help { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: #9ca3af; display: flex; cursor: help; }
+                  .s4f-save { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 15px; color: #1a1a1a; cursor: pointer; }
+                  .s4f-save input { width: 18px; height: 18px; accent-color: #1a64e8; margin: 0; }
+                  [dir="rtl"] .s4f-label { left: auto; right: 15px; }
+                  [dir="rtl"] .s4f-caret, [dir="rtl"] .s4f-help { right: auto; left: 13px; }
+                  [dir="rtl"] .s4f-select { padding-right: 14px; padding-left: 38px; }
+                `}</style>
 
-            {isGuest && (
+                {isGuest && (
+                  <>
+                    <h3>{t('checkout.email')}</h3>
+                    <S4Field label={t('checkout.email')} name="email" type="email" value={form.email} onChange={handleChange} required help="We'll send your order confirmation here" />
+                  </>
+                )}
+
+                <h3>{t('checkout.delivery')}</h3>
+
+                <div className="s4f-field">
+                  <select className="s4f-select" id="s4-country" defaultValue="Kuwait">
+                    <option>Kuwait</option>
+                  </select>
+                  <label className="s4f-label" htmlFor="s4-country">{t('checkout.countryRegion')}</label>
+                  <span className="s4f-caret"><HiChevronDown size={20} /></span>
+                </div>
+
+                <div className="s4f-row">
+                  <S4Field label={t('checkout.firstName')} optional optionalText={t('checkout.optional')} name="firstName" value={form.firstName} onChange={handleNameChange} />
+                  <S4Field label={t('checkout.lastName')} name="lastName" value={form.lastName} onChange={handleNameChange} required />
+                </div>
+
+                <S4Field label={t('checkout.address')} name="address" value={form.address} onChange={handleChange} required />
+                <S4Field label={t('checkout.apartment')} optional optionalText={t('checkout.optional')} name="apartment" value={form.apartment} onChange={handleChange} />
+
+                <div className="s4f-row">
+                  <S4Field label={t('checkout.postalCode')} optional optionalText={t('checkout.optional')} name="zipCode" value={form.zipCode} onChange={handleChange} />
+                  <S4Field label={t('checkout.city')} name="city" value={form.city} onChange={handleChange} required />
+                </div>
+
+                <div className="s4f-field">
+                  <select className="s4f-select" id="s4-gov" name="state" value={form.state} onChange={handleChange} required>
+                    <option value="" disabled hidden></option>
+                    {KUWAIT_GOVERNORATES.map((g) => (<option key={g} value={g}>{g}</option>))}
+                  </select>
+                  <label className="s4f-label" htmlFor="s4-gov">{t('checkout.governorate')}</label>
+                  <span className="s4f-caret"><HiChevronDown size={20} /></span>
+                </div>
+
+                <S4Field label={t('checkout.phone')} name="phone" type="tel" value={form.phone} onChange={handleChange} required help="In case we need to contact you about your order" />
+
+                <label className="s4f-save">
+                  <input type="checkbox" checked={saveInfo} onChange={(e) => setSaveInfo(e.target.checked)} />
+                  {t('checkout.saveInfo')}
+                </label>
+              </div>
+            ) : (
               <>
-                <h3>{t('checkout.email')}</h3>
+                {isGuest && (
+                  <>
+                    <h3>{t('checkout.email')}</h3>
+                    <div className="form-group">
+                      <label>{t('checkout.email')}</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        placeholder="We'll send order confirmation here"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+
+                <h3>{t('checkout.shippingAddress')}</h3>
                 <div className="form-group">
-                  <label>{t('checkout.email')}</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="We'll send order confirmation here"
-                    required
-                  />
+                  <label>{t('checkout.fullName')}</label>
+                  <input name="fullName" value={form.fullName} onChange={handleChange} required />
+                </div>
+                <div className="form-group">
+                  <label>{t('checkout.address')}</label>
+                  <input name="address" value={form.address} onChange={handleChange} required />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{t('checkout.city')}</label>
+                    <input name="city" value={form.city} onChange={handleChange} required />
+                  </div>
+                  <div className="form-group form-group-state">
+                    <label className="label-state">{isStore2 ? 'Emirate' : t('checkout.state')}</label>
+                    {isStore2 ? (
+                      <select name="state" value={form.state} onChange={handleChange} required>
+                        {UAE_EMIRATES.map((e) => (
+                          <option key={e} value={e}>{e}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input name="state" value={form.state} onChange={handleChange} required />
+                    )}
+                  </div>
+                  <div className="form-group form-group-zipcode">
+                    <label>{isStore3 ? 'Pincode' : t('checkout.zipCode')}</label>
+                    <input
+                      name="zipCode"
+                      value={form.zipCode}
+                      onChange={(e) => {
+                        const v = isStore3 ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value;
+                        setForm((f) => ({ ...f, zipCode: v }));
+                        if (isStore3) setPincodeCheck(null);
+                      }}
+                      inputMode={isStore3 ? 'numeric' : undefined}
+                      maxLength={isStore3 ? 6 : undefined}
+                      placeholder={isStore3 ? '6-digit pincode' : ''}
+                      required={isStore3}
+                    />
+                    {isStore3 && pincodeChecking && (
+                      <p className="pincode-feedback checking">Checking delivery…</p>
+                    )}
+                    {isStore3 && !pincodeChecking && pincodeCheck && (
+                      pincodeCheck.available ? (
+                        <p className="pincode-feedback available">
+                          ✓ {pincodeCheck.message}
+                          {pincodeCheck.city && ` · ${pincodeCheck.city}${pincodeCheck.state ? ', ' + pincodeCheck.state : ''}`}
+                          {pincodeCheck.codAvailable && ' · COD available'}
+                        </p>
+                      ) : (
+                        <p className="pincode-feedback unavailable">✗ {pincodeCheck.message}</p>
+                      )
+                    )}
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>{t('checkout.phone')}</label>
+                  <input name="phone" value={form.phone} onChange={handleChange} required />
                 </div>
               </>
             )}
-
-            <h3>{t('checkout.shippingAddress')}</h3>
-            <div className="form-group">
-              <label>{t('checkout.fullName')}</label>
-              <input name="fullName" value={form.fullName} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-              <label>{isStore4 ? t('checkout.shippingAddressKw') : t('checkout.address')}</label>
-              <input
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                placeholder={isStore4 ? 'Salmiya, Block 2, Street 5, Building 12, Floor 3 / Flat 7' : undefined}
-                required
-              />
-            </div>
-            {isStore4 ? (
-              // Kuwait: no postal code, no separate state — pick governorate.
-              <div className="form-row">
-                <div className="form-group form-group-state">
-                  <label className="label-state">{t('checkout.governorate')}</label>
-                  <select name="state" value={form.state} onChange={handleChange} required>
-                    {KUWAIT_GOVERNORATES.map((g) => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>{t('checkout.cityArea')}</label>
-                  <input name="city" value={form.city} onChange={handleChange} required placeholder="Salmiya, Hawally…" />
-                </div>
-              </div>
-            ) : (
-              <div className="form-row">
-                <div className="form-group">
-                  <label>{t('checkout.city')}</label>
-                  <input name="city" value={form.city} onChange={handleChange} required />
-                </div>
-                <div className="form-group form-group-state">
-                  <label className="label-state">{isStore2 ? 'Emirate' : t('checkout.state')}</label>
-                  {isStore2 ? (
-                    <select name="state" value={form.state} onChange={handleChange} required>
-                      {UAE_EMIRATES.map((e) => (
-                        <option key={e} value={e}>{e}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input name="state" value={form.state} onChange={handleChange} required />
-                  )}
-                </div>
-                <div className="form-group form-group-zipcode">
-                  <label>{isStore3 ? 'Pincode' : t('checkout.zipCode')}</label>
-                  <input
-                    name="zipCode"
-                    value={form.zipCode}
-                    onChange={(e) => {
-                      const v = isStore3 ? e.target.value.replace(/\D/g, '').slice(0, 6) : e.target.value;
-                      setForm((f) => ({ ...f, zipCode: v }));
-                      if (isStore3) setPincodeCheck(null);
-                    }}
-                    inputMode={isStore3 ? 'numeric' : undefined}
-                    maxLength={isStore3 ? 6 : undefined}
-                    placeholder={isStore3 ? '6-digit pincode' : ''}
-                    required={isStore3}
-                  />
-                  {isStore3 && pincodeChecking && (
-                    <p className="pincode-feedback checking">Checking delivery…</p>
-                  )}
-                  {isStore3 && !pincodeChecking && pincodeCheck && (
-                    pincodeCheck.available ? (
-                      <p className="pincode-feedback available">
-                        ✓ {pincodeCheck.message}
-                        {pincodeCheck.city && ` · ${pincodeCheck.city}${pincodeCheck.state ? ', ' + pincodeCheck.state : ''}`}
-                        {pincodeCheck.codAvailable && ' · COD available'}
-                      </p>
-                    ) : (
-                      <p className="pincode-feedback unavailable">✗ {pincodeCheck.message}</p>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
-            <div className="form-group">
-              <label>{t('checkout.phone')}</label>
-              <input name="phone" value={form.phone} onChange={handleChange} required />
-            </div>
           </div>
 
           {/* Section 2: Payment */}

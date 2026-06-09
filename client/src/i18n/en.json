@@ -126,7 +126,15 @@
     "paymentBank": "Bank transfer",
     "shippingStandard": "Standard Shipping",
     "shippingExpress": "Express Shipping",
-    "free": "Free"
+    "free": "Free",
+    "delivery": "Delivery",
+    "countryRegion": "Country/Region",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "apartment": "Apartment, suite, etc.",
+    "saveInfo": "Save this information for next time",
+    "optional": "(optional)",
+    "secure": "Secure checkout"
   },
   "footer": {
     "shop": "Shop",

@@ -126,7 +126,15 @@
     "paymentBank": "تحويل بنكي",
     "shippingStandard": "شحن قياسي",
     "shippingExpress": "شحن سريع",
-    "free": "مجاني"
+    "free": "مجاني",
+    "delivery": "التوصيل",
+    "countryRegion": "الدولة/المنطقة",
+    "firstName": "الاسم الأول",
+    "lastName": "اسم العائلة",
+    "apartment": "شقة، جناح، إلخ",
+    "saveInfo": "احفظ هذه المعلومات للمرة القادمة",
+    "optional": "(اختياري)",
+    "secure": "دفع آمن"
   },
   "footer": {
     "shop": "المتجر",
