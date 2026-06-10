@@ -1,7 +1,9 @@
 // Shipping rate calculation
 // Configurable via .env — defaults provided
 
-export function calculateShipping(subtotal, itemCount, shippingState) {
+import { areaCharge } from '../data/kuwaitDelivery.js';
+
+export function calculateShipping(subtotal, itemCount, shippingState, shippingCity) {
   const freeThreshold = parseFloat(process.env.SHIPPING_FREE_ABOVE || '500');
   const flatRate = parseFloat(process.env.SHIPPING_FLAT_RATE || '49');
   const perItemRate = parseFloat(process.env.SHIPPING_PER_ITEM || '0');
@@ -13,6 +15,17 @@ export function calculateShipping(subtotal, itemCount, shippingState) {
   const expressDays = process.env.SHIPPING_EXPRESS_DAYS || '1-2 business days';
   const standardDaysAr = process.env.SHIPPING_STANDARD_DAYS_AR || '';
   const expressDaysAr = process.env.SHIPPING_EXPRESS_DAYS_AR || '';
+
+  // store4 (Kuwait): area-based delivery charge, single option (no express).
+  // Triggers only when the governorate+area match the Kuwait table.
+  const kw = areaCharge(shippingState, shippingCity);
+  if (kw != null) {
+    const free = subtotal >= freeThreshold;
+    return {
+      standard: { rate: free ? 0 : kw, label: free ? 'Free Delivery' : 'Delivery', days: standardDays, daysAr: standardDaysAr },
+      freeThreshold,
+    };
+  }
 
   // Free shipping above threshold
   if (subtotal >= freeThreshold) {

@@ -153,7 +153,7 @@ export const createOrder = async (req, res) => {
 
     const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingAddress?.state));
 
-    const shippingResult = calculateShipping(afterDiscount, orderItems.length, shippingAddress?.state);
+    const shippingResult = calculateShipping(afterDiscount, orderItems.length, shippingAddress?.state, shippingAddress?.city);
     const shippingCharge = shippingResult[shippingMethod]?.rate || shippingResult.standard.rate;
 
     const finalAmount = Math.round((afterDiscount + shippingCharge) * 100) / 100;
@@ -210,7 +210,7 @@ export const createGuestOrder = async (req, res) => {
 
     const { totalTax, breakdown } = calculateTax(orderItems, getIsSameState(shippingAddress?.state));
 
-    const shippingResult = calculateShipping(afterDiscount, orderItems.length, shippingAddress?.state);
+    const shippingResult = calculateShipping(afterDiscount, orderItems.length, shippingAddress?.state, shippingAddress?.city);
     const shippingCharge = shippingResult[shippingMethod]?.rate || shippingResult.standard.rate;
 
     const finalAmount = Math.round((afterDiscount + shippingCharge) * 100) / 100;

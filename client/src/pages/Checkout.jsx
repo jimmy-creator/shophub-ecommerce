@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { HiShieldCheck, HiLockClosed, HiUser, HiChevronDown, HiOutlineQuestionMarkCircle } from 'react-icons/hi';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
+import { KUWAIT_GOVERNORATES, KUWAIT_DELIVERY } from '../data/kuwaitDelivery';
 
 // Shopify-style floating-label text field (store4 Delivery form).
 function S4Field({ label, optional, optionalText = '(optional)', name, value, onChange, type = 'text', required, inputMode, maxLength, help }) {
@@ -106,24 +107,6 @@ export default function Checkout() {
     'Umm Al-Quwain',
     'Ras Al-Khaimah',
   ];
-  const KUWAIT_GOVERNORATES = [
-    'Al Asimah (Capital)',
-    'Hawally',
-    'Farwaniya',
-    'Mubarak Al-Kabeer',
-    'Ahmadi',
-    'Jahra',
-  ];
-  // Common residential areas per governorate (curated, not exhaustive).
-  const KUWAIT_AREAS = {
-    'Al Asimah (Capital)': ['Kuwait City', 'Sharq', 'Dasman', 'Mirqab', 'Jibla', 'Qibla', 'Salhiya', 'Dasma', 'Daiya', 'Doha', 'Shuwaikh', 'Faiha', 'Nuzha', 'Abdullah Al-Salem', 'Mansouriya', 'Qadsiya', 'Khaldiya', 'Kaifan', 'Rawda', 'Adailiya', 'Yarmouk', 'Shamiya', 'Surra', 'Qortuba', 'Jaber Al-Ahmad', 'Granada', 'Sulaibikhat', 'Bnaid Al-Qar'],
-    Hawally: ['Hawally', 'Salmiya', 'Jabriya', 'Bayan', 'Mishref', 'Salwa', 'Rumaithiya', 'Maidan Hawally', 'Nugra', 'Hateen', 'Shaab', 'Zahra'],
-    Farwaniya: ['Farwaniya', 'Jleeb Al-Shuyoukh', 'Khaitan', 'Ardiya', 'Rabia', 'Rehab', 'Andalous', 'Ishbiliya', 'Omariya', 'Firdous', 'Abraq Khaitan', 'Sabah Al-Nasser', 'Abdullah Al-Mubarak', 'Riggae', 'Dajeej'],
-    'Mubarak Al-Kabeer': ['Mubarak Al-Kabeer', 'Qurain', 'Adan', 'Qusour', 'Sabah Al-Salem', 'Messila', 'Abu Futaira', 'Wista', 'Fnaitees'],
-    Ahmadi: ['Ahmadi', 'Fahaheel', 'Mangaf', 'Abu Halifa', 'Fintas', 'Mahboula', 'Riqqa', 'Hadiya', 'Sabahiya', 'Dhaher', 'Egaila', 'Wafra', 'Jaber Al-Ali', 'Ali Sabah Al-Salem', 'Khairan', 'Fahad Al-Ahmad'],
-    Jahra: ['Jahra', 'Saad Al-Abdullah', 'Naseem', 'Oyoun', 'Qasr', 'Taima', 'Sulaibiya', 'Amghara', 'Naeem', 'Waha'],
-  };
-
   const [form, setForm] = useState({
     fullName: user?.name || '',
     firstName: isStore4 ? (user?.name?.split(' ')[0] || '') : '',
@@ -319,8 +302,9 @@ export default function Checkout() {
       subtotal: afterCoupon,
       itemCount: cart.reduce((s, i) => s + i.quantity, 0),
       shippingState: form.state,
+      shippingCity: form.city,
     }).then((res) => setShippingOptions(res.data)).catch(() => {});
-  }, [cartTotal, couponApplied, cart, form.state]);
+  }, [cartTotal, couponApplied, cart, form.state, form.city]);
 
   const discountAmount = couponApplied?.discount || 0;
   const taxAmount = taxInfo.totalTax || 0;
@@ -814,12 +798,12 @@ export default function Checkout() {
 
                 <S4Select id="s4-gov" label={t('checkout.governorate')} name="state" value={form.state} onChange={handleGovChange} required>
                   <option value="" disabled hidden></option>
-                  {KUWAIT_GOVERNORATES.map((g) => (<option key={g} value={g}>{g}</option>))}
+                  {KUWAIT_GOVERNORATES.map((g) => (<option key={g.value} value={g.value}>{g.label}</option>))}
                 </S4Select>
 
                 <S4Select id="s4-area" label={t('checkout.area')} name="city" value={form.city} onChange={handleChange} required disabled={!form.state}>
                   <option value="" disabled hidden></option>
-                  {(KUWAIT_AREAS[form.state] || []).map((a) => (<option key={a} value={a}>{a}</option>))}
+                  {Object.keys(KUWAIT_DELIVERY[form.state] || {}).map((a) => (<option key={a} value={a}>{a}</option>))}
                 </S4Select>
 
                 <div className="s4f-row">
@@ -1089,17 +1073,19 @@ export default function Checkout() {
                     {shippingOptions.standard.rate === 0 ? t('checkout.free') : `${cur}${formatPrice(shippingOptions.standard.rate)}`}
                   </span>
                 </label>
-                <label
-                  className={`shipping-option ${shippingMethod === 'express' ? 'active' : ''}`}
-                  onClick={() => setShippingMethod('express')}
-                >
-                  <input type="radio" name="shipping" checked={shippingMethod === 'express'} readOnly />
-                  <div className="shipping-option-info">
-                    <span className="shipping-option-name">{t('checkout.shippingExpress')}</span>
-                    <span className="shipping-option-days">{shipDays(shippingOptions.express)}</span>
-                  </div>
-                  <span className="shipping-option-price">{cur}{formatPrice(shippingOptions.express.rate)}</span>
-                </label>
+                {shippingOptions.express && (
+                  <label
+                    className={`shipping-option ${shippingMethod === 'express' ? 'active' : ''}`}
+                    onClick={() => setShippingMethod('express')}
+                  >
+                    <input type="radio" name="shipping" checked={shippingMethod === 'express'} readOnly />
+                    <div className="shipping-option-info">
+                      <span className="shipping-option-name">{t('checkout.shippingExpress')}</span>
+                      <span className="shipping-option-days">{shipDays(shippingOptions.express)}</span>
+                    </div>
+                    <span className="shipping-option-price">{cur}{formatPrice(shippingOptions.express.rate)}</span>
+                  </label>
+                )}
                 {shippingOptions.amountForFree && (
                   <p className="shipping-free-hint">
                     {`Add ${cur}${formatPrice(shippingOptions.amountForFree)} more for free shipping`}
