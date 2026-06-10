@@ -10,9 +10,7 @@
  * continuous flex-wrap grid so the same template works for both
  * single-column roll printers and Avery-style A4 sheets.
  */
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import JsBarcode from 'jsbarcode';
+import { useState, useMemo, useEffect } from 'react';
 import { HiPlus, HiX, HiPrinter } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -22,83 +20,7 @@ import {
   requestDevice as requestPrinter,
   printLabels as thermalPrintLabels,
 } from '../../lib/thermalPrinter';
-
-const LABEL_SIZES = [
-  { id: 'small', label: '40 × 25 mm', width: 40, height: 25, barcodeH: 26, fontPt: 8 },
-  { id: 'medium', label: '50 × 30 mm', width: 50, height: 30, barcodeH: 30, fontPt: 9 },
-  { id: 'large', label: '80 × 50 mm', width: 80, height: 50, barcodeH: 44, fontPt: 11 },
-];
-
-function BarcodeSvg({ value, height = 30 }) {
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!ref.current || !value) return;
-    try {
-      JsBarcode(ref.current, String(value), {
-        format: 'CODE128',
-        displayValue: false,
-        height,
-        margin: 0,
-        background: '#ffffff',
-        lineColor: '#000000',
-      });
-      // Fill the label width at a FIXED height. Without this, width:100% +
-      // height:auto scales a short barcode up proportionally on wide labels,
-      // making it tall enough to collide with a 2-line product name above.
-      const w = ref.current.getAttribute('width');
-      const h = ref.current.getAttribute('height');
-      if (w && h) {
-        ref.current.setAttribute('viewBox', `0 0 ${w} ${h}`);
-        ref.current.setAttribute('preserveAspectRatio', 'none');
-      }
-    } catch {
-      /* invalid value — render empty */
-    }
-  }, [value, height]);
-  return <svg ref={ref} style={{ width: '100%', height: `${height}px`, display: 'block' }} />;
-}
-
-const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
-
-function Label({ product, size, show, currency }) {
-  const codeForBarcode = product.code || `P${product.productId}`;
-  return (
-    <div className="bc-label" style={{
-      width: `${size.width}mm`,
-      height: `${size.height}mm`,
-      padding: '1mm 1.2mm',
-      alignItems: 'center',
-      justifyContent: 'center',
-      textAlign: 'center',
-    }}>
-      {show.brand && (
-        <div className="bc-brand" style={{ fontSize: `${Math.max(6, size.fontPt - 1)}pt`, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', lineHeight: 1.05 }}>
-          {STORE_NAME}
-        </div>
-      )}
-      {show.name && (
-        <div className="bc-name" style={{ fontSize: `${size.fontPt}pt`, lineHeight: 1.1, fontWeight: 600, marginTop: show.brand ? '0.3mm' : 0, WebkitLineClamp: size.id === 'small' ? 1 : 2 }}>
-          {product.name}
-        </div>
-      )}
-      {show.barcode && (
-        <div style={{ width: '100%', marginTop: '0.6mm' }}>
-          <BarcodeSvg value={codeForBarcode} height={size.barcodeH} />
-        </div>
-      )}
-      {show.sku && (
-        <div className="bc-sku" style={{ fontSize: `${size.fontPt - 1}pt`, letterSpacing: '1.5px', fontFamily: 'ui-monospace, monospace', marginTop: '0.2mm' }}>
-          {codeForBarcode}
-        </div>
-      )}
-      {show.price && (
-        <div className="bc-price" style={{ fontSize: `${size.fontPt + 2}pt`, fontWeight: 800, marginTop: '0.4mm' }}>
-          {currency} {(parseFloat(product.price) || 0).toFixed(3)}
-        </div>
-      )}
-    </div>
-  );
-}
+import { LABEL_SIZES, Label, BarcodeLabelStyles, BarcodeLabelSheet } from '../BarcodeLabelSheet';
 
 export default function BarcodeLabels({ currency = 'KWD' }) {
   const [allProducts, setAllProducts] = useState([]);
@@ -355,14 +277,10 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
       {/* Print target — portaled to <body> so it's the ONLY thing that lays out
           when printing (#root is hidden in print). Without this, the rest of
           the admin screen stays in flow and spills blank trailing pages. */}
-      {queue.length > 0 && createPortal(
-        <div id="bc-print-area" className={`bc-print-only bc-layout-${layout}`} data-w={size.width}>
-          {flatLabels.map((q, i) => (
-            <Label key={`p${i}`} product={q} size={size} show={show} currency={currency} />
-          ))}
-        </div>,
-        document.body,
-      )}
+      {/* Print target — shared sheet, portaled to <body> so only the labels
+          lay out when printing (#root hidden). Identical output to the POS. */}
+      <BarcodeLabelSheet labels={flatLabels} size={size} show={show} currency={currency} layout={layout} />
+      <BarcodeLabelStyles size={size} layout={layout} />
 
       <style>{`
         .bc-options {
@@ -400,81 +318,11 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
         .qty-btn:hover { background: var(--bg-warm, #f5f1e8); }
         .qty-btn-x { color: var(--danger); }
 
-        /* Preview area on screen */
+        /* Preview area on screen (label visuals come from BarcodeLabelStyles) */
         .bc-preview {
           margin-top: 0.5rem;
           padding: 8px; background: #e5e7eb; border-radius: 6px;
         }
-        .bc-layout-sheet { display: flex; flex-wrap: wrap; gap: 2mm; }
-        .bc-layout-roll { display: flex; flex-direction: column; gap: 1mm; align-items: flex-start; }
-        .bc-print-only { display: none; }
-        .bc-label {
-          background: white; color: black;
-          border: 1px solid #cbd5e1;
-          display: flex; flex-direction: column;
-          font-family: 'Inter', -apple-system, sans-serif;
-          overflow: hidden; box-sizing: border-box;
-          page-break-inside: avoid;
-        }
-        /* Never let a child shrink below its content — otherwise a long name's
-           box collapses and its text overlaps the barcode. Excess clips at the
-           bottom (overflow:hidden) instead. */
-        .bc-label > * { flex-shrink: 0; }
-        .bc-name {
-          overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
-          -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-        }
-
-        @media print {
-          /* Collapse the entire app; only the portaled labels remain in flow,
-             so the printed page count == the labels (no blank trailing pages). */
-          #root { display: none !important; }
-          .no-print { display: none !important; }
-
-          .bc-print-only {
-            display: block !important;
-            position: static !important;
-            padding: 0 !important; margin: 0 !important;
-            background: #fff !important;
-          }
-          .bc-label {
-            border: none !important;
-            margin: 0 !important;
-            page-break-inside: avoid;
-          }
-
-          /* Sheet layout — multi-column on a normal A4 / Letter page */
-          .bc-print-only.bc-layout-sheet {
-            display: flex !important; flex-wrap: wrap !important; gap: 0 !important;
-          }
-
-          /* Roll layout — one label per "page", paper size = label size */
-          .bc-print-only.bc-layout-roll {
-            display: block !important;
-          }
-          .bc-layout-roll .bc-label {
-            page-break-after: always !important;
-            break-after: page !important;
-          }
-          .bc-layout-roll .bc-label:last-child {
-            page-break-after: auto !important;
-            break-after: auto !important;
-          }
-        }
-        ${layout === 'roll' ? `
-        /* Roll printing: one global @page sized to the selected label, so the
-           printer feeds one label per page. A single unnamed @page is honored
-           reliably (named pages + the page: property leak a leading blank A4).
-           The label prints 1mm under the page height so its content never
-           reaches the page boundary — that boundary touch is what split the
-           price onto the next sticker and spawned phantom pages. */
-        @media print {
-          @page { size: ${size.width}mm ${size.height}mm; margin: 0; }
-          .bc-print-only.bc-layout-roll .bc-label {
-            height: ${size.height - 1}mm !important;
-          }
-        }
-        ` : ''}
       `}</style>
     </div>
   );

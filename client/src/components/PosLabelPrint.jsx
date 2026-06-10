@@ -1,24 +1,19 @@
 /**
  * Print barcode labels from the POS.
  *
- * Search a product, choose how many labels, send them to the paired
- * label printer (the 'barcode' USB device — same one the admin Barcode
- * Labels screen uses). Labels carry the store name, product name,
- * barcode (CODE128 of the product code, or the P<id> fallback for
- * code-less products), the human-readable code, and the price.
+ * Search a product, choose how many labels, then browser-print using the
+ * SAME shared label sheet as Admin → Barcode Labels, so the output is
+ * identical. Labels carry the store name, product name, barcode (CODE128 of
+ * the product code or the P<id> fallback), the readable code, and the price.
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { HiSearch, HiX, HiPrinter } from 'react-icons/hi';
 import api from '../api/axios';
-import {
-  isSupported as thermalSupported,
-  getDevice,
-  requestDevice as requestPrinter,
-  printLabels,
-} from '../lib/thermalPrinter';
+import { LABEL_SIZES, BarcodeLabelSheet, BarcodeLabelStyles } from './BarcodeLabelSheet';
 
 const LABEL_SHOW = { brand: true, name: true, barcode: true, sku: true, price: true };
+const SIZE = LABEL_SIZES.find((s) => s.id === 'medium');   // 50×30mm roll — matches admin default
+const LAYOUT = 'roll';
 
 export default function PosLabelPrint({ currency = 'KWD', onClose }) {
   const [query, setQuery] = useState('');
@@ -26,17 +21,10 @@ export default function PosLabelPrint({ currency = 'KWD', onClose }) {
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState(null);
   const [qty, setQty] = useState(1);
-  const [usbReady, setUsbReady] = useState(false);
-  const [busy, setBusy] = useState(false);
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
   useEffect(() => { searchRef.current?.focus(); }, []);
-
-  useEffect(() => {
-    if (!thermalSupported()) { setUsbReady(false); return; }
-    getDevice('barcode').then((h) => setUsbReady(!!h)).catch(() => setUsbReady(false));
-  }, []);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -57,35 +45,19 @@ export default function PosLabelPrint({ currency = 'KWD', onClose }) {
     return () => clearTimeout(debounceRef.current);
   }, [query, runSearch]);
 
-  const pair = async () => {
-    try {
-      const handle = await requestPrinter('barcode');
-      setUsbReady(true);
-      toast.success(`Paired: ${handle.device.productName || 'label printer'}`);
-    } catch (err) {
-      if (err?.name !== 'NotFoundError') toast.error(err.message || 'Pairing cancelled');
-    }
-  };
+  // One entry per physical label (matches admin's flattened sheet input).
+  const flatLabels = useMemo(() => {
+    if (!selected) return [];
+    return Array.from({ length: qty }, () => ({
+      productId: selected.productId, name: selected.name,
+      code: selected.code, price: selected.price,
+    }));
+  }, [selected, qty]);
 
-  const print = async () => {
+  const print = () => {
     if (!selected) return;
-    setBusy(true);
-    try {
-      const labels = Array.from({ length: qty }, () => ({
-        productId: selected.productId,
-        name: selected.name,
-        code: selected.code,
-        price: selected.price,
-        show: LABEL_SHOW,
-      }));
-      await printLabels(labels, { currency });
-      toast.success(`Sent ${qty} label${qty === 1 ? '' : 's'} to printer`);
-      onClose();
-    } catch (err) {
-      toast.error(err.message || 'Print failed');
-    } finally {
-      setBusy(false);
-    }
+    // Let JsBarcode finish drawing the portaled SVGs before printing.
+    setTimeout(() => window.print(), 100);
   };
 
   return (
@@ -152,29 +124,22 @@ export default function PosLabelPrint({ currency = 'KWD', onClose }) {
           </div>
         )}
 
-        {!usbReady && thermalSupported() && (
-          <p style={{ fontSize: 12, color: 'var(--pos-warn)', margin: '0.75rem 0 0' }}>
-            No label printer paired. <button onClick={pair} className="link-btn">Connect label printer</button>
-          </p>
-        )}
-        {!thermalSupported() && (
-          <p style={{ fontSize: 12, color: 'var(--pos-warn)', margin: '0.75rem 0 0' }}>
-            Direct USB printing isn't supported in this browser. Use Admin → Barcode Labels to print.
-          </p>
-        )}
-
         <div className="modal-actions">
           <button onClick={onClose} className="modal-btn modal-btn-secondary">Close</button>
           <button
             onClick={print}
-            disabled={!selected || !usbReady || busy}
+            disabled={!selected}
             className="modal-btn modal-btn-primary"
           >
             <HiPrinter style={{ verticalAlign: '-2px', marginRight: 4 }} />
-            {busy ? 'Printing…' : `Print ${qty} label${qty === 1 ? '' : 's'}`}
+            {`Print ${qty} label${qty === 1 ? '' : 's'}`}
           </button>
         </div>
       </div>
+
+      {/* Shared print sheet (hidden on screen; window.print() prints only this) */}
+      <BarcodeLabelStyles size={SIZE} layout={LAYOUT} />
+      <BarcodeLabelSheet labels={flatLabels} size={SIZE} show={LABEL_SHOW} currency={currency} layout={LAYOUT} />
     </div>
   );
 }
