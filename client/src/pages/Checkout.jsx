@@ -422,6 +422,9 @@ export default function Checkout() {
 
     const { data } = await api.post('/payment/create-order', createPayload);
     if (data.payment?.sessionUrl) {
+      // Guard the empty-cart redirect so clearing the cart doesn't flash the
+      // /cart page before the browser leaves for the gateway.
+      processingPayment.current = true;
       clearCart();
       window.location.href = data.payment.sessionUrl;
     } else {
@@ -441,6 +444,9 @@ export default function Checkout() {
 
     const { data } = await api.post('/payment/create-order', createPayload);
     if (data.payment?.sessionUrl) {
+      // Guard the empty-cart redirect so clearing the cart doesn't flash the
+      // /cart page before the browser leaves for the gateway.
+      processingPayment.current = true;
       clearCart();
       window.location.href = data.payment.sessionUrl;
     } else {
@@ -460,6 +466,9 @@ export default function Checkout() {
 
     const { data } = await api.post('/payment/create-order', createPayload);
     if (data.payment?.sessionUrl) {
+      // Guard the empty-cart redirect so clearing the cart doesn't flash the
+      // /cart page before the browser leaves for the gateway.
+      processingPayment.current = true;
       clearCart();
       window.location.href = data.payment.sessionUrl;
     } else {
