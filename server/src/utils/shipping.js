@@ -15,6 +15,11 @@ export function calculateShipping(subtotal, itemCount, shippingState, shippingCi
   const expressDays = process.env.SHIPPING_EXPRESS_DAYS || '1-2 business days';
   const standardDaysAr = process.env.SHIPPING_STANDARD_DAYS_AR || '';
   const expressDaysAr = process.env.SHIPPING_EXPRESS_DAYS_AR || '';
+  // Set SHIPPING_EXPRESS_ENABLED=false to hide the Express option at checkout.
+  const expressEnabled = process.env.SHIPPING_EXPRESS_ENABLED !== 'false';
+  const express = expressEnabled
+    ? { express: { rate: expressRate, label: 'Express Shipping', days: expressDays, daysAr: expressDaysAr } }
+    : {};
 
   // store4 (Kuwait): area-based delivery charge, single option (no express).
   // Triggers only when the governorate+area match the Kuwait table.
@@ -31,7 +36,7 @@ export function calculateShipping(subtotal, itemCount, shippingState, shippingCi
   if (subtotal >= freeThreshold) {
     return {
       standard: { rate: 0, label: 'Free Shipping', days: standardDays, daysAr: standardDaysAr },
-      express: { rate: expressRate, label: 'Express Shipping', days: expressDays, daysAr: expressDaysAr },
+      ...express,
       freeThreshold,
     };
   }
@@ -40,7 +45,7 @@ export function calculateShipping(subtotal, itemCount, shippingState, shippingCi
 
   return {
     standard: { rate: Math.round(standardRate * 100) / 100, label: 'Standard Shipping', days: standardDays, daysAr: standardDaysAr },
-    express: { rate: expressRate, label: 'Express Shipping', days: expressDays, daysAr: expressDaysAr },
+    ...express,
     freeThreshold,
     amountForFree: Math.round((freeThreshold - subtotal) * 100) / 100,
   };
