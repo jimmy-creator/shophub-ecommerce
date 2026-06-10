@@ -134,7 +134,14 @@
     "apartment": "Apartment, suite, etc.",
     "saveInfo": "Save this information for next time",
     "optional": "(optional)",
-    "secure": "Secure checkout"
+    "secure": "Secure checkout",
+    "area": "Area",
+    "block": "Block",
+    "street": "Street",
+    "building": "Building / House No.",
+    "floor": "Floor",
+    "flat": "Flat / Apartment No.",
+    "directions": "Additional directions"
   },
   "footer": {
     "shop": "Shop",

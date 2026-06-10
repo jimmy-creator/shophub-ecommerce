@@ -25,6 +25,19 @@ function S4Field({ label, optional, optionalText = '(optional)', name, value, on
   );
 }
 
+// Floating-label <select> for the store4 Delivery form.
+function S4Select({ id, label, name, value, onChange, required, disabled, children }) {
+  return (
+    <div className="s4f-field">
+      <select className="s4f-select" id={id} name={name} value={value} onChange={onChange} required={required} disabled={disabled}>
+        {children}
+      </select>
+      <label className="s4f-label" htmlFor={id}>{label}</label>
+      <span className="s4f-caret"><HiChevronDown size={20} /></span>
+    </div>
+  );
+}
+
 const toastStyle = {
   style: {
     background: '#1a1614', color: '#f5f0eb',
@@ -101,6 +114,15 @@ export default function Checkout() {
     'Ahmadi',
     'Jahra',
   ];
+  // Common residential areas per governorate (curated, not exhaustive).
+  const KUWAIT_AREAS = {
+    'Al Asimah (Capital)': ['Kuwait City', 'Sharq', 'Dasman', 'Mirqab', 'Jibla', 'Qibla', 'Salhiya', 'Dasma', 'Daiya', 'Doha', 'Shuwaikh', 'Faiha', 'Nuzha', 'Abdullah Al-Salem', 'Mansouriya', 'Qadsiya', 'Khaldiya', 'Kaifan', 'Rawda', 'Adailiya', 'Yarmouk', 'Shamiya', 'Surra', 'Qortuba', 'Jaber Al-Ahmad', 'Granada', 'Sulaibikhat', 'Bnaid Al-Qar'],
+    Hawally: ['Hawally', 'Salmiya', 'Jabriya', 'Bayan', 'Mishref', 'Salwa', 'Rumaithiya', 'Maidan Hawally', 'Nugra', 'Hateen', 'Shaab', 'Zahra'],
+    Farwaniya: ['Farwaniya', 'Jleeb Al-Shuyoukh', 'Khaitan', 'Ardiya', 'Rabia', 'Rehab', 'Andalous', 'Ishbiliya', 'Omariya', 'Firdous', 'Abraq Khaitan', 'Sabah Al-Nasser', 'Abdullah Al-Mubarak', 'Riggae', 'Dajeej'],
+    'Mubarak Al-Kabeer': ['Mubarak Al-Kabeer', 'Qurain', 'Adan', 'Qusour', 'Sabah Al-Salem', 'Messila', 'Abu Futaira', 'Wista', 'Fnaitees'],
+    Ahmadi: ['Ahmadi', 'Fahaheel', 'Mangaf', 'Abu Halifa', 'Fintas', 'Mahboula', 'Riqqa', 'Hadiya', 'Sabahiya', 'Dhaher', 'Egaila', 'Wafra', 'Jaber Al-Ali', 'Ali Sabah Al-Salem', 'Khairan', 'Fahad Al-Ahmad'],
+    Jahra: ['Jahra', 'Saad Al-Abdullah', 'Naseem', 'Oyoun', 'Qasr', 'Taima', 'Sulaibiya', 'Amghara', 'Naeem', 'Waha'],
+  };
 
   const [form, setForm] = useState({
     fullName: user?.name || '',
@@ -114,9 +136,14 @@ export default function Checkout() {
     state: isStore2 ? 'Fujairah' : '',
     zipCode: '',
     phone: user?.phone || '',
+    // store4 Kuwaiti structured-address fields
+    block: '', street: '', building: '', floor: '', flat: '', directions: '',
     paymentMethod: 'cod',
   });
   const [saveInfo, setSaveInfo] = useState(false);
+
+  // Governorate change resets the dependent Area dropdown.
+  const handleGovChange = (e) => setForm((f) => ({ ...f, state: e.target.value, city: '' }));
 
   // Save abandoned cart when checkout page loads
   useEffect(() => {
@@ -222,9 +249,17 @@ export default function Checkout() {
 
   const getShippingAddress = () => {
     if (isStore4) {
+      // Compose the Kuwaiti structured address into one line for the backend.
+      const line = [
+        form.block && `Block ${form.block}`,
+        form.street && `Street ${form.street}`,
+        form.building && `Bldg ${form.building}`,
+        form.floor && `Floor ${form.floor}`,
+        form.flat && `Flat ${form.flat}`,
+      ].filter(Boolean).join(', ');
+      const address = [line, form.directions].filter(Boolean).join(' — ');
       return {
-        fullName: form.fullName,
-        address: [form.address, form.apartment].filter(Boolean).join(', '),
+        fullName: form.fullName, address,
         city: form.city, state: form.state, zipCode: form.zipCode,
         phone: form.phone, country: 'Kuwait',
       };
@@ -556,8 +591,9 @@ export default function Checkout() {
       if (saveInfo) {
         localStorage.setItem('store4_delivery', JSON.stringify({
           firstName: form.firstName, lastName: form.lastName, email: form.email,
-          address: form.address, apartment: form.apartment, city: form.city,
-          state: form.state, zipCode: form.zipCode, phone: form.phone,
+          city: form.city, state: form.state, phone: form.phone,
+          block: form.block, street: form.street, building: form.building,
+          floor: form.floor, flat: form.flat, directions: form.directions,
         }));
       } else {
         localStorage.removeItem('store4_delivery');
@@ -742,7 +778,9 @@ export default function Checkout() {
                   .s4f-input:focus ~ .s4f-label,
                   .s4f-input:not(:placeholder-shown) ~ .s4f-label,
                   .s4f-select ~ .s4f-label { top: 10px; transform: none; font-size: 11px; color: #6b7280; }
-                  .s4f-select:required:invalid ~ .s4f-label { top: 50%; transform: translateY(-50%); font-size: 16px; }
+                  .s4f-select:required:invalid ~ .s4f-label,
+                  .s4f-select:disabled ~ .s4f-label { top: 50%; transform: translateY(-50%); font-size: 16px; }
+                  .s4-delivery .s4f-select:disabled { background: #f3f4f6 !important; cursor: not-allowed; }
                   .s4f-caret { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #4b5563; display: flex; }
                   .s4f-help { position: absolute; right: 13px; top: 50%; transform: translateY(-50%); color: #9ca3af; display: flex; cursor: help; }
                   .s4f-save { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 15px; color: #1a1a1a; cursor: pointer; }
@@ -774,22 +812,29 @@ export default function Checkout() {
                   <S4Field label={t('checkout.lastName')} name="lastName" value={form.lastName} onChange={handleNameChange} required />
                 </div>
 
-                <S4Field label={t('checkout.address')} name="address" value={form.address} onChange={handleChange} required />
-                <S4Field label={t('checkout.apartment')} optional optionalText={t('checkout.optional')} name="apartment" value={form.apartment} onChange={handleChange} />
+                <S4Select id="s4-gov" label={t('checkout.governorate')} name="state" value={form.state} onChange={handleGovChange} required>
+                  <option value="" disabled hidden></option>
+                  {KUWAIT_GOVERNORATES.map((g) => (<option key={g} value={g}>{g}</option>))}
+                </S4Select>
+
+                <S4Select id="s4-area" label={t('checkout.area')} name="city" value={form.city} onChange={handleChange} required disabled={!form.state}>
+                  <option value="" disabled hidden></option>
+                  {(KUWAIT_AREAS[form.state] || []).map((a) => (<option key={a} value={a}>{a}</option>))}
+                </S4Select>
 
                 <div className="s4f-row">
-                  <S4Field label={t('checkout.postalCode')} optional optionalText={t('checkout.optional')} name="zipCode" value={form.zipCode} onChange={handleChange} />
-                  <S4Field label={t('checkout.city')} name="city" value={form.city} onChange={handleChange} required />
+                  <S4Field label={t('checkout.block')} name="block" value={form.block} onChange={handleChange} required inputMode="numeric" />
+                  <S4Field label={t('checkout.street')} name="street" value={form.street} onChange={handleChange} required />
                 </div>
 
-                <div className="s4f-field">
-                  <select className="s4f-select" id="s4-gov" name="state" value={form.state} onChange={handleChange} required>
-                    <option value="" disabled hidden></option>
-                    {KUWAIT_GOVERNORATES.map((g) => (<option key={g} value={g}>{g}</option>))}
-                  </select>
-                  <label className="s4f-label" htmlFor="s4-gov">{t('checkout.governorate')}</label>
-                  <span className="s4f-caret"><HiChevronDown size={20} /></span>
+                <S4Field label={t('checkout.building')} name="building" value={form.building} onChange={handleChange} required />
+
+                <div className="s4f-row">
+                  <S4Field label={t('checkout.floor')} optional optionalText={t('checkout.optional')} name="floor" value={form.floor} onChange={handleChange} inputMode="numeric" />
+                  <S4Field label={t('checkout.flat')} optional optionalText={t('checkout.optional')} name="flat" value={form.flat} onChange={handleChange} />
                 </div>
+
+                <S4Field label={t('checkout.directions')} optional optionalText={t('checkout.optional')} name="directions" value={form.directions} onChange={handleChange} />
 
                 <S4Field label={t('checkout.phone')} name="phone" type="tel" value={form.phone} onChange={handleChange} required help="In case we need to contact you about your order" />
 
