@@ -343,7 +343,8 @@ export async function printLabels(labels, { currency = 'KWD' } = {}) {
   const storeName = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
   for (const label of labels) {
     const show = label.show || { brand: true, name: true, barcode: true, sku: true, price: true };
-    const value = label.code || `P${label.productId}`;
+    // 8-digit numeric barcode = zero-padded product id (matches BarcodeLabelSheet).
+    const value = String(label.productId || '').padStart(8, '0');
     enc.initialize();
     if (show.brand && storeName) {
       enc.align('center').bold(true).line(storeName.toUpperCase()).bold(false);
