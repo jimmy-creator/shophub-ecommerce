@@ -69,6 +69,9 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: 'cross-origin' },
+  // Align with the nginx-set value so the two layers don't emit conflicting
+  // Referrer-Policy headers (helmet's default is the stricter `no-referrer`).
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 
 // CORS

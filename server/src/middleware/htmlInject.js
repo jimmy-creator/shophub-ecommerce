@@ -31,7 +31,33 @@ let DEFAULT_DESC = '';
 const CURRENCY_CODE = process.env.CURRENCY_CODE || 'INR';
 const I18N_ON = process.env.FEATURE_I18N === 'true';
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const cache = new Map();   // url → { html, ts }
+const cache = new Map();   // url → { html, status, ts }
+
+// Arabic equivalents for site-level meta. The built index.html only carries the
+// English strings (Vite bakes them in), so Arabic site copy comes from env with
+// sensible defaults. Per-product Arabic uses nameAr/descriptionAr (renderProduct).
+const STORE_NAME_AR = process.env.STORE_NAME_AR || 'أنفال سبورتس';
+const SITE_TITLE_AR = process.env.SITE_TITLE_AR || 'أنفال سبورتس — متجر اللوازم الرياضية في الكويت';
+const DEFAULT_DESC_AR = process.env.DEFAULT_DESC_AR || 'متجر أنفال سبورتس للوازم الرياضية في الكويت — أحذية وملابس ومضارب وكرات ومعدّات لياقة وإكسسوارات.';
+
+const storeNameFor = (locale) => (locale === 'ar' ? STORE_NAME_AR : STORE_NAME);
+const defaultDescFor = (locale) => (locale === 'ar' ? DEFAULT_DESC_AR : DEFAULT_DESC);
+
+// LocalBusiness signals. Address is the known registered showroom; telephone and
+// social profiles are env-driven and omitted when unset so we never publish
+// placeholder contact data.
+const STORE_TELEPHONE = process.env.STORE_TELEPHONE || '';
+const STORE_SAMEAS = (process.env.STORE_SAMEAS || '').split(',').map(s => s.trim()).filter(Boolean);
+
+// Known client-side routes (mirror of the <Route> table in client/src/App.jsx).
+// Anything not here and not a real product is a genuine 404 — stops the SPA
+// catch-all from returning soft-404 home shells for arbitrary URLs. The staff
+// base is deliberately omitted so the secret path 404s to crawlers.
+const KNOWN_ROUTES = new Set([
+  '/cart', '/checkout', '/login', '/register', '/orders', '/profile', '/admin',
+  '/order-success', '/wishlist', '/forgot-password', '/reset-password',
+  '/wholesale', '/wholesale/request', '/wholesale/my-quotes',
+]);
 
 function pickAttr(html, regex) {
   const m = html.match(regex);
@@ -79,7 +105,7 @@ function stripLocalePrefix(p) {
  * `alternates` — { en, ar } URLs for the same logical page so we can
  * emit <link rel="alternate" hreflang="...">.
  */
-function renderHtml({ title, description, image, url, type = 'website', jsonLd = [], locale = 'en', alternates = null }) {
+function renderHtml({ title, description, image, url, type = 'website', jsonLd = [], locale = 'en', alternates = null, noindex = false }) {
   let html = loadTemplate();
   if (!html) return '';
 
@@ -121,6 +147,10 @@ function renderHtml({ title, description, image, url, type = 'website', jsonLd =
     );
   }
 
+  if (noindex) {
+    html = html.replace('</head>', '    <meta name="robots" content="noindex" />\n  </head>');
+  }
+
   if (jsonLd.length) {
     const blocks = jsonLd
       .map(obj => `<script type="application/ld+json">${JSON.stringify(obj).replace(/<\/script/gi, '<\\/script')}</script>`)
@@ -139,7 +169,7 @@ async function renderProduct(slug, requestUrl, locale, alternates) {
   // product has them; otherwise fall through to the English fields.
   const name = (locale === 'ar' && product.nameAr) ? product.nameAr : product.name;
   const desc = (locale === 'ar' && product.descriptionAr) ? product.descriptionAr : product.description;
-  const title = `${name} | ${STORE_NAME}`;
+  const title = `${name} | ${storeNameFor(locale)}`;
   const description = (desc || `${name} at ${product.price}`).replace(/\s+/g, ' ').slice(0, 160);
   const image = product.images?.[0] ? (SITE_URL + product.images[0]) : (SITE_URL + DEFAULT_OG);
 
@@ -184,41 +214,74 @@ async function renderProduct(slug, requestUrl, locale, alternates) {
 }
 
 function renderCategory(category, requestUrl, locale, alternates) {
-  return renderHtml({
-    title: `${category} | ${STORE_NAME}`,
-    description: `Shop ${category} at ${STORE_NAME}. ${DEFAULT_DESC}`.slice(0, 160),
-    url: requestUrl,
-    locale, alternates,
-  });
+  const title = `${category} | ${storeNameFor(locale)}`;
+  const description = (locale === 'ar'
+    ? `تسوّق ${category} من ${STORE_NAME_AR}. ${DEFAULT_DESC_AR}`
+    : `Shop ${category} at ${STORE_NAME}. ${DEFAULT_DESC}`).slice(0, 160);
+  return renderHtml({ title, description, url: requestUrl, locale, alternates });
 }
 
 function renderProductsList(requestUrl, locale, alternates) {
-  return renderHtml({
-    title: `All Products | ${STORE_NAME}`,
-    description: `Browse the full ${STORE_NAME} catalogue. ${DEFAULT_DESC}`.slice(0, 160),
-    url: requestUrl,
-    locale, alternates,
-  });
+  const title = `${locale === 'ar' ? 'كل المنتجات' : 'All Products'} | ${storeNameFor(locale)}`;
+  const description = (locale === 'ar'
+    ? `تصفّح كامل تشكيلة ${STORE_NAME_AR}. ${DEFAULT_DESC_AR}`
+    : `Browse the full ${STORE_NAME} catalogue. ${DEFAULT_DESC}`).slice(0, 160);
+  return renderHtml({ title, description, url: requestUrl, locale, alternates });
 }
 
-function renderHome(requestUrl, locale, alternates) {
+// SportingGoodsStore (LocalBusiness) node — emitted on the homepage so Maps /
+// local packs and AI engines have address, currency and contact signals.
+function localBusinessSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'SportingGoodsStore',
+    name: STORE_NAME || 'Anfal Sports',
+    url: SITE_URL || '',
+    image: DEFAULT_OG || '',
+    priceRange: 'KWD',
+    address: {
+      '@type': 'PostalAddress',
+      name: 'Yaal Mall',
+      addressLocality: 'Kuwait City',
+      addressCountry: 'KW',
+    },
+    ...(STORE_TELEPHONE ? { telephone: STORE_TELEPHONE } : {}),
+    ...(STORE_SAMEAS.length ? { sameAs: STORE_SAMEAS } : {}),
+  };
+}
+
+function renderHome(requestUrl, locale, alternates, jsonLd = []) {
+  const title = locale === 'ar' ? SITE_TITLE_AR : (SITE_TITLE || STORE_NAME || 'Home');
   return renderHtml({
-    title: SITE_TITLE || STORE_NAME || 'Home',
-    description: DEFAULT_DESC,
+    title,
+    description: defaultDescFor(locale),
     url: requestUrl,
-    locale, alternates,
+    locale, alternates, jsonLd,
   });
 }
 
 const STATIC_TITLES = {
-  '/about': 'About Us',
-  '/contact': 'Contact Us',
-  '/shipping-policy': 'Shipping Policy',
-  '/refund-policy': 'Refund Policy',
-  '/return-policy': 'Return Policy',
-  '/privacy-policy': 'Privacy Policy',
-  '/terms': 'Terms of Service',
+  '/about': { en: 'About Us', ar: 'من نحن' },
+  '/contact': { en: 'Contact Us', ar: 'اتصل بنا' },
+  '/shipping-info': { en: 'Shipping Information', ar: 'معلومات الشحن' },
+  '/shipping-policy': { en: 'Shipping Policy', ar: 'سياسة الشحن' },
+  '/refund-policy': { en: 'Refund Policy', ar: 'سياسة الاسترداد' },
+  '/return-policy': { en: 'Return Policy', ar: 'سياسة الإرجاع' },
+  '/privacy-policy': { en: 'Privacy Policy', ar: 'سياسة الخصوصية' },
+  '/terms': { en: 'Terms of Service', ar: 'الشروط والأحكام' },
 };
+
+// Genuine 404 shell — noindex so crawlers drop it, canonical points home so we
+// don't canonicalize a non-page. The SPA still boots and renders <NotFound>.
+function renderNotFound(locale) {
+  return renderHtml({
+    title: `${locale === 'ar' ? 'الصفحة غير موجودة' : 'Page Not Found'} | ${storeNameFor(locale)}`,
+    description: defaultDescFor(locale),
+    url: `${SITE_URL}/`,
+    locale,
+    noindex: true,
+  });
+}
 
 export default async function htmlInject(req, res, next) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -238,6 +301,7 @@ export default async function htmlInject(req, res, next) {
     req.path.startsWith('/uploads/') ||
     req.path === '/sitemap.xml' ||
     req.path === '/robots.txt' ||
+    req.path === '/llms.txt' ||
     req.path === '/favicon.ico' ||
     req.path === '/favicon.svg'
   ) {
@@ -260,7 +324,7 @@ export default async function htmlInject(req, res, next) {
 
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
-    return res.type('text/html').send(cached.html);
+    return res.type('text/html').status(cached.status || 200).send(cached.html);
   }
 
   // Locale-from-URL: /ar/* serves Arabic. Only active on stores that
@@ -279,31 +343,40 @@ export default async function htmlInject(req, res, next) {
 
   try {
     let html;
+    let status = 200;
     if (canonicalPath.startsWith('/product/')) {
       const slug = decodeURIComponent(canonicalPath.slice('/product/'.length));
       html = await renderProduct(slug, requestUrl, locale, alternates);
+      if (!html) {
+        // Product doesn't exist → real 404, not a soft-404 home shell.
+        html = renderNotFound(locale);
+        status = 404;
+      }
     } else if (canonicalPath === '/products') {
       html = req.query.category
         ? renderCategory(String(req.query.category), requestUrl, locale, alternates)
         : renderProductsList(requestUrl, locale, alternates);
     } else if (canonicalPath === '/') {
-      html = renderHome(requestUrl, locale, alternates);
+      html = renderHome(requestUrl, locale, alternates, [localBusinessSchema()]);
     } else if (STATIC_TITLES[canonicalPath]) {
+      const t = STATIC_TITLES[canonicalPath];
       html = renderHtml({
-        title: `${STATIC_TITLES[canonicalPath]} | ${STORE_NAME}`,
-        description: DEFAULT_DESC,
+        title: `${locale === 'ar' ? t.ar : t.en} | ${storeNameFor(locale)}`,
+        description: defaultDescFor(locale),
         url: requestUrl,
         locale, alternates,
       });
-    }
-
-    if (!html) {
-      // Unknown route or missing product — fall back to home shell so the SPA router still renders something.
+    } else if (KNOWN_ROUTES.has(canonicalPath) || canonicalPath.startsWith('/wholesale/my-quotes/')) {
+      // Known client-rendered route (cart, account, wholesale, …) → 200 shell.
       html = renderHome(requestUrl, locale, alternates);
+    } else {
+      // Genuinely unknown path → real 404 + noindex (no more soft-404 home shells).
+      html = renderNotFound(locale);
+      status = 404;
     }
 
-    cache.set(cacheKey, { html, ts: Date.now() });
-    res.type('text/html').send(html);
+    cache.set(cacheKey, { html, status, ts: Date.now() });
+    res.type('text/html').status(status).send(html);
   } catch (err) {
     console.error('[htmlInject] error rendering', req.originalUrl, err.message);
     next();

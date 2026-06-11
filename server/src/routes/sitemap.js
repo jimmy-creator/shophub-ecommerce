@@ -62,8 +62,6 @@ router.get('/sitemap.xml', async (req, res) => {
       { loc: '/contact', priority: '0.5', changefreq: 'monthly' },
       { loc: '/shipping-info', priority: '0.5', changefreq: 'monthly' },
       { loc: '/return-policy', priority: '0.5', changefreq: 'monthly' },
-      { loc: '/login', priority: '0.3', changefreq: 'yearly' },
-      { loc: '/register', priority: '0.3', changefreq: 'yearly' },
     ];
     for (const p of staticPages) emit(p.loc, p);
 
@@ -98,11 +96,40 @@ Disallow: /api/
 Disallow: /checkout
 Disallow: /profile
 Disallow: /orders
-Disallow: /anfal-staff-x7k2
 
 Sitemap: ${baseUrl}/sitemap.xml
 `;
   res.set('Content-Type', 'text/plain');
+  res.send(txt);
+});
+
+// llms.txt — plain-text summary for LLM grounding (served as a real file, not
+// the SPA shell). Mounted before htmlInject so it isn't intercepted.
+router.get('/llms.txt', (req, res) => {
+  const baseUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
+  const txt = `# Anfal Sports
+
+> Anfal Sports W.L.L. is a Kuwait-based sports retailer selling shoes, apparel,
+> rackets, balls, fitness equipment and accessories. We operate two physical
+> showrooms in Kuwait City and an online store. Site is bilingual (English /
+> Arabic); Arabic pages live under /ar.
+
+## Shop
+- All products: ${baseUrl}/products
+- Contact: ${baseUrl}/contact
+
+## Policies
+- Shipping information: ${baseUrl}/shipping-info
+- Return policy: ${baseUrl}/return-policy
+- Refund policy: ${baseUrl}/refund-policy
+- Privacy policy: ${baseUrl}/privacy-policy
+- Terms of service: ${baseUrl}/terms
+
+## Notes
+- Currency: KWD (Kuwaiti Dinar)
+- Sitemap: ${baseUrl}/sitemap.xml
+`;
+  res.set('Content-Type', 'text/plain; charset=utf-8');
   res.send(txt);
 });
 
