@@ -141,18 +141,36 @@ router.post('/create-order', optionalAuth, async (req, res) => {
     const orderItems = items.map((item) => {
       const product = products.find((p) => p.id === item.productId);
       if (!product) throw new Error(`Product ${item.productId} not found`);
-      if (product.stock < item.quantity) {
+
+      // Use the selected variant's price/stock, not the base product price.
+      let price = parseFloat(product.price);
+      let variantInfo = null;
+
+      if (item.selectedVariant && product.variants && product.variants.length > 0) {
+        const variant = product.variants.find((v) =>
+          Object.entries(item.selectedVariant).every(([k, val]) => v.options[k] === val)
+        );
+        if (!variant) throw new Error(`Variant not available for ${product.name}`);
+        if (variant.stock < item.quantity) {
+          throw new Error(`${product.name} (${Object.values(item.selectedVariant).join(', ')}) is out of stock`);
+        }
+        if (variant.price != null) price = parseFloat(variant.price);
+        variantInfo = { ...item.selectedVariant, sku: variant.sku };
+      } else if (product.variants && product.variants.length > 0 && !item.selectedVariant) {
+        throw new Error(`Please select options for ${product.name}`);
+      } else if (product.stock < item.quantity) {
         throw new Error(`${product.name} is out of stock`);
       }
-      const itemTotal = parseFloat(product.price) * item.quantity;
-      totalAmount += itemTotal;
+
+      totalAmount += price * item.quantity;
       return {
         productId: product.id,
         name: product.name,
         category: product.category,
-        price: parseFloat(product.price),
+        price,
         quantity: item.quantity,
         image: product.images?.[0] || null,
+        variant: variantInfo,
         taxable: product.taxable || false,
         taxRate: product.taxable ? parseFloat(product.taxRate || 0) : 0,
         hsnCode: product.hsnCode || null,

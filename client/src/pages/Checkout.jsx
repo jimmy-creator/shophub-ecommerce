@@ -322,11 +322,13 @@ export default function Checkout() {
       orderData.guestEmail = form.email;
       const { data } = await api.post('/orders/guest', orderData);
       api.post('/abandoned-cart/recover', { email: form.email }).catch(() => {});
+      processingPayment.current = true;
       navigate(successUrl(data.orderNumber));
       clearCart();
     } else {
       const { data } = await api.post('/orders', orderData);
       api.post('/abandoned-cart/recover', { email: user.email }).catch(() => {});
+      processingPayment.current = true;
       navigate(successUrl(data.orderNumber));
       clearCart();
     }
