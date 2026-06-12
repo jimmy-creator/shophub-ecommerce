@@ -37,7 +37,14 @@ const textMain = process.env.EMAIL_TEXT_MAIN || '#1e293b';
 const textDim = process.env.EMAIL_TEXT_DIM || '#64748b';
 const bgColor = process.env.EMAIL_BG || '#f1f5f9';
 
-const currencySymbol = process.env.CURRENCY_SYMBOL || '₹';
+// Map a currency code to its display symbol; unknown codes fall back to the
+// code itself (e.g. "KWD ") rather than a hardcoded ₹.
+function symbolFor(code) {
+  return { INR: '₹', USD: '$', AED: 'AED ', KWD: 'KWD ', SAR: 'SAR ' }[code] || `${code} `;
+}
+// CURRENCY_SYMBOL overrides; otherwise derive from CURRENCY_CODE so non-INR
+// stores (e.g. store4 KWD) don't default to the rupee sign.
+const currencySymbol = process.env.CURRENCY_SYMBOL || symbolFor(process.env.CURRENCY_CODE || 'INR');
 // Display decimals — pairs with the client's VITE_CURRENCY_DECIMALS.
 // store4 (KWD/fils) sets CURRENCY_DECIMALS=3; default 2 for INR/AED.
 const currencyDecimals = (() => {
@@ -459,7 +466,7 @@ export async function sendQuoteEmail({ to, customerName, request, bankDetails })
   const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
   const quoteUrl = `${clientUrl}/wholesale/my-quotes/${request.id}`;
   const currency = request.quotedCurrency || process.env.CURRENCY_CODE || 'INR';
-  const symbol = currency === 'INR' ? '₹' : (currency === 'USD' ? '$' : (currency === 'AED' ? 'AED ' : `${currency} `));
+  const symbol = symbolFor(currency);
   const fmt = (n) => `${symbol}${(parseFloat(n) || 0).toFixed(currencyDecimals)}`;
 
   const validUntil = request.quotedValidUntil
