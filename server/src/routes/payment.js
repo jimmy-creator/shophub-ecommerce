@@ -3,6 +3,7 @@ import { protect, optionalAuth } from '../middleware/auth.js';
 import { Order, Product, User, Coupon } from '../models/index.js';
 import { getPaymentGateway, getAvailableGateways } from '../services/paymentGateway.js';
 import { sendOrderConfirmation, sendPaymentConfirmation, sendNewOrderNotification } from '../services/emailService.js';
+import whatsapp from '../services/whatsappService.js';
 import { autoCreateShipment } from '../services/shipping.js';
 import { Op } from 'sequelize';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
@@ -311,6 +312,7 @@ router.post('/verify', optionalAuth, async (req, res) => {
         sendOrderConfirmation(order.toJSON(), email).catch(() => {});
       }
       sendNewOrderNotification(order.toJSON()).catch(() => {});
+      whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
       autoCreateShipment(order).catch((e) => console.error('[shipping] auto-create after verify failed:', e.message));
 
       res.json({ verified: true, order: order.toJSON(), status: result.status });
@@ -391,6 +393,7 @@ router.post('/paytm-callback', async (req, res) => {
             sendOrderConfirmation(order.toJSON(), email).catch(() => {});
           }
           sendNewOrderNotification(order.toJSON()).catch(() => {});
+          whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
           autoCreateShipment(order).catch((e) => console.error('[shipping] auto-create after paytm callback failed:', e.message));
         }
       }
@@ -451,6 +454,7 @@ router.post('/nomod-verify', optionalAuth, async (req, res) => {
         sendOrderConfirmation(order.toJSON(), email).catch(() => {});
       }
       sendNewOrderNotification(order.toJSON()).catch(() => {});
+      whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
       autoCreateShipment(order).catch((e) => console.error('[shipping] auto-create after nomod verify failed:', e.message));
 
       res.json({ verified: true, order: order.toJSON(), status: result.status });

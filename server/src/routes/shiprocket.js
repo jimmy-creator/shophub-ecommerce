@@ -32,6 +32,7 @@ import { Product, Category, Order, User } from '../models/index.js';
 import { signedHeaders, SHIPROCKET_BASE } from '../utils/shiprocketAuth.js';
 import { parseWeightFromOptions } from '../utils/productWeight.js';
 import { sendOrderConfirmation, sendNewOrderNotification } from '../services/emailService.js';
+import whatsapp from '../services/whatsappService.js';
 import { autoCreateShipment } from '../services/shipping.js';
 
 const router = Router();
@@ -420,6 +421,7 @@ router.post('/webhook/order', async (req, res) => {
     sendNewOrderNotification(order.toJSON()).catch((e) =>
       console.error('[shiprocket] admin notification email failed:', e.message)
     );
+    whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
     autoCreateShipment(order).catch((e) =>
       console.error('[shipping] auto-create after SR Checkout webhook failed:', e.message)
     );

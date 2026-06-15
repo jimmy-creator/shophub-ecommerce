@@ -1,5 +1,6 @@
-import { AbandonedCart, Order } from '../models/index.js';
+import { AbandonedCart, Order, User } from '../models/index.js';
 import { sendAbandonedCartEmail } from './emailService.js';
+import whatsapp from './whatsappService.js';
 import { Op } from 'sequelize';
 
 const DELAY_HOURS = parseInt(process.env.ABANDONED_CART_HOURS || '1');
@@ -46,6 +47,18 @@ async function processAbandonedCarts() {
       await cart.update({ emailSent: true, emailSentAt: new Date() });
 
       console.log(`[Abandoned Cart] Recovery email sent to ${cart.email}`);
+
+      // WhatsApp recovery for logged-in users who have a phone on file. Guests
+      // stay email-only. Fire-and-forget — never blocks or fails the job.
+      if (cart.userId) {
+        try {
+          const user = await User.findByPk(cart.userId);
+          if (user?.phone) {
+            const firstName = (user.name || '').trim().split(/\s+/)[0] || 'there';
+            whatsapp.sendAbandonedCartReminder(user.phone, firstName, recoveryUrl).catch(() => {});
+          }
+        } catch (e) { /* non-fatal */ }
+      }
     }
   } catch (error) {
     console.error('[Abandoned Cart] Job error:', error.message);

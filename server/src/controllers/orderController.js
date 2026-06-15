@@ -2,6 +2,7 @@ import { Order, Product, User, Coupon } from '../models/index.js';
 const currencySymbol = process.env.CURRENCY_SYMBOL || '${currencySymbol}';
 import { Op } from 'sequelize';
 import { sendOrderConfirmation, sendOrderStatusUpdate, sendNewOrderNotification } from '../services/emailService.js';
+import whatsapp from '../services/whatsappService.js';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
 import { calculateShipping } from '../utils/shipping.js';
 import { autoCreateShipment } from '../services/shipping.js';
@@ -176,6 +177,7 @@ export const createOrder = async (req, res) => {
     await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), req.user.email).catch(() => {});
     sendNewOrderNotification(order.toJSON()).catch(() => {});
+    whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
     // COD orders don't go through /payment/verify so we kick off the
     // shipment here. Other gateways trigger from payment.js after verify.
     if ((paymentMethod || '').toLowerCase() === 'cod') {
@@ -234,6 +236,7 @@ export const createGuestOrder = async (req, res) => {
     await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), guestEmail.toLowerCase().trim()).catch(() => {});
     sendNewOrderNotification(order.toJSON()).catch(() => {});
+    whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
     if ((paymentMethod || '').toLowerCase() === 'cod') {
       autoCreateShipment(order).catch((e) => console.error('[shipping] auto-create after guest COD order failed:', e.message));
     }

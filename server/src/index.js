@@ -29,6 +29,7 @@ import pincodeRoutes from './routes/pincodes.js';
 import abandonedCartRoutes from './routes/abandonedCart.js';
 import contactRoutes from './routes/contact.js';
 import b2bRoutes from './routes/b2b.js';
+import whatsappRoutes from './routes/whatsapp.js';
 import shiprocketRoutes from './routes/shiprocket.js';
 import shippingRoutes from './routes/shipping.js';
 import locationRoutes from './routes/locations.js';
@@ -95,7 +96,14 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Body parsing with size limits
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({
+  limit: '2mb',
+  // Stash the raw bytes for the WhatsApp webhook so we can HMAC-verify the exact
+  // payload Kapso signed — re-serializing the parsed body wouldn't match.
+  verify: (req, res, buf) => {
+    if (req.originalUrl.startsWith('/api/whatsapp/webhook')) req.rawBody = buf;
+  },
+}));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());
 
@@ -126,6 +134,7 @@ app.use('/api/pincodes', pincodeRoutes);
 app.use('/api/abandoned-cart', abandonedCartRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/b2b', b2bRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/shiprocket', shiprocketRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/locations', locationRoutes);
