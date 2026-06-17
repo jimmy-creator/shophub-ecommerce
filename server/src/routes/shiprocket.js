@@ -140,13 +140,23 @@ function toShiprocketProduct(p) {
   };
 }
 
+// Category has no slug column, so derive a Shopify-style handle from the name.
+function slugify(str) {
+  return String(str || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 function toShiprocketCollection(c) {
   const obj = c.toJSON ? c.toJSON() : c;
   return {
     id: obj.id,
     title: obj.name,
-    body_html: '',
+    handle: slugify(obj.name) || `collection-${obj.id}`,
+    body_html: obj.description || '',
     updated_at: obj.updatedAt,
+    created_at: obj.createdAt,
     image: { src: obj.image ? absUrl(obj.image) : '' },
   };
 }
@@ -164,8 +174,18 @@ function parsePaging(req) {
 router.get('/products', async (req, res) => {
   try {
     const { page, limit, offset } = parsePaging(req);
+    // Optional collection filter — Shiprocket's "fetch products by collection"
+    // calls /products?collection_id=X. Without the param this returns the full
+    // catalogue (unchanged). /products/by-collection still works too.
+    const where = { active: true };
+    const collectionId = parseInt(req.query.collection_id, 10);
+    if (collectionId) {
+      const cat = await Category.findByPk(collectionId);
+      if (!cat) return res.json({ data: { total: 0, products: [], page, limit, has_more: false } });
+      where.category = cat.name;
+    }
     const { rows, count } = await Product.findAndCountAll({
-      where: { active: true },
+      where,
       order: [['id', 'ASC']],
       offset,
       limit,

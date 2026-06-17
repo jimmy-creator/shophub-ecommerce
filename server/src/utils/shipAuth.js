@@ -13,6 +13,8 @@
  *   SHIPROCKET_SHIP_PASSWORD  — API user password (sent to main login mailbox)
  *   SHIPROCKET_SHIP_BASE      — defaults to https://apiv2.shiprocket.in/v1/external
  */
+import crypto from 'crypto';
+
 const BASE = (process.env.SHIPROCKET_SHIP_BASE || 'https://apiv2.shiprocket.in/v1/external').replace(/\/$/, '');
 const EMAIL = process.env.SHIPROCKET_SHIP_EMAIL || '';
 const PASSWORD = process.env.SHIPROCKET_SHIP_PASSWORD || '';
@@ -23,6 +25,20 @@ const SAFETY_WINDOW_MS = 60 * 60 * 1000; // refresh 1h before expiry to be safe
 
 export const SHIPROCKET_SHIP_BASE = BASE;
 export const SHIPROCKET_SHIP_ENABLED = !!(EMAIL && PASSWORD);
+
+// Boot status. By default logs only that credentials are present — no
+// credential-derived material. Set SHIPROCKET_DEBUG_FINGERPRINT=1 to also emit
+// a non-reversible sha256 of the values (server log only, never over HTTP) so
+// the SAME credentials can be compared across environments while diagnosing a
+// login 403 — then unset it. No lengths are logged.
+if (SHIPROCKET_SHIP_ENABLED) {
+  if (process.env.SHIPROCKET_DEBUG_FINGERPRINT === '1') {
+    const fp = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 12);
+    console.log(`[shipAuth] creds fingerprint (debug) — emailSha ${fp(EMAIL)} · passSha ${fp(PASSWORD)}`);
+  } else {
+    console.log('[shipAuth] credentials configured');
+  }
+}
 
 async function login() {
   if (!SHIPROCKET_SHIP_ENABLED) {

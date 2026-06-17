@@ -82,7 +82,10 @@ async function buildAdhocPayload(order) {
   //   SR Checkout webhook → { line1, postalCode } (we normalised in shiprocket.js)
   const line1 = addr.line1 || addr.address || addr.address_1 || '';
   const line2 = addr.line2 || addr.address_2 || '';
-  const pincode = addr.postalCode || addr.zipCode || addr.pincode || '';
+  // SR is strict: pincode must be 6 digits, phone a bare 10-digit number.
+  // Real customers enter "+91 ...", leading zeros, spaces/dashes — strip them.
+  const pincode = String(addr.postalCode || addr.zipCode || addr.pincode || '').replace(/\D/g, '').slice(0, 6);
+  const phone = String(addr.phone || '').replace(/\D/g, '').slice(-10);
 
   return {
     order_id: o.orderNumber, // our reference (SR returns its own order_id)
@@ -99,7 +102,7 @@ async function buildAdhocPayload(order) {
     billing_state: addr.state || '',
     billing_country: addr.country || 'India',
     billing_email: customerEmail,
-    billing_phone: addr.phone || '',
+    billing_phone: phone,
     shipping_is_billing: true,
     order_items: orderItems,
     payment_method: isCod ? 'COD' : 'Prepaid',
@@ -122,7 +125,14 @@ async function createOrderInSR(order) {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  if (!ok) throw new Error(`SR create order ${status}: ${data?.message || JSON.stringify(data).slice(0, 200)}`);
+  if (!ok) {
+    // SR puts the actual reason in `errors` (field-level); `message` is just
+    // the generic "Oops! Invalid Data." — surface both so we know what failed.
+    const detail = data?.errors
+      ? `${data.message || 'Invalid Data'} — ${JSON.stringify(data.errors)}`
+      : (data?.message || JSON.stringify(data).slice(0, 200));
+    throw new Error(`SR create order ${status}: ${detail}`);
+  }
 
   const srOrderId = data.order_id || data.data?.order_id;
   const shipmentId = data.shipment_id || data.data?.shipment_id;
