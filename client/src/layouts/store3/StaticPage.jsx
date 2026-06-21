@@ -11,7 +11,7 @@ export default function StaticPage({ title, description, children }) {
           <ArrowLeft size={14} strokeWidth={1.8} /> Back to home
         </Link>
         <div className="s2-static-header">
-          <p className="s2-eyebrow">Zayara Mobile Phones LLC</p>
+          <p className="s2-eyebrow">Kalif Dates &amp; Nuts</p>
           <h1 className="s2-static-title">{title}</h1>
         </div>
         <div className="s2-static-body">

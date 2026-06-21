@@ -56,7 +56,7 @@ export default function Products() {
     <div className="s2-root">
       <SEO
         title={search ? `Search: ${search}` : category || 'All Products'}
-        description={`Shop ${category ? category + ' at' : 'all products at'} Zayara Mobiles — smartphones, accessories & more. Fast delivery across Fujairah and the UAE.`}
+        description={`Shop ${category ? category + ' at' : 'all products at'} Kalif — premium dates, dry fruits, nuts & gift hampers from the Middle East. Delivery across India.`}
       />
 
       <div className="s2-page-head">

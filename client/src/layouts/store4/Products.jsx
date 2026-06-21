@@ -58,7 +58,7 @@ export default function Products() {
     <div className="s2-root">
       <SEO
         title={search ? `${t('common.search')}: ${search}` : category || t('products.allProducts')}
-        description={`Shop ${category ? category + ' at' : 'all products at'} Zayara Mobiles — smartphones, accessories & more. Fast delivery across Fujairah and the UAE.`}
+        description={`Shop ${category ? category + ' at' : 'all products at'} Anfal Sports — athletic footwear, sportswear, equipment & accessories. In-store and online across Kuwait.`}
       />
 
       <div className="s2-page-head">
