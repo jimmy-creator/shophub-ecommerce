@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, Leaf, Cookie, Gem, Gift, Star, Mail, MapPin, Phone } from 'lucide-react';
+import { Sparkles, Leaf, Cookie, Gem, Gift, Star, Mail, MapPin, Phone, Compass, Target, Eye } from 'lucide-react';
 import StaticPage from './StaticPage';
 
 export default function AboutUs() {
@@ -29,6 +29,27 @@ export default function AboutUs() {
         <p>
           <strong>Design that respects the product.</strong> International standards of packaging and identity, because a great date deserves more than a clear plastic tray.
         </p>
+      </section>
+
+      <section className="s2-static-section">
+        <h2>Purpose, Mission &amp; Vision</h2>
+        <div className="s2-about-services">
+          <div className="s2-about-service-card">
+            <Compass size={28} strokeWidth={1.4} />
+            <h3>Purpose</h3>
+            <p>To enrich lives through premium natural foods, delivering quality, trust, and wellness to customers and partners around the world.</p>
+          </div>
+          <div className="s2-about-service-card">
+            <Target size={28} strokeWidth={1.4} />
+            <h3>Mission</h3>
+            <p>We source, process, and deliver premium dates, dry fruits, nuts, and natural products while building trusted brands and creating lasting value for our customers and business partners.</p>
+          </div>
+          <div className="s2-about-service-card">
+            <Eye size={28} strokeWidth={1.4} />
+            <h3>Vision</h3>
+            <p>To become a globally trusted leader in premium natural foods and brands, promoting healthier lifestyles and connecting people with nature's finest products.</p>
+          </div>
+        </div>
       </section>
 
       <section className="s2-static-section">
