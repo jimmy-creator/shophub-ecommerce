@@ -52,7 +52,7 @@ function StatusBadge({ value, plain = false }) {
 const emptyProduct = {
   name: '', nameAr: '', code: '', description: '', descriptionAr: '',
   price: '', comparePrice: '', costPrice: '',
-  category: '', categories: [], brand: '', stock: '', featured: false, images: [],
+  category: '', categories: [], brand: '', stock: '', featured: false, hideOnline: false, images: [],
   variantOptions: null, variants: null,
 };
 
@@ -2066,6 +2066,14 @@ export default function Admin() {
                           Featured
                         </label>
                       </div>
+                      {MULTILOC_ENABLED && (
+                        <div className="form-group">
+                          <label className="checkbox-label">
+                            <input type="checkbox" checked={!!form.hideOnline} onChange={(e) => setForm({ ...form, hideOnline: e.target.checked })} />
+                            Hide from online store (sell via POS only)
+                          </label>
+                        </div>
+                      )}
                     </div>
                     <div className="form-row" style={{ alignItems: 'end' }}>
                       <div className="form-group">

@@ -8,8 +8,11 @@ router.get('/sitemap.xml', async (req, res) => {
     const baseUrl = process.env.CLIENT_URL || `https://${req.headers.host}`;
     const I18N_ON = process.env.FEATURE_I18N === 'true';   // stores that mirror /ar/*
 
+    const productWhere = { active: true };
+    // store4: don't advertise products hidden from the online store.
+    if (process.env.FEATURE_MULTILOC === 'true') productWhere.hideOnline = false;
     const products = await Product.findAll({
-      where: { active: true },
+      where: productWhere,
       attributes: ['slug', 'updatedAt'],
       order: [['updatedAt', 'DESC']],
     });

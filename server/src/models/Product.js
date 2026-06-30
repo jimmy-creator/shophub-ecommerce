@@ -88,6 +88,13 @@ const Product = sequelize.define('Product', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  hideOnline: {
+    // When true, the product is hidden from the online storefront/API but
+    // still sellable via POS. Multi-location (store4) only; other stores
+    // leave it at the default and ignore it.
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
   ratings: {
     type: DataTypes.DECIMAL(3, 2),
     defaultValue: 0,
