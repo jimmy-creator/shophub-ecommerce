@@ -190,6 +190,62 @@ export async function recomputeProductStock(productId) {
   }
 }
 
+// The Location whose ProductStock is the online store's separate inventory
+// pool (store4). Exactly one active location should have isOnlineDefault.
+// Returns its id, or null if none configured.
+export async function getOnlineLocationId() {
+  try {
+    const loc = await Location.findOne({
+      where: { isOnlineDefault: true, active: true },
+      attributes: ['id'],
+    });
+    return loc ? loc.id : null;
+  } catch (err) {
+    console.error('[getOnlineLocationId]', err.message);
+    return null;
+  }
+}
+
+// Map an order item back to its index in product.variants[] by matching the
+// stored selected-options against each variant's options (same matching the
+// legacy reduceStock uses). Returns the index, or null for a base product.
+function variantIndexForItem(product, item) {
+  if (!item.variant || !Array.isArray(product?.variants) || !product.variants.length) {
+    return null;
+  }
+  const idx = product.variants.findIndex(
+    (v) => v.options && Object.entries(v.options).every(([k, val]) => item.variant[k] === val)
+  );
+  return idx >= 0 ? idx : null;
+}
+
+// Decrement the online store's separate inventory for a confirmed online sale.
+// Returns true if it handled the decrement (multi-location on + online location
+// configured), false otherwise so the caller can fall back to legacy behavior.
+export async function decrementOnlineStock(order) {
+  if (process.env.FEATURE_MULTILOC !== 'true') return false;
+  const onlineLocId = await getOnlineLocationId();
+  if (!onlineLocId) return false;
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const touched = new Set();
+  for (const item of items) {
+    if (!item.productId || !item.quantity) continue;
+    const product = await Product.findByPk(item.productId, { attributes: ['id', 'variants'] });
+    const vIdx = variantIndexForItem(product, item);
+    const row = await ProductStock.findOne({
+      where: { productId: item.productId, variantIndex: vIdx, locationId: onlineLocId },
+    });
+    if (row) await row.update({ quantity: Math.max(0, row.quantity - item.quantity) });
+    touched.add(item.productId);
+  }
+  for (const pid of touched) await recomputeProductStock(pid);
+  if (!order.locationId) {
+    try { await order.update({ locationId: onlineLocId }); } catch { /* non-fatal */ }
+  }
+  return true;
+}
+
 export {
   User, Product, Order, Coupon, Review, Setting, Category,
   Pincode, AbandonedCart, PriceRequest,

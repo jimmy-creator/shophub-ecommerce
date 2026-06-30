@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { protect, optionalAuth } from '../middleware/auth.js';
-import { Order, Product, User, Coupon } from '../models/index.js';
+import { Order, Product, User, Coupon, decrementOnlineStock } from '../models/index.js';
 import { getPaymentGateway, getAvailableGateways } from '../services/paymentGateway.js';
 import { sendOrderConfirmation, sendPaymentConfirmation, sendNewOrderNotification } from '../services/emailService.js';
 import whatsapp from '../services/whatsappService.js';
@@ -292,12 +292,15 @@ router.post('/verify', optionalAuth, async (req, res) => {
         orderStatus: 'confirmed',
       });
 
-      // Reduce stock
-      for (const item of order.items) {
-        await Product.increment(
-          { stock: -item.quantity },
-          { where: { id: item.productId } }
-        );
+      // Reduce stock — online inventory pool (store4) when configured,
+      // else the legacy aggregate.
+      if (!(await decrementOnlineStock(order))) {
+        for (const item of order.items) {
+          await Product.increment(
+            { stock: -item.quantity },
+            { where: { id: item.productId } }
+          );
+        }
       }
 
       // Send payment + order confirmation emails
@@ -378,8 +381,10 @@ router.post('/paytm-callback', async (req, res) => {
 
         if (result.verified) {
           await order.update({ paymentStatus: 'paid', orderStatus: 'confirmed' });
-          for (const item of order.items) {
-            await Product.increment({ stock: -item.quantity }, { where: { id: item.productId } });
+          if (!(await decrementOnlineStock(order))) {
+            for (const item of order.items) {
+              await Product.increment({ stock: -item.quantity }, { where: { id: item.productId } });
+            }
           }
 
           // Send emails
@@ -439,8 +444,10 @@ router.post('/nomod-verify', optionalAuth, async (req, res) => {
     if (result.verified) {
       await order.update({ paymentStatus: 'paid', orderStatus: 'confirmed' });
 
-      for (const item of order.items) {
-        await Product.increment({ stock: -item.quantity }, { where: { id: item.productId } });
+      if (!(await decrementOnlineStock(order))) {
+        for (const item of order.items) {
+          await Product.increment({ stock: -item.quantity }, { where: { id: item.productId } });
+        }
       }
 
       let email = order.guestEmail;

@@ -30,6 +30,7 @@ let DEFAULT_DESC = '';
 
 const CURRENCY_CODE = process.env.CURRENCY_CODE || 'INR';
 const I18N_ON = process.env.FEATURE_I18N === 'true';
+const MULTILOC = process.env.FEATURE_MULTILOC === 'true';   // store4: hide-from-online products
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const cache = new Map();   // url → { html, status, ts }
 
@@ -162,7 +163,11 @@ function renderHtml({ title, description, image, url, type = 'website', jsonLd =
 }
 
 async function renderProduct(slug, requestUrl, locale, alternates) {
-  const product = await Product.findOne({ where: { slug, active: true } });
+  // store4: products hidden from the online store must not be prerendered
+  // for crawlers either (mirrors the API 404 + sitemap exclusion).
+  const where = { slug, active: true };
+  if (MULTILOC) where.hideOnline = false;
+  const product = await Product.findOne({ where });
   if (!product) return null;
 
   // Use Arabic name/description when serving the Arabic URL and the

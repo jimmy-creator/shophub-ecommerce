@@ -1,6 +1,9 @@
-import { Order, Product, User, Coupon } from '../models/index.js';
+import { Order, Product, User, Coupon, ProductStock, getOnlineLocationId, decrementOnlineStock } from '../models/index.js';
 const currencySymbol = process.env.CURRENCY_SYMBOL || '${currencySymbol}';
 import { Op } from 'sequelize';
+
+// store4: validate/decrement against the separate online inventory pool.
+const MULTILOC = process.env.FEATURE_MULTILOC === 'true';
 import { sendOrderConfirmation, sendOrderStatusUpdate, sendNewOrderNotification } from '../services/emailService.js';
 import whatsapp from '../services/whatsappService.js';
 import { calculateTax, getIsSameState } from '../utils/tax.js';
@@ -21,6 +24,23 @@ async function buildOrderItems(items) {
     where: { id: { [Op.in]: productIds } },
   });
 
+  // When the online store has its own inventory pool (store4), validate
+  // availability against that location's ProductStock rather than the
+  // aggregate Product.stock / variants[].stock. Falls back to legacy when
+  // no online location is configured yet.
+  let onlineQty = null; // Map `${productId}:${variantIndex ?? 'base'}` -> qty
+  if (MULTILOC) {
+    const onlineLocId = await getOnlineLocationId();
+    if (onlineLocId) {
+      const rows = await ProductStock.findAll({
+        where: { productId: { [Op.in]: productIds }, locationId: onlineLocId },
+      });
+      onlineQty = new Map(rows.map((r) => [`${r.productId}:${r.variantIndex ?? 'base'}`, r.quantity]));
+    }
+  }
+  const availableOnline = (productId, variantIndex) =>
+    onlineQty ? (onlineQty.get(`${productId}:${variantIndex ?? 'base'}`) || 0) : null;
+
   let totalAmount = 0;
   const orderItems = items.map((item) => {
     const product = products.find((p) => p.id === item.productId);
@@ -30,11 +50,14 @@ async function buildOrderItems(items) {
     let variantInfo = null;
 
     if (item.selectedVariant && product.variants && product.variants.length > 0) {
-      const variant = product.variants.find((v) =>
+      const vIdx = product.variants.findIndex((v) =>
         Object.entries(item.selectedVariant).every(([k, val]) => v.options[k] === val)
       );
+      const variant = vIdx >= 0 ? product.variants[vIdx] : null;
       if (!variant) throw new Error(`Variant not available for ${product.name}`);
-      if (variant.stock < item.quantity) {
+      const avail = availableOnline(product.id, vIdx);
+      const stockToCheck = avail != null ? avail : variant.stock;
+      if (stockToCheck < item.quantity) {
         throw new Error(`${product.name} (${Object.values(item.selectedVariant).join(', ')}) is out of stock`);
       }
       if (variant.price != null) price = parseFloat(variant.price);
@@ -42,7 +65,9 @@ async function buildOrderItems(items) {
     } else if (product.variants && product.variants.length > 0 && !item.selectedVariant) {
       throw new Error(`Please select options for ${product.name}`);
     } else {
-      if (product.stock < item.quantity) {
+      const avail = availableOnline(product.id, null);
+      const stockToCheck = avail != null ? avail : product.stock;
+      if (stockToCheck < item.quantity) {
         throw new Error(`${product.name} is out of stock`);
       }
     }
@@ -174,7 +199,7 @@ export const createOrder = async (req, res) => {
       taxBreakdown: breakdown,
     });
 
-    await reduceStock(items, products);
+    if (!(await decrementOnlineStock(order))) await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), req.user.email).catch(() => {});
     sendNewOrderNotification(order.toJSON()).catch(() => {});
     whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
@@ -233,7 +258,7 @@ export const createGuestOrder = async (req, res) => {
       taxBreakdown: breakdown,
     });
 
-    await reduceStock(items, products);
+    if (!(await decrementOnlineStock(order))) await reduceStock(items, products);
     sendOrderConfirmation(order.toJSON(), guestEmail.toLowerCase().trim()).catch(() => {});
     sendNewOrderNotification(order.toJSON()).catch(() => {});
     whatsapp.sendOrderConfirmation(order.toJSON()).catch(() => {});
