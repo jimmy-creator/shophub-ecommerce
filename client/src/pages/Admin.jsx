@@ -1018,6 +1018,7 @@ export default function Admin() {
   });
   const [products, setProducts] = useState([]);
   const [productSearch, setProductSearch] = useState('');
+  const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [orders, setOrders] = useState([]);
   const [expandedOrder, setExpandedOrder] = useState(null); // order id whose detail row is open
   const [coupons, setCoupons] = useState([]);
@@ -1417,11 +1418,64 @@ export default function Admin() {
     }
   };
 
+  // Bulk show/hide selected products from the online store (store4 / multi-location).
+  const handleBulkOnlineVisibility = async (hideOnline) => {
+    if (selectedProductIds.length === 0) return;
+    try {
+      const { data } = await api.patch('/products/bulk/online-visibility', { ids: selectedProductIds, hideOnline });
+      setProducts(products.map((p) => selectedProductIds.includes(p.id) ? { ...p, hideOnline } : p));
+      toast.success(`${data.count} product${data.count === 1 ? '' : 's'} ${hideOnline ? 'hidden from' : 'now shown in'} online store`);
+      setSelectedProductIds([]);
+    } catch {
+      toast.error('Failed to update products');
+    }
+  };
+
+  // Bulk activate / unlist selected products.
+  const handleBulkActive = async (active) => {
+    if (selectedProductIds.length === 0) return;
+    try {
+      const { data } = await api.patch('/products/bulk/active', { ids: selectedProductIds, active });
+      setProducts(products.map((p) => selectedProductIds.includes(p.id) ? { ...p, active } : p));
+      toast.success(`${data.count} product${data.count === 1 ? '' : 's'} ${active ? 'activated' : 'unlisted'}`);
+      setSelectedProductIds([]);
+    } catch {
+      toast.error('Failed to update products');
+    }
+  };
+
+  // Bulk delete selected products.
+  const handleBulkDelete = async () => {
+    if (selectedProductIds.length === 0) return;
+    if (!confirm(`Delete ${selectedProductIds.length} selected product${selectedProductIds.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    try {
+      const { data } = await api.post('/products/bulk/delete', { ids: selectedProductIds });
+      setProducts(products.filter((p) => !selectedProductIds.includes(p.id)));
+      toast.success(`${data.count} product${data.count === 1 ? '' : 's'} deleted`);
+      setSelectedProductIds([]);
+    } catch {
+      toast.error('Failed to delete products');
+    }
+  };
+
   const handleStatusChange = async (orderId, orderStatus) => {
     await api.put(`/orders/${orderId}/status`, { orderStatus });
     setOrders(orders.map((o) => o.id === orderId ? { ...o, orderStatus } : o));
     toast.success('Status updated');
   };
+
+  // Products matching the current search box — shared by the table rows and the
+  // bulk select-all so both operate on the same visible set.
+  const filteredProducts = products.filter((p) => {
+    const q = productSearch.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.code || '').toLowerCase().includes(q) ||
+      (p.category || '').toLowerCase().includes(q) ||
+      (p.brand || '').toLowerCase().includes(q)
+    );
+  });
 
   // Pretty label for the active tab — shown in the mobile top bar.
   const activeLabel = (() => {
@@ -1963,6 +2017,31 @@ export default function Admin() {
               />
             </div>
 
+            {MULTILOC_ENABLED && selectedProductIds.length > 0 && (
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.6rem 0.9rem', background: 'rgba(79,70,229,0.08)', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>{selectedProductIds.length} selected</span>
+                <button className="btn btn-primary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }} onClick={() => handleBulkOnlineVisibility(false)}>
+                  Show in online store
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }} onClick={() => handleBulkOnlineVisibility(true)}>
+                  Hide from online store
+                </button>
+                <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--border)' }} />
+                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }} onClick={() => handleBulkActive(true)}>
+                  Activate
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }} onClick={() => handleBulkActive(false)}>
+                  Unlist
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem', color: 'var(--danger)' }} onClick={handleBulkDelete}>
+                  Delete
+                </button>
+                <button className="btn btn-secondary" style={{ padding: '0.4rem 0.9rem', fontSize: '0.85rem' }} onClick={() => setSelectedProductIds([])}>
+                  Clear
+                </button>
+              </div>
+            )}
+
             {showForm && (
               <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
                 <form className="admin-form" onSubmit={handleProductSubmit}>
@@ -2129,6 +2208,21 @@ export default function Admin() {
               <table>
                 <thead>
                   <tr>
+                    {MULTILOC_ENABLED && (
+                      <th style={{ width: 36 }}>
+                        <input
+                          type="checkbox"
+                          checked={filteredProducts.length > 0 && filteredProducts.every((p) => selectedProductIds.includes(p.id))}
+                          onChange={(e) => {
+                            const visibleIds = filteredProducts.map((p) => p.id);
+                            setSelectedProductIds(e.target.checked
+                              ? [...new Set([...selectedProductIds, ...visibleIds])]
+                              : selectedProductIds.filter((id) => !visibleIds.includes(id)));
+                          }}
+                          title="Select all"
+                        />
+                      </th>
+                    )}
                     <th style={{ width: 48 }}>#</th>
                     <th>Image</th>
                     <th>Name</th>
@@ -2141,19 +2235,20 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products
-                    .filter((p) => {
-                      const q = productSearch.trim().toLowerCase();
-                      if (!q) return true;
-                      return (
-                        (p.name || '').toLowerCase().includes(q) ||
-                        (p.code || '').toLowerCase().includes(q) ||
-                        (p.category || '').toLowerCase().includes(q) ||
-                        (p.brand || '').toLowerCase().includes(q)
-                      );
-                    })
+                  {filteredProducts
                     .map((p, i) => (
                     <tr key={p.id}>
+                      {MULTILOC_ENABLED && (
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedProductIds.includes(p.id)}
+                            onChange={(e) => setSelectedProductIds(e.target.checked
+                              ? [...selectedProductIds, p.id]
+                              : selectedProductIds.filter((id) => id !== p.id))}
+                          />
+                        </td>
+                      )}
                       <td style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</td>
                       <td style={{ width: 56, padding: '0.5rem' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 'var(--radius)', overflow: 'hidden' }}>
@@ -2169,6 +2264,9 @@ export default function Admin() {
                         <span className={`badge ${p.active ? 'success' : 'danger'}`}>
                           {p.active ? 'Active' : 'Unlisted'}
                         </span>
+                        {MULTILOC_ENABLED && p.hideOnline && (
+                          <span className="badge" style={{ marginLeft: '0.35rem' }} title="Hidden from online store — sold via POS only">POS only</span>
+                        )}
                       </td>
                       <td>
                         <button

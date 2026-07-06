@@ -47,6 +47,55 @@ router.patch('/:id/toggle-active', protect, admin, requirePermission('products')
     res.status(500).json({ message: error.message });
   }
 });
+// Bulk-toggle online visibility (store4 / multi-location). Show or hide many
+// products from the online storefront in one call; POS sale is unaffected.
+router.patch('/bulk/online-visibility', protect, admin, requirePermission('products'), async (req, res) => {
+  try {
+    const { ids, hideOnline } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No products selected' });
+    }
+    const { Product } = await import('../models/index.js');
+    const [count] = await Product.update(
+      { hideOnline: !!hideOnline },
+      { where: { id: ids } }
+    );
+    res.json({ count, hideOnline: !!hideOnline });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+// Bulk set active/unlisted status for many products in one call.
+router.patch('/bulk/active', protect, admin, requirePermission('products'), async (req, res) => {
+  try {
+    const { ids, active } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No products selected' });
+    }
+    const { Product } = await import('../models/index.js');
+    const [count] = await Product.update(
+      { active: !!active },
+      { where: { id: ids } }
+    );
+    res.json({ count, active: !!active });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+// Bulk delete many products in one call.
+router.post('/bulk/delete', protect, admin, requirePermission('products'), async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'No products selected' });
+    }
+    const { Product } = await import('../models/index.js');
+    const count = await Product.destroy({ where: { id: ids } });
+    res.json({ count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 router.get('/categories', getCategories);
 router.get('/search-suggestions', async (req, res) => {
   try {
