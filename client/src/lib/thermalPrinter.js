@@ -32,6 +32,7 @@
  */
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
 import { renderSaleReceiptCanvas } from './posReceiptCanvas.js';
+import { barcodeForProduct } from '../components/BarcodeLabelSheet.jsx';
 
 const KINDS = ['receipt', 'barcode'];
 const DEFAULTS = { receipt: 48, barcode: 32 };
@@ -343,8 +344,8 @@ export async function printLabels(labels, { currency = 'KWD' } = {}) {
   const storeName = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
   for (const label of labels) {
     const show = label.show || { brand: true, name: true, barcode: true, sku: true, price: true };
-    // 8-digit numeric barcode = zero-padded product id (matches BarcodeLabelSheet).
-    const value = String(label.productId || '').padStart(8, '0');
+    // Numeric barcode = product id + 8012000 (matches BarcodeLabelSheet).
+    const value = barcodeForProduct(label);
     enc.initialize();
     if (show.brand && storeName) {
       enc.align('center').bold(true).line(storeName.toUpperCase()).bold(false);

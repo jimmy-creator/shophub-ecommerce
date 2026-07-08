@@ -48,9 +48,12 @@ export function BarcodeSvg({ value, height = 30 }) {
   return <svg ref={ref} style={{ width: '100%', height: `${height}px`, display: 'block' }} />;
 }
 
-// 8-digit numeric barcode = zero-padded product ID (e.g. 46 → "00000046").
-// The POS resolves a scanned numeric code back to the product by ID.
-export const barcodeForProduct = (product) => String(product.productId || '').padStart(8, '0');
+// Barcodes start at 8012001: the numeric value is the product ID plus this
+// base (id 1 → 8012001, id 46 → 8012046). The POS reverses it by subtracting
+// BARCODE_ID_BASE to resolve a scanned code back to the product by ID.
+export const BARCODE_ID_BASE = 8012000;
+export const barcodeForProduct = (product) =>
+  product.productId ? String(product.productId + BARCODE_ID_BASE) : '';
 
 export function Label({ product, size, show, currency }) {
   const codeForBarcode = barcodeForProduct(product);

@@ -110,14 +110,19 @@ router.get('/products', protectCashier, async (req, res) => {
       limit: 5,
     });
 
-    // 1b. Label barcodes encode the product id: an 8-digit zero-padded number
-    //     (current scheme) or the legacy "P<id>" prefix. When the exact-code
-    //     lookup misses, resolve either form back to the product by id.
+    // 1b. Label barcodes encode the product id. Current scheme: id + 8012000
+    //     (barcodes start at 8012001). Legacy schemes: an 8-digit zero-padded
+    //     id, or the "P<id>" prefix. When the exact-code lookup misses, try the
+    //     offset form first, then the raw number, to resolve back to the id.
     if (exact.length === 0) {
-      const m = /^P?0*(\d{1,8})$/i.exec(q);
+      const m = /^P?0*(\d{1,9})$/i.exec(q);
       if (m) {
-        const byId = await Product.findOne({ where: { id: parseInt(m[1], 10), active: true } });
-        if (byId) exact = [byId];
+        const n = parseInt(m[1], 10);
+        const candidateIds = [n - 8012000, n].filter((id) => id > 0);
+        for (const id of candidateIds) {
+          const byId = await Product.findOne({ where: { id, active: true } });
+          if (byId) { exact = [byId]; break; }
+        }
       }
     }
 
