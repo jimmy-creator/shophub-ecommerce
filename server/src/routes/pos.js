@@ -21,7 +21,6 @@ import {
 
 // Thresholds — when an action crosses these limits, a manager PIN
 // override is required. Could move to Settings table later.
-const DISCOUNT_PCT_THRESHOLD = 15;     // percent
 const REFUND_AMOUNT_THRESHOLD = 50;    // currency units (KWD)
 import { protectCashier } from '../middleware/auth.js';
 import { nextInvoiceNumber } from '../services/invoiceSequence.js';
@@ -946,27 +945,8 @@ router.post('/sale', protectCashier, async (req, res) => {
       manualPct = subTotal > 0 ? (manualOff / subTotal) * 100 : 0;
     }
 
-    // Manager override gate: any manual discount whose effective
-    // percentage exceeds the threshold must be approved by a manager.
+    // Manual discounts no longer require a manager override.
     let managerUser = null;
-    if (manualPct > DISCOUNT_PCT_THRESHOLD) {
-      if (!managerOverride?.userId || !managerOverride?.pin) {
-        await t.rollback();
-        return res.status(403).json({
-          message: `Discount above ${DISCOUNT_PCT_THRESHOLD}% needs a manager override`,
-          requires: 'manager_override',
-          reason: `discount_${manualPct.toFixed(1)}pct`,
-        });
-      }
-      try {
-        managerUser = await verifyManagerPin({
-          userId: managerOverride.userId, pin: managerOverride.pin, transaction: t,
-        });
-      } catch (err) {
-        await t.rollback();
-        return res.status(403).json({ message: err.message, requires: 'manager_override' });
-      }
-    }
     let couponOff = 0;
     let appliedCoupon = null;
     if (couponCode) {
