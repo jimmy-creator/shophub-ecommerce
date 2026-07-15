@@ -31,10 +31,28 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose }) 
   }, []);
 
   const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
-  const t = report.type === 'Z' ? 'Z-REPORT' : 'X-REPORT';
+  const t = report.type === 'Z' ? 'Z-REPORT' : 'DAILY REPORT';
   const session = report.session || {};
-  const opened = session.openedAt ? new Date(session.openedAt).toLocaleString() : '—';
-  const closed = session.closedAt ? new Date(session.closedAt).toLocaleString() : '—';
+
+  // "13th Jul, 2026 09:34 AM"
+  const ord = (d) => { const s = ['th', 'st', 'nd', 'rd'], v = d % 100; return d + (s[(v - 20) % 10] || s[v] || s[0]); };
+  const fmtDT = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    let h = d.getHours();
+    const ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${ord(d.getDate())} ${d.toLocaleString('en-US', { month: 'short' })}, ${d.getFullYear()} `
+      + `${String(h).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`;
+  };
+  const rangeStart = fmtDT(session.openedAt);
+  const rangeEnd = fmtDT(report.type === 'Z' ? session.closedAt : report.generatedAt);
+
+  const opening = parseFloat(report.openingCash) || 0;
+  const totalSales = parseFloat(report.totalSales) || 0;
+  const totalRefund = +((parseFloat(report.cashRefunds) || 0) + (parseFloat(report.cardRefunds) || 0)
+    + (parseFloat(report.knetRefunds) || 0) + (parseFloat(report.creditRefunds) || 0)).toFixed(3);
+  const registerTotal = +(opening + totalSales - totalRefund).toFixed(3);
 
   // Portal to <body> + hide #root in print so only the report prints on one
   // page (fixed-position over a tall app paginated → duplicate copies).
@@ -100,70 +118,44 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose }) 
         </div>
         <hr />
 
-        <div style={{ fontSize: 11 }}>
-          <div>Cashier: <span className="strong">{report.cashier?.name || '—'}</span></div>
-          <div>Opened: {opened}</div>
-          {report.type === 'Z' && <div>Closed: {closed}</div>}
-          {report.generatedAt && <div>Printed: {new Date(report.generatedAt).toLocaleString()}</div>}
-        </div>
+        <div className="strong" style={{ textAlign: 'center' }}>Register Details</div>
+        <div className="meta">( {rangeStart} — {rangeEnd} )</div>
+        <div style={{ fontSize: 11 }}>Cashier: <span className="strong">{report.cashier?.name || '—'}</span></div>
         <hr />
 
         <table>
           <tbody>
-            <tr><td>Orders</td><td className="right">{report.orderCount}</td></tr>
-            <tr><td>Cash sales</td><td className="right">{fmt(report.cashSales)}</td></tr>
-            <tr><td>Card sales</td><td className="right">{fmt(report.cardSales)}</td></tr>
-            {(report.cashRefunds > 0 || report.cardRefunds > 0) && (
-              <>
-                <tr><td>Cash refunds</td><td className="right">−{fmt(report.cashRefunds)}</td></tr>
-                <tr><td>Card refunds</td><td className="right">−{fmt(report.cardRefunds)}</td></tr>
-              </>
-            )}
-            <tr className="strong" style={{ fontSize: 14 }}>
-              <td>NET SALES</td>
-              <td className="right">{fmt(report.netSales)}</td>
-            </tr>
+            <tr className="strong"><td>Payment Method</td><td className="right">Sell</td></tr>
+            <tr><td>Cash Payment:</td><td className="right">{fmt(report.cashSales)}</td></tr>
+            <tr><td>Card Payment:</td><td className="right">{fmt(report.cardSales)}</td></tr>
+            <tr><td>KNET:</td><td className="right">{fmt(report.knetSales)}</td></tr>
           </tbody>
         </table>
         <hr />
 
         <table>
           <tbody>
-            <tr><td>Opening cash</td><td className="right">{fmt(report.openingCash)}</td></tr>
-            <tr><td>+ Cash sales</td><td className="right">{fmt(report.cashSales)}</td></tr>
-            <tr><td>− Cash refunds</td><td className="right">{fmt(report.cashRefunds)}</td></tr>
-            <tr className="strong">
-              <td>Expected drawer</td>
-              <td className="right">{fmt(report.expectedCash)}</td>
-            </tr>
+            <tr className="strong"><td>Total Sales:</td><td className="right">{fmt(totalSales)}</td></tr>
+            <tr className="strong"><td>Total Refund:</td><td className="right">{fmt(totalRefund)}</td></tr>
+            <tr className="strong"><td>Net Sales:</td><td className="right">{fmt(report.netSales)}</td></tr>
             {report.type === 'Z' && (
               <>
-                <tr><td>Counted cash</td><td className="right">{fmt(report.closingCash)}</td></tr>
+                <tr><td>Expected drawer:</td><td className="right">{fmt(report.expectedCash)}</td></tr>
+                <tr><td>Counted cash:</td><td className="right">{fmt(report.closingCash)}</td></tr>
                 <tr className="strong" style={{ color: report.variance < 0 ? '#b00' : (report.variance > 0 ? '#080' : '#000') }}>
-                  <td>VARIANCE</td>
+                  <td>Variance:</td>
                   <td className="right">{report.variance >= 0 ? '+' : ''}{fmt(report.variance)}</td>
                 </tr>
               </>
             )}
           </tbody>
         </table>
+        <hr />
 
-        {report.topItems?.length > 0 && (
-          <>
-            <hr />
-            <div className="strong" style={{ fontSize: 12, marginBottom: 4 }}>TOP ITEMS</div>
-            <table>
-              <tbody>
-                {report.topItems.map((it, i) => (
-                  <tr key={i}>
-                    <td>{it.name}</td>
-                    <td className="right">{it.qty} × {fmt(it.revenue / Math.max(it.qty, 1))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
+        <div style={{ fontSize: 11 }}>
+          Total = {fmt(opening)} (opening) + {fmt(totalSales)} (Sale)
+          {' '}− {fmt(totalRefund)} (Refund) = <span className="strong">{fmt(registerTotal)}</span>
+        </div>
 
         <hr />
         <div style={{ textAlign: 'center', fontSize: 11 }}>

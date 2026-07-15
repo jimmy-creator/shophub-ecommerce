@@ -344,7 +344,7 @@ export default function Pos() {
       const { data } = await api.get('/reports/x');
       setReport(data);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not load X-report');
+      toast.error(err.response?.data?.message || 'Could not load Daily report');
     }
   };
 
@@ -405,8 +405,8 @@ export default function Pos() {
         <button className="rail-btn" onClick={() => setReturnOpen(true)} title="Returns">
           <HiReply size={22} /><span>Return</span>
         </button>
-        <button className="rail-btn" onClick={openXReport} title="X-report">
-          <HiChartBar size={22} /><span>X-report</span>
+        <button className="rail-btn" onClick={openXReport} title="Daily report">
+          <HiChartBar size={22} /><span>Daily report</span>
         </button>
         <div className="rail-spacer" />
         <button className="rail-btn" onClick={() => setLabelOpen(true)} title="Print barcode label">

@@ -249,11 +249,27 @@ function buildReport(report, currency = 'KWD') {
   const loc = getReceiptLocale();
   currency = pickCurrency(currency, loc);
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
-  const t = report.type === 'Z' ? 'Z-REPORT' : 'X-REPORT';
+  const t = report.type === 'Z' ? 'Z-REPORT' : 'DAILY REPORT';
   const session = report.session || {};
-  const opened = session.openedAt ? new Date(session.openedAt).toLocaleString() : '—';
-  const closed = session.closedAt ? new Date(session.closedAt).toLocaleString() : '—';
-  const colW = Math.floor(cols * 0.65);
+  // "13th Jul, 2026 09:34 AM"
+  const ord = (d) => { const s = ['th', 'st', 'nd', 'rd'], v = d % 100; return d + (s[(v - 20) % 10] || s[v] || s[0]); };
+  const fmtDT = (dt) => {
+    if (!dt) return '-';
+    const d = new Date(dt);
+    let h = d.getHours();
+    const ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${ord(d.getDate())} ${d.toLocaleString('en-US', { month: 'short' })}, ${d.getFullYear()} `
+      + `${String(h).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`;
+  };
+  const rangeStart = fmtDT(session.openedAt);
+  const rangeEnd = fmtDT(report.type === 'Z' ? session.closedAt : report.generatedAt);
+  const opening = parseFloat(report.openingCash) || 0;
+  const totalSales = parseFloat(report.totalSales) || 0;
+  const totalRefund = +((parseFloat(report.cashRefunds) || 0) + (parseFloat(report.cardRefunds) || 0)
+    + (parseFloat(report.knetRefunds) || 0) + (parseFloat(report.creditRefunds) || 0)).toFixed(3);
+  const registerTotal = +(opening + totalSales - totalRefund).toFixed(3);
+  const colW = Math.floor(cols * 0.6);
   const row = (l, r) => enc.table(
     [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
     [[l, r]]
@@ -262,34 +278,34 @@ function buildReport(report, currency = 'KWD') {
   enc.initialize().align('center').bold(true).line(t).bold(false);
   if (report.location?.name) enc.line(report.location.name);
   if (report.location?.phone) enc.line(`Tel: ${report.location.phone}`);
+  enc.bold(true).line('Register Details').bold(false);
+  enc.line(`( ${rangeStart}`).line(`  - ${rangeEnd} )`);
   enc.rule().align('left')
-    .line(`Cashier: ${report.cashier?.name || '—'}`)
-    .line(`Opened: ${opened}`);
-  if (report.type === 'Z') enc.line(`Closed: ${closed}`);
-  enc.rule();
-  row('Orders', String(report.orderCount));
-  row('Cash sales', fmt(currency, report.cashSales));
-  row('Card sales', fmt(currency, report.cardSales));
-  if (report.cashRefunds > 0 || report.cardRefunds > 0) {
-    row('Cash refunds', `-${fmt(currency, report.cashRefunds)}`);
-    row('Card refunds', `-${fmt(currency, report.cardRefunds)}`);
-  }
-  enc.bold(true);
-  row('NET SALES', fmt(currency, report.netSales));
-  enc.bold(false).rule();
-  row('Opening cash', fmt(currency, report.openingCash));
-  row('+ Cash sales', fmt(currency, report.cashSales));
-  row('- Cash refunds', fmt(currency, report.cashRefunds));
-  enc.bold(true);
-  row('Expected drawer', fmt(currency, report.expectedCash));
+    .line(`Cashier: ${report.cashier?.name || '-'}`);
+  enc.rule().bold(true);
+  row('Payment Method', 'Sell');
+  enc.bold(false);
+  row('Cash Payment:', fmt(currency, report.cashSales));
+  row('Card Payment:', fmt(currency, report.cardSales));
+  row('KNET:', fmt(currency, report.knetSales));
+  enc.rule().bold(true);
+  row('Total Sales:', fmt(currency, totalSales));
+  row('Total Refund:', fmt(currency, totalRefund));
+  row('Net Sales:', fmt(currency, report.netSales));
   enc.bold(false);
   if (report.type === 'Z') {
-    row('Counted cash', fmt(currency, report.closingCash));
+    row('Expected drawer:', fmt(currency, report.expectedCash));
+    row('Counted cash:', fmt(currency, report.closingCash));
     enc.bold(true);
     const varianceStr = (report.variance >= 0 ? '+' : '') + fmt(currency, report.variance);
-    row('VARIANCE', varianceStr);
+    row('Variance:', varianceStr);
     enc.bold(false);
   }
+  enc.rule().align('left')
+    .line(`Total = ${fmt(currency, opening)} (opening)`)
+    .line(`  + ${fmt(currency, totalSales)} (Sale)`)
+    .line(`  - ${fmt(currency, totalRefund)} (Refund)`)
+    .bold(true).line(`  = ${fmt(currency, registerTotal)}`).bold(false);
   enc.rule().align('center')
     .line(report.type === 'Z' ? '-- END OF SHIFT --' : '-- MID-SHIFT REPORT --')
     .newline().newline().cut('partial');
