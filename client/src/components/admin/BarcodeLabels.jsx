@@ -4,7 +4,7 @@
  *
  * Renders Code128 barcodes via jsbarcode (SVG, no canvas, scales for
  * print). Three label sizes target the common cases: small thermal
- * roll (40×25mm), medium roll (50×30mm), large/jewellery (80×50mm).
+ * roll (40×25mm), medium roll (50×25mm), large/jewellery (80×50mm).
  *
  * Print CSS hides the rest of the page and lays out labels in a
  * continuous flex-wrap grid so the same template works for both

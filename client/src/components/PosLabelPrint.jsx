@@ -12,7 +12,7 @@ import api from '../api/axios';
 import { LABEL_SIZES, BarcodeLabelSheet, BarcodeLabelStyles } from './BarcodeLabelSheet';
 
 const LABEL_SHOW = { brand: true, name: true, barcode: true, sku: true, price: true };
-const SIZE = LABEL_SIZES.find((s) => s.id === 'medium');   // 50×30mm roll — matches admin default
+const SIZE = LABEL_SIZES.find((s) => s.id === 'medium');   // 50×25mm roll — matches admin default
 const LAYOUT = 'roll';
 
 export default function PosLabelPrint({ currency = 'KWD', onClose }) {

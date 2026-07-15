@@ -13,7 +13,7 @@ import JsBarcode from 'jsbarcode';
 
 export const LABEL_SIZES = [
   { id: 'small', label: '40 × 25 mm', width: 40, height: 25, barcodeH: 26, fontPt: 8 },
-  { id: 'medium', label: '50 × 30 mm', width: 50, height: 30, barcodeH: 30, fontPt: 9 },
+  { id: 'medium', label: '50 × 25 mm', width: 50, height: 25, barcodeH: 26, fontPt: 9 },
   { id: 'large', label: '80 × 50 mm', width: 80, height: 50, barcodeH: 44, fontPt: 11 },
 ];
 
