@@ -269,6 +269,11 @@ function buildReport(report, currency = 'KWD') {
   const totalRefund = +((parseFloat(report.cashRefunds) || 0) + (parseFloat(report.cardRefunds) || 0)
     + (parseFloat(report.knetRefunds) || 0) + (parseFloat(report.creditRefunds) || 0)).toFixed(3);
   const registerTotal = +(opening + totalSales - totalRefund).toFixed(3);
+  // Card runs through the KNET terminal in store — one combined line. Summed
+  // (not just knetSales) so the breakdown still reconciles with Total Sales
+  // if a sale was rung up as "card".
+  const terminalSales = +((parseFloat(report.knetSales) || 0)
+    + (parseFloat(report.cardSales) || 0)).toFixed(3);
   const colW = Math.floor(cols * 0.6);
   const row = (l, r) => enc.table(
     [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
@@ -286,8 +291,7 @@ function buildReport(report, currency = 'KWD') {
   row('Payment Method', 'Sell');
   enc.bold(false);
   row('Cash Payment:', fmt(currency, report.cashSales));
-  row('Card Payment:', fmt(currency, report.cardSales));
-  row('KNET:', fmt(currency, report.knetSales));
+  row('KNET:', fmt(currency, terminalSales));
   enc.rule().bold(true);
   row('Total Sales:', fmt(currency, totalSales));
   row('Total Refund:', fmt(currency, totalRefund));

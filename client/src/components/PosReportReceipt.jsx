@@ -50,6 +50,11 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose }) 
 
   const opening = parseFloat(report.openingCash) || 0;
   const totalSales = parseFloat(report.totalSales) || 0;
+  // Card runs through the KNET terminal in store, so the report shows one
+  // combined line. Kept as a sum (not just knetSales) so the breakdown still
+  // reconciles with Total Sales if a sale was rung up as "card".
+  const terminalSales = +((parseFloat(report.knetSales) || 0)
+    + (parseFloat(report.cardSales) || 0)).toFixed(3);
   const totalRefund = +((parseFloat(report.cashRefunds) || 0) + (parseFloat(report.cardRefunds) || 0)
     + (parseFloat(report.knetRefunds) || 0) + (parseFloat(report.creditRefunds) || 0)).toFixed(3);
   const registerTotal = +(opening + totalSales - totalRefund).toFixed(3);
@@ -127,8 +132,7 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose }) 
           <tbody>
             <tr className="strong"><td>Payment Method</td><td className="right">Sell</td></tr>
             <tr><td>Cash Payment:</td><td className="right">{fmt(report.cashSales)}</td></tr>
-            <tr><td>Card Payment:</td><td className="right">{fmt(report.cardSales)}</td></tr>
-            <tr><td>KNET:</td><td className="right">{fmt(report.knetSales)}</td></tr>
+            <tr><td>KNET:</td><td className="right">{fmt(terminalSales)}</td></tr>
           </tbody>
         </table>
         <hr />
