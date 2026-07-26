@@ -926,12 +926,13 @@ router.post('/sale', protectCashier, async (req, res) => {
       subTotal += lineGross;
 
       // Per-line discount — recomputed here from the server-side price so a
-      // tampered client can't inflate it. Capped at the line's gross.
+      // tampered client can't inflate it. A fixed amount is per item, so it
+      // applies once per unit. Capped at the line's gross.
       let lineOff = 0;
       const ld = it.lineDiscount;
       if (ld && parseFloat(ld.value) > 0) {
         const v = parseFloat(ld.value);
-        lineOff = ld.kind === 'percentage' ? (lineGross * v) / 100 : v;
+        lineOff = ld.kind === 'percentage' ? (lineGross * v) / 100 : v * qty;
         lineOff = +Math.min(lineOff, lineGross).toFixed(3);
         lineOffTotal += lineOff;
       }

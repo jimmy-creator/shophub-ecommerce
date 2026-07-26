@@ -1,14 +1,15 @@
 /**
  * Per-line POS discount.
  *
- * Cashier picks % or a fixed amount off ONE cart line. Applied locally —
+ * Cashier picks % or a fixed amount off ONE cart line — a fixed amount is
+ * per item, so it multiplies by the line quantity. Applied locally —
  * the parent keeps it on the cart line and sends it with the sale, where
  * the server recomputes it from the real product price.
  */
 import { useState } from 'react';
 
 export default function PosLineDiscountModal({
-  line,              // cart line { name, price, quantity, lineDiscount? }
+  line,              // cart line { name, price, priceOverride?, quantity, lineDiscount? }
   currency = 'KWD',
   onApply,           // (lineDiscount|null) => void
   onClose,
@@ -17,12 +18,14 @@ export default function PosLineDiscountModal({
   const [value, setValue] = useState(line.lineDiscount?.value ?? '');
 
   const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
-  const gross = +(line.price * line.quantity).toFixed(3);
+  // A per-sale price override wins over the catalog price, same as the cart.
+  const unitPrice = line.priceOverride != null ? line.priceOverride : line.price;
+  const gross = +(unitPrice * line.quantity).toFixed(3);
 
   const preview = (() => {
     const v = parseFloat(value) || 0;
     if (v <= 0) return 0;
-    const calc = kind === 'percentage' ? (gross * v) / 100 : v;
+    const calc = kind === 'percentage' ? (gross * v) / 100 : v * line.quantity;
     return +Math.min(calc, gross).toFixed(3);
   })();
 
@@ -39,7 +42,7 @@ export default function PosLineDiscountModal({
           <button onClick={onClose} className="link-btn">Cancel</button>
         </div>
         <p style={{ color: 'var(--pos-text-2)', fontSize: 13, margin: '0.4rem 0 1rem' }}>
-          {line.name} · {line.quantity} × {fmt(line.price)} = {fmt(gross)}
+          {line.name} · {line.quantity} × {fmt(unitPrice)} = {fmt(gross)}
         </p>
 
         <label className="modal-label">Discount type</label>
@@ -63,10 +66,10 @@ export default function PosLineDiscountModal({
           ))}
         </div>
 
-        <label className="modal-label">Amount {kind === 'percentage' ? '(%)' : `(${currency})`}</label>
+        <label className="modal-label">Amount {kind === 'percentage' ? '(%)' : `(${currency} per item)`}</label>
         <input
           type="number" step={kind === 'percentage' ? '0.1' : '0.001'} min="0"
-          max={kind === 'percentage' ? 100 : gross}
+          max={kind === 'percentage' ? 100 : unitPrice}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && preview > 0) apply(); }}

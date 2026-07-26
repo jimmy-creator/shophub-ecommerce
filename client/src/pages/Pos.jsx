@@ -237,13 +237,13 @@ export default function Pos() {
   // price. Any line discount then applies on top of it.
   const unitPriceOf = (c) => (c.priceOverride != null ? c.priceOverride : c.price);
 
-  // Per-line discount amount — capped at that line's gross so a fixed
-  // amount can't go negative after the quantity is lowered.
+  // Per-line discount amount — a fixed amount is per item, so it applies
+  // once per unit. Capped at that line's gross so it can't go negative.
   const lineOffFor = (c) => {
     if (!c.lineDiscount) return 0;
     const gross = unitPriceOf(c) * c.quantity;
     const v = parseFloat(c.lineDiscount.value) || 0;
-    const calc = c.lineDiscount.kind === 'percentage' ? (gross * v) / 100 : v;
+    const calc = c.lineDiscount.kind === 'percentage' ? (gross * v) / 100 : v * c.quantity;
     return +Math.min(Math.max(calc, 0), gross).toFixed(3);
   };
 
