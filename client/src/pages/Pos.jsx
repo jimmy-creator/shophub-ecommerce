@@ -30,6 +30,7 @@ import PosReturnModal from '../components/PosReturnModal';
 import PosReturnReceipt from '../components/PosReturnReceipt';
 import PosCustomerPicker from '../components/PosCustomerPicker';
 import PosDiscountModal from '../components/PosDiscountModal';
+import PosLineDiscountModal from '../components/PosLineDiscountModal';
 import PosManagerOverride from '../components/PosManagerOverride';
 import PosRecentSales from '../components/PosRecentSales';
 import PosSplitPayment from '../components/PosSplitPayment';
@@ -65,11 +66,12 @@ export default function Pos() {
   const [highlightIdx, setHighlightIdx] = useState(0);
   const [quick, setQuick] = useState({ featured: [], topSellers: [] });
   const [browseTab, setBrowseTab] = useState('featured');   // 'featured' | 'top'
-  const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation}
+  const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation, lineDiscount?}
   const [variantPicker, setVariantPicker] = useState(null);  // product-search-result with hasVariants
   const [linkedCustomer, setLinkedCustomer] = useState(null);   // null = walk-in
   const [discount, setDiscount] = useState(null);                // { manual?, coupon? } | null
   const [discountOpen, setDiscountOpen] = useState(false);
+  const [lineDiscountIdx, setLineDiscountIdx] = useState(null);   // cart index being discounted
   const [pendingOverride, setPendingOverride] = useState(null);  // { reason, retry } | null
   const [recentOpen, setRecentOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
@@ -108,14 +110,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || pendingOverride || recentOpen || splitOpen || printerOpen || editBill || labelOpen) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || lineDiscountIdx != null || pendingOverride || recentOpen || splitOpen || printerOpen || editBill || labelOpen) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, pendingOverride, recentOpen, splitOpen, printerOpen, editBill, labelOpen]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, lineDiscountIdx, pendingOverride, recentOpen, splitOpen, printerOpen, editBill, labelOpen]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -229,18 +231,31 @@ export default function Pos() {
   };
   const removeLine = (idx) => setCart((prev) => prev.filter((_, i) => i !== idx));
 
+  // Per-line discount amount — capped at that line's gross so a fixed
+  // amount can't go negative after the quantity is lowered.
+  const lineOffFor = (c) => {
+    if (!c.lineDiscount) return 0;
+    const gross = c.price * c.quantity;
+    const v = parseFloat(c.lineDiscount.value) || 0;
+    const calc = c.lineDiscount.kind === 'percentage' ? (gross * v) / 100 : v;
+    return +Math.min(Math.max(calc, 0), gross).toFixed(3);
+  };
+
   const subTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
-  // Compute discount preview the same way the server does. Manual
-  // discount applies to subtotal; coupon already carries its computed
-  // amount from the preview call (server re-validates on commit).
+  // Compute discount preview the same way the server does. Line discounts
+  // come off first, then the manual discount applies to what's left, then
+  // the coupon (which already carries its computed amount from the preview
+  // call — the server re-validates on commit).
+  const lineOffTotal = +cart.reduce((s, c) => s + lineOffFor(c), 0).toFixed(3);
+  const afterLines = +Math.max(0, subTotal - lineOffTotal).toFixed(3);
   const manualOff = (() => {
     if (!discount?.manual) return 0;
     const v = parseFloat(discount.manual.value) || 0;
-    const calc = discount.manual.kind === 'percentage' ? (subTotal * v) / 100 : v;
-    return +Math.min(calc, subTotal).toFixed(3);
+    const calc = discount.manual.kind === 'percentage' ? (afterLines * v) / 100 : v;
+    return +Math.min(calc, afterLines).toFixed(3);
   })();
   const couponOff = discount?.coupon ? +(parseFloat(discount.coupon.discount) || 0).toFixed(3) : 0;
-  const discountTotal = +Math.min(manualOff + couponOff, subTotal).toFixed(3);
+  const discountTotal = +Math.min(lineOffTotal + manualOff + couponOff, subTotal).toFixed(3);
   const total = +Math.max(0, subTotal - discountTotal).toFixed(3);
 
   // ─── Search keyboard handling ───────────────────────────────────
@@ -272,7 +287,12 @@ export default function Pos() {
 
   const postSale = async (paymentPayload, managerOverride) => {
     const body = {
-      items: cart.map((c) => ({ productId: c.productId, variantIndex: c.variantIndex, quantity: c.quantity })),
+      items: cart.map((c) => ({
+        productId: c.productId,
+        variantIndex: c.variantIndex,
+        quantity: c.quantity,
+        lineDiscount: c.lineDiscount || undefined,
+      })),
       userId: linkedCustomer?.id || undefined,
       couponCode: discount?.coupon?.code || undefined,
       manualDiscount: discount?.manual || undefined,
@@ -571,22 +591,39 @@ export default function Pos() {
                 <div style={{ fontSize: 12, marginTop: 4, color: 'var(--pos-text-3)' }}>Tap a product to add it</div>
               </div>
             )}
-            {cart.map((c, i) => (
+            {cart.map((c, i) => {
+              const lineOff = lineOffFor(c);
+              return (
               <div key={`${c.productId}:${c.variantIndex ?? 'b'}`} className="cart-line">
                 <div className="cart-thumb"><ProductImage product={{ images: c.image ? [c.image] : [], category: c.category }} size="normal" /></div>
                 <div className="cart-line-info">
                   <div className="cart-line-name">{c.name}</div>
-                  <div className="cart-line-price">{fmt(c.price)} ea</div>
+                  <div className="cart-line-price">
+                    {fmt(c.price)} ea
+                    {lineOff > 0 && (
+                      <span className="line-disc-tag">
+                        −{c.lineDiscount.kind === 'percentage' ? `${c.lineDiscount.value}%` : fmt(lineOff)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="cart-line-controls">
                   <button onClick={() => setQty(i, c.quantity - 1)}>−</button>
                   <span>{c.quantity}</span>
                   <button onClick={() => setQty(i, c.quantity + 1)}>+</button>
+                  <button
+                    onClick={() => setLineDiscountIdx(i)}
+                    className={`cart-disc${lineOff > 0 ? ' is-on' : ''}`}
+                    title="Discount this item">%</button>
                   <button onClick={() => removeLine(i)} className="cart-remove">✕</button>
                 </div>
-                <div className="cart-line-total">{fmt(c.price * c.quantity)}</div>
+                <div className="cart-line-total">
+                  {lineOff > 0 && <s className="line-was">{fmt(c.price * c.quantity)}</s>}
+                  {fmt(c.price * c.quantity - lineOff)}
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="cart-customer">
@@ -603,13 +640,18 @@ export default function Pos() {
               onClick={() => setDiscountOpen(true)}
               disabled={cart.length === 0}>
               {discount?.manual || discount?.coupon
-                ? `Discount applied · −${fmt(discountTotal)}`
+                ? `Discount applied · −${fmt(discountTotal - lineOffTotal)}`
                 : '+ Add discount'}
             </button>
             {discountTotal > 0 && (
               <>
                 <div className="sub-row"><span>Subtotal</span><span>{fmt(subTotal)}</span></div>
-                <div className="sub-row discount-row"><span>Discount</span><span>−{fmt(discountTotal)}</span></div>
+                {lineOffTotal > 0 && (
+                  <div className="sub-row discount-row"><span>Item discounts</span><span>−{fmt(lineOffTotal)}</span></div>
+                )}
+                {discountTotal - lineOffTotal > 0 && (
+                  <div className="sub-row discount-row"><span>Discount</span><span>−{fmt(discountTotal - lineOffTotal)}</span></div>
+                )}
               </>
             )}
             <div className="total-row">
@@ -827,9 +869,20 @@ export default function Pos() {
       )}
 
       {/* ─── Discount modal ───────────────────── */}
+      {lineDiscountIdx != null && cart[lineDiscountIdx] && (
+        <PosLineDiscountModal
+          line={cart[lineDiscountIdx]}
+          currency={CURRENCY}
+          onApply={(ld) => setCart((prev) => prev.map((c, i) => (
+            i === lineDiscountIdx ? { ...c, lineDiscount: ld } : c
+          )))}
+          onClose={() => setLineDiscountIdx(null)}
+        />
+      )}
+
       {discountOpen && (
         <PosDiscountModal
-          subtotal={subTotal}
+          subtotal={afterLines}
           cartItems={cart}
           customer={linkedCustomer}
           currency={CURRENCY}
@@ -1216,6 +1269,13 @@ export default function Pos() {
         .cart-line-controls span { min-width: 24px; text-align: center; font-size: 0.9rem; font-weight: 500; font-variant-numeric: tabular-nums; }
         .cart-remove { color: var(--pos-danger) !important; border-color: rgba(239,68,68,0.3) !important; }
         .cart-remove:hover { background: rgba(239,68,68,0.12) !important; border-color: var(--pos-danger) !important; }
+        .cart-disc { font-size: 12px !important; font-weight: 700; }
+        .cart-disc.is-on { color: var(--pos-warn) !important; border-color: var(--pos-warn) !important; background: rgba(251,191,36,0.12) !important; }
+        .line-disc-tag {
+          margin-left: 6px; color: var(--pos-warn); font-weight: 600;
+          font-variant-numeric: tabular-nums;
+        }
+        .line-was { display: block; color: var(--pos-text-3); font-weight: 400; font-size: 0.72rem; }
         .cart-line-total { font-size: 0.9rem; font-weight: 600; min-width: 80px; text-align: right; font-variant-numeric: tabular-nums; }
 
         .cart-customer { margin: 1rem 0 0.5rem; }

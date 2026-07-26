@@ -271,6 +271,7 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   for (const it of items) {
     const qty = parseInt(it.quantity, 10) || 0;
     const rate = parseFloat(it.price) || 0;
+    const lineOff = parseFloat(it.lineDiscount?.amount) || 0;
     text(it.name, { size: 20, gap: 2 });
     if (it.nameAr && it.nameAr !== it.name) {
       ctx.textAlign = 'right'; setFont(19, '700'); ctx.fillText(it.nameAr, R, y); y += 22;
@@ -278,8 +279,11 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
     cellRight(money(rate), colRate, 19);
     cellRight(`${qty} EA`, colQty, 19);
     cellRight(money(rate * qty), colAmount, 19);
-    cellRight(money(rate * qty), colTotal, 19);
+    cellRight(money(rate * qty - lineOff), colTotal, 19);
     y += 24;
+    if (lineOff > 0) {
+      text(`${LBL.discount} −${money(lineOff)}`, { size: 18, gap: 4, x: L + 12 });
+    }
   }
   rule(1, 2, 0);
 

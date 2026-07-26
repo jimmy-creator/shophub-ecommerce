@@ -879,6 +879,7 @@ router.post('/sale', protectCashier, async (req, res) => {
     const orderItems = [];
     const stockDecrements = [];   // [{stockRow, qty}]
     let subTotal = 0;
+    let lineOffTotal = 0;
 
     for (const it of items) {
       const productId = parseInt(it.productId, 10);
@@ -902,7 +903,20 @@ router.post('/sale', protectCashier, async (req, res) => {
 
       const unitPrice = parseFloat(variant?.price ?? product.price) || 0;
       const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
-      subTotal += unitPrice * qty;
+      const lineGross = unitPrice * qty;
+      subTotal += lineGross;
+
+      // Per-line discount — recomputed here from the server-side price so a
+      // tampered client can't inflate it. Capped at the line's gross.
+      let lineOff = 0;
+      const ld = it.lineDiscount;
+      if (ld && parseFloat(ld.value) > 0) {
+        const v = parseFloat(ld.value);
+        lineOff = ld.kind === 'percentage' ? (lineGross * v) / 100 : v;
+        lineOff = +Math.min(lineOff, lineGross).toFixed(3);
+        lineOffTotal += lineOff;
+      }
+
       const variantSuffix = variant ? ` (${Object.values(variant.options || {}).join('/')})` : '';
       orderItems.push({
         productId,
@@ -913,6 +927,7 @@ router.post('/sale', protectCashier, async (req, res) => {
         price: unitPrice,
         costPrice: unitCost,                 // snapshot for COGS
         quantity: qty,
+        lineDiscount: lineOff > 0 ? { kind: ld.kind, value: parseFloat(ld.value), amount: lineOff } : null,
         image: product.images?.[0] || null,
         variant: variant ? { ...variant.options, sku: variant.sku } : null,
         taxable: product.taxable || false,
@@ -931,17 +946,19 @@ router.post('/sale', protectCashier, async (req, res) => {
       }
     }
 
-    // Apply discounts. Manual discount applies to the cart subtotal,
-    // then the coupon applies to (subtotal − manual). Final total is
-    // capped at 0 in case both stack heavily.
+    // Apply discounts. Per-line discounts come off first, then the manual
+    // discount applies to what's left, then the coupon applies to
+    // (that − manual). Final total is capped at 0 in case they stack heavily.
+    lineOffTotal = +lineOffTotal.toFixed(3);
+    const afterLines = +Math.max(0, subTotal - lineOffTotal).toFixed(3);
     let manualOff = 0;
     let manualPct = 0;
     if (manualDiscount && parseFloat(manualDiscount.value) > 0) {
       const v = parseFloat(manualDiscount.value);
       manualOff = manualDiscount.kind === 'percentage'
-        ? (subTotal * v) / 100
+        ? (afterLines * v) / 100
         : v;
-      manualOff = Math.min(manualOff, subTotal);
+      manualOff = Math.min(manualOff, afterLines);
       manualPct = subTotal > 0 ? (manualOff / subTotal) * 100 : 0;
     }
 
@@ -952,7 +969,7 @@ router.post('/sale', protectCashier, async (req, res) => {
     if (couponCode) {
       const result = await validateCoupon({
         code: couponCode,
-        subtotal: +Math.max(0, subTotal - manualOff).toFixed(3),
+        subtotal: +Math.max(0, afterLines - manualOff).toFixed(3),
         items: orderItems,
         userId: linkedUser?.id,
         transaction: t,
@@ -960,7 +977,7 @@ router.post('/sale', protectCashier, async (req, res) => {
       couponOff = result.discount;
       appliedCoupon = result.coupon;
     }
-    const totalDiscount = +(manualOff + couponOff).toFixed(3);
+    const totalDiscount = +(lineOffTotal + manualOff + couponOff).toFixed(3);
     const totalAmount = +(Math.max(0, subTotal - totalDiscount)).toFixed(3);
 
     const orderNumber = await nextInvoiceNumber(t);
@@ -1041,6 +1058,7 @@ router.post('/sale', protectCashier, async (req, res) => {
         paymentMethod,
         itemCount: orderItems.reduce((s, i) => s + i.quantity, 0),
         discount: totalDiscount,
+        lineDiscount: lineOffTotal,
         manualPct: +manualPct.toFixed(2),
         couponCode: appliedCoupon?.code || null,
         customerId: linkedUser?.id || null,
