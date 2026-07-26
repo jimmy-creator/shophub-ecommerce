@@ -31,6 +31,7 @@ import PosReturnReceipt from '../components/PosReturnReceipt';
 import PosCustomerPicker from '../components/PosCustomerPicker';
 import PosDiscountModal from '../components/PosDiscountModal';
 import PosLineDiscountModal from '../components/PosLineDiscountModal';
+import PosPriceOverrideModal from '../components/PosPriceOverrideModal';
 import PosManagerOverride from '../components/PosManagerOverride';
 import PosRecentSales from '../components/PosRecentSales';
 import PosSplitPayment from '../components/PosSplitPayment';
@@ -72,6 +73,7 @@ export default function Pos() {
   const [discount, setDiscount] = useState(null);                // { manual?, coupon? } | null
   const [discountOpen, setDiscountOpen] = useState(false);
   const [lineDiscountIdx, setLineDiscountIdx] = useState(null);   // cart index being discounted
+  const [priceEditIdx, setPriceEditIdx] = useState(null);         // cart index being re-priced
   const [pendingOverride, setPendingOverride] = useState(null);  // { reason, retry } | null
   const [recentOpen, setRecentOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
@@ -110,14 +112,14 @@ export default function Pos() {
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
   useEffect(() => {
-    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || lineDiscountIdx != null || pendingOverride || recentOpen || splitOpen || printerOpen || editBill || labelOpen) return;
+    if (variantPicker || payOpen || receipt || closeForm || report || returnOpen || returnReceipt || discountOpen || lineDiscountIdx != null || priceEditIdx != null || pendingOverride || recentOpen || splitOpen || printerOpen || editBill || labelOpen) return;
     const interval = setInterval(() => {
       if (document.activeElement !== searchRef.current && !document.activeElement?.matches?.('input, textarea, button')) {
         searchRef.current?.focus();
       }
     }, 1500);
     return () => clearInterval(interval);
-  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, lineDiscountIdx, pendingOverride, recentOpen, splitOpen, printerOpen, editBill, labelOpen]);
+  }, [variantPicker, payOpen, receipt, closeForm, report, returnOpen, returnReceipt, discountOpen, lineDiscountIdx, priceEditIdx, pendingOverride, recentOpen, splitOpen, printerOpen, editBill, labelOpen]);
 
   const runSearch = useCallback(async (q) => {
     if (!q.trim()) { setResults([]); return; }
@@ -231,17 +233,21 @@ export default function Pos() {
   };
   const removeLine = (idx) => setCart((prev) => prev.filter((_, i) => i !== idx));
 
+  // Unit price actually charged — a per-sale override wins over the catalog
+  // price. Any line discount then applies on top of it.
+  const unitPriceOf = (c) => (c.priceOverride != null ? c.priceOverride : c.price);
+
   // Per-line discount amount — capped at that line's gross so a fixed
   // amount can't go negative after the quantity is lowered.
   const lineOffFor = (c) => {
     if (!c.lineDiscount) return 0;
-    const gross = c.price * c.quantity;
+    const gross = unitPriceOf(c) * c.quantity;
     const v = parseFloat(c.lineDiscount.value) || 0;
     const calc = c.lineDiscount.kind === 'percentage' ? (gross * v) / 100 : v;
     return +Math.min(Math.max(calc, 0), gross).toFixed(3);
   };
 
-  const subTotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+  const subTotal = cart.reduce((s, c) => s + unitPriceOf(c) * c.quantity, 0);
   // Compute discount preview the same way the server does. Line discounts
   // come off first, then the manual discount applies to what's left, then
   // the coupon (which already carries its computed amount from the preview
@@ -292,6 +298,7 @@ export default function Pos() {
         variantIndex: c.variantIndex,
         quantity: c.quantity,
         lineDiscount: c.lineDiscount || undefined,
+        priceOverride: c.priceOverride != null ? c.priceOverride : undefined,
       })),
       userId: linkedCustomer?.id || undefined,
       couponCode: discount?.coupon?.code || undefined,
@@ -592,14 +599,17 @@ export default function Pos() {
               </div>
             )}
             {cart.map((c, i) => {
+              const unit = unitPriceOf(c);
               const lineOff = lineOffFor(c);
+              const repriced = c.priceOverride != null;
               return (
               <div key={`${c.productId}:${c.variantIndex ?? 'b'}`} className="cart-line">
                 <div className="cart-thumb"><ProductImage product={{ images: c.image ? [c.image] : [], category: c.category }} size="normal" /></div>
                 <div className="cart-line-info">
                   <div className="cart-line-name">{c.name}</div>
                   <div className="cart-line-price">
-                    {fmt(c.price)} ea
+                    {repriced && <s className="line-was-inline">{fmt(c.price)}</s>}
+                    {fmt(unit)} ea
                     {lineOff > 0 && (
                       <span className="line-disc-tag">
                         −{c.lineDiscount.kind === 'percentage' ? `${c.lineDiscount.value}%` : fmt(lineOff)}
@@ -612,14 +622,18 @@ export default function Pos() {
                   <span>{c.quantity}</span>
                   <button onClick={() => setQty(i, c.quantity + 1)}>+</button>
                   <button
+                    onClick={() => setPriceEditIdx(i)}
+                    className={`cart-price-btn${repriced ? ' is-on' : ''}`}
+                    title="Change price for this sale">{CURRENCY}</button>
+                  <button
                     onClick={() => setLineDiscountIdx(i)}
                     className={`cart-disc${lineOff > 0 ? ' is-on' : ''}`}
                     title="Discount this item">%</button>
                   <button onClick={() => removeLine(i)} className="cart-remove">✕</button>
                 </div>
                 <div className="cart-line-total">
-                  {lineOff > 0 && <s className="line-was">{fmt(c.price * c.quantity)}</s>}
-                  {fmt(c.price * c.quantity - lineOff)}
+                  {(lineOff > 0 || repriced) && <s className="line-was">{fmt(c.price * c.quantity)}</s>}
+                  {fmt(unit * c.quantity - lineOff)}
                 </div>
               </div>
               );
@@ -869,6 +883,17 @@ export default function Pos() {
       )}
 
       {/* ─── Discount modal ───────────────────── */}
+      {priceEditIdx != null && cart[priceEditIdx] && (
+        <PosPriceOverrideModal
+          line={cart[priceEditIdx]}
+          currency={CURRENCY}
+          onApply={(price) => setCart((prev) => prev.map((c, i) => (
+            i === priceEditIdx ? { ...c, priceOverride: price } : c
+          )))}
+          onClose={() => setPriceEditIdx(null)}
+        />
+      )}
+
       {lineDiscountIdx != null && cart[lineDiscountIdx] && (
         <PosLineDiscountModal
           line={cart[lineDiscountIdx]}
@@ -1271,6 +1296,9 @@ export default function Pos() {
         .cart-remove:hover { background: rgba(239,68,68,0.12) !important; border-color: var(--pos-danger) !important; }
         .cart-disc { font-size: 12px !important; font-weight: 700; }
         .cart-disc.is-on { color: var(--pos-warn) !important; border-color: var(--pos-warn) !important; background: rgba(251,191,36,0.12) !important; }
+        .cart-price-btn { font-size: 9px !important; font-weight: 700; letter-spacing: -0.2px; }
+        .cart-price-btn.is-on { color: var(--pos-knet) !important; border-color: var(--pos-knet) !important; background: rgba(139,92,246,0.14) !important; }
+        .line-was-inline { color: var(--pos-text-3); margin-right: 5px; }
         .line-disc-tag {
           margin-left: 6px; color: var(--pos-warn); font-weight: 600;
           font-variant-numeric: tabular-nums;

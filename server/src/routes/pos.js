@@ -880,6 +880,8 @@ router.post('/sale', protectCashier, async (req, res) => {
     const stockDecrements = [];   // [{stockRow, qty}]
     let subTotal = 0;
     let lineOffTotal = 0;
+    let repricedLines = 0;
+    let repriceDelta = 0;      // charged − catalog, summed over repriced lines
 
     for (const it of items) {
       const productId = parseInt(it.productId, 10);
@@ -901,8 +903,25 @@ router.post('/sale', protectCashier, async (req, res) => {
       }
       stockDecrements.push({ stockRow: stock, qty });
 
-      const unitPrice = parseFloat(variant?.price ?? product.price) || 0;
+      const listPrice = parseFloat(variant?.price ?? product.price) || 0;
       const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
+
+      // Per-sale price override — the cashier charges a different price for
+      // this sale only; the catalog price is untouched. Stored as the line's
+      // `price` so every downstream reader (receipt, returns, reports) sees
+      // what was actually charged, with `listPrice` kept for the audit trail.
+      let unitPrice = listPrice;
+      if (it.priceOverride != null && it.priceOverride !== '') {
+        const po = parseFloat(it.priceOverride);
+        if (!Number.isFinite(po) || po < 0) throw new Error(`Invalid price for ${product.name}`);
+        unitPrice = +po.toFixed(3);
+      }
+      const repriced = unitPrice !== listPrice;
+      if (repriced) {
+        repricedLines += 1;
+        repriceDelta += (unitPrice - listPrice) * qty;
+      }
+
       const lineGross = unitPrice * qty;
       subTotal += lineGross;
 
@@ -925,6 +944,8 @@ router.post('/sale', protectCashier, async (req, res) => {
         sku: variant?.sku || product.code || null,   // snapshot SKU for receipt
         category: product.category,
         price: unitPrice,
+        listPrice,                           // catalog price at time of sale
+        priceOverridden: repriced,
         costPrice: unitCost,                 // snapshot for COGS
         quantity: qty,
         lineDiscount: lineOff > 0 ? { kind: ld.kind, value: parseFloat(ld.value), amount: lineOff } : null,
@@ -1059,6 +1080,8 @@ router.post('/sale', protectCashier, async (req, res) => {
         itemCount: orderItems.reduce((s, i) => s + i.quantity, 0),
         discount: totalDiscount,
         lineDiscount: lineOffTotal,
+        repricedLines,
+        repriceDelta: +repriceDelta.toFixed(3),
         manualPct: +manualPct.toFixed(2),
         couponCode: appliedCoupon?.code || null,
         customerId: linkedUser?.id || null,
