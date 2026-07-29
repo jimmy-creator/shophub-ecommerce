@@ -77,21 +77,13 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
   }, [order, returnedSoFar]);
 
   const queueLine = (line) => {
-    if (line.stockAtLocation < 1) {
-      toast.error('Out of stock at this location');
-      return;
-    }
+    // Stock is informational only — same as the main POS, zero stock still sells.
     setAddQueue((prev) => {
       const k = keyOf(line.productId, line.variantIndex);
       const idx = prev.findIndex((q) => keyOf(q.productId, q.variantIndex) === k);
       if (idx >= 0) {
         const next = [...prev];
-        const newQty = next[idx].quantity + 1;
-        if (newQty > line.stockAtLocation) {
-          toast.error(`Only ${line.stockAtLocation} in stock`);
-          return prev;
-        }
-        next[idx] = { ...next[idx], quantity: newQty };
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
         return next;
       }
       return [...prev, { ...line, quantity: 1 }];
@@ -131,8 +123,7 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
 
   const setAddQty = (i, q) => setAddQueue((prev) => {
     const next = [...prev];
-    const clamped = Math.max(1, Math.min(parseInt(q || 1, 10), next[i].stockAtLocation));
-    next[i] = { ...next[i], quantity: clamped };
+    next[i] = { ...next[i], quantity: Math.max(1, parseInt(q || 1, 10)) };
     return next;
   });
   const removeAddRow = (i) => setAddQueue((prev) => prev.filter((_, idx) => idx !== i));
@@ -287,7 +278,6 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
             {results.map((r) => (
               <button key={`${r.productId}-${r.variantIndex ?? 'b'}`}
                 onClick={() => addItemToQueue(r)}
-                disabled={!r.hasVariants && r.stockAtLocation < 1}
                 style={{
                   display: 'flex', justifyContent: 'space-between', width: '100%',
                   padding: '0.55rem 0.75rem', textAlign: 'left',
@@ -372,15 +362,13 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
                 return (
                   <button key={i}
                     onClick={() => pickVariant(i)}
-                    disabled={stock < 1}
                     style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.7rem 0.9rem', textAlign: 'left',
-                      background: stock < 1 ? 'var(--pos-bg)' : 'var(--pos-panel)',
+                      background: 'var(--pos-panel)',
                       border: '1px solid var(--pos-line)',
                       color: 'var(--pos-text)', borderRadius: 8,
-                      cursor: stock < 1 ? 'not-allowed' : 'pointer',
-                      opacity: stock < 1 ? 0.4 : 1,
+                      cursor: 'pointer',
                       fontFamily: 'inherit',
                     }}>
                     <span>{Object.values(v.options || {}).join(' / ')}</span>

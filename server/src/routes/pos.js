@@ -562,7 +562,7 @@ router.post('/sales/:id/append', protectCashier, async (req, res) => {
     const productMap = new Map(products.map((p) => [p.id, p]));
 
     const newLines = [];
-    const stockDecrements = [];
+    const stockDecrements = new Map();
     let delta = 0;
     for (const it of items) {
       const productId = parseInt(it.productId, 10);
@@ -573,13 +573,15 @@ router.post('/sales/:id/append', protectCashier, async (req, res) => {
       const qty = parseInt(it.quantity, 10);
       if (!qty || qty < 1) throw new Error(`Invalid quantity for ${product.name}`);
 
+      // As in /sale — stock never blocks; the location quantity may go negative.
       const stock = await ProductStock.findOne({
         where: { productId, variantIndex: vIdx, locationId: req.cashierLocationId },
         transaction: t,
       });
-      const have = stock?.quantity || 0;
-      if (have < qty) throw new Error(`Not enough stock for ${product.name} — have ${have}, need ${qty}`);
-      stockDecrements.push({ stockRow: stock, qty });
+      const decKey = `${productId}:${vIdx ?? 'b'}`;
+      const prevDec = stockDecrements.get(decKey);
+      if (prevDec) prevDec.qty += qty;
+      else stockDecrements.set(decKey, { stockRow: stock, productId, variantIndex: vIdx, qty });
 
       const unitPrice = parseFloat(variant?.price ?? product.price) || 0;
       const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
@@ -619,9 +621,15 @@ router.post('/sales/:id/append', protectCashier, async (req, res) => {
       throw new Error('payment.method or payment.tenders required');
     }
 
-    // Decrement stock.
-    for (const { stockRow, qty } of stockDecrements) {
-      await stockRow.update({ quantity: stockRow.quantity - qty }, { transaction: t });
+    // Decrement stock — may go negative.
+    for (const { stockRow, productId, variantIndex, qty } of stockDecrements.values()) {
+      if (stockRow) {
+        await stockRow.update({ quantity: stockRow.quantity - qty }, { transaction: t });
+      } else {
+        await ProductStock.create({
+          productId, variantIndex, locationId: req.cashierLocationId, quantity: -qty,
+        }, { transaction: t });
+      }
     }
 
     // Update Order — append items, bump total, merge tenders.
@@ -877,7 +885,9 @@ router.post('/sale', protectCashier, async (req, res) => {
     const productMap = new Map(products.map((p) => [p.id, p]));
 
     const orderItems = [];
-    const stockDecrements = [];   // [{stockRow, qty}]
+    // key `${productId}:${variantIndex ?? 'b'}` -> {stockRow, productId, variantIndex, qty}
+    // Keyed so repeated lines for the same item share one row update.
+    const stockDecrements = new Map();
     let subTotal = 0;
     let lineOffTotal = 0;
     let repricedLines = 0;
@@ -893,15 +903,17 @@ router.post('/sale', protectCashier, async (req, res) => {
       const qty = parseInt(it.quantity, 10);
       if (!qty || qty < 1) throw new Error(`Invalid quantity for ${product.name}`);
 
+      // Stock is not a gate — a sale goes through even at zero/short stock and
+      // the per-location quantity is allowed to go negative, so the shortfall
+      // is visible for inventory to reconcile later.
       const stock = await ProductStock.findOne({
         where: { productId, variantIndex: vIdx, locationId: req.cashierLocationId },
         transaction: t,
       });
-      const have = stock?.quantity || 0;
-      if (have < qty) {
-        throw new Error(`Not enough stock for ${product.name} — have ${have}, need ${qty}`);
-      }
-      stockDecrements.push({ stockRow: stock, qty });
+      const decKey = `${productId}:${vIdx ?? 'b'}`;
+      const prevDec = stockDecrements.get(decKey);
+      if (prevDec) prevDec.qty += qty;
+      else stockDecrements.set(decKey, { stockRow: stock, productId, variantIndex: vIdx, qty });
 
       const listPrice = parseFloat(variant?.price ?? product.price) || 0;
       const unitCost = parseFloat(variant?.costPrice ?? product.costPrice ?? 0) || 0;
@@ -1034,9 +1046,15 @@ router.post('/sale', protectCashier, async (req, res) => {
     const isSplit = tenders.length > 1;
     const paymentMethod = isSplit ? 'pos_split' : `pos_${tenders[0].method}`;
 
-    // Decrement stock at this location.
-    for (const { stockRow, qty } of stockDecrements) {
-      await stockRow.update({ quantity: stockRow.quantity - qty }, { transaction: t });
+    // Decrement stock at this location — may go negative.
+    for (const { stockRow, productId, variantIndex, qty } of stockDecrements.values()) {
+      if (stockRow) {
+        await stockRow.update({ quantity: stockRow.quantity - qty }, { transaction: t });
+      } else {
+        await ProductStock.create({
+          productId, variantIndex, locationId: req.cashierLocationId, quantity: -qty,
+        }, { transaction: t });
+      }
     }
 
     const order = await Order.create({

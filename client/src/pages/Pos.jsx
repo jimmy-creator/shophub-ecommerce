@@ -173,21 +173,14 @@ export default function Pos() {
       setVariantPicker(item);
       return;
     }
-    if (item.stockAtLocation < 1) {
-      toast.error('Out of stock at this location');
-      return;
-    }
+    // Stock is informational only — selling at zero stock is allowed and
+    // takes the location quantity negative.
     setCart((prev) => {
       const key = `${item.productId}:${item.variantIndex ?? 'b'}`;
       const idx = prev.findIndex((c) => `${c.productId}:${c.variantIndex ?? 'b'}` === key);
       if (idx >= 0) {
         const next = [...prev];
-        const newQty = next[idx].quantity + 1;
-        if (newQty > item.stockAtLocation) {
-          toast.error(`Only ${item.stockAtLocation} in stock`);
-          return prev;
-        }
-        next[idx] = { ...next[idx], quantity: newQty };
+        next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
         return next;
       }
       return [...prev, {
@@ -225,9 +218,7 @@ export default function Pos() {
   const setQty = (idx, qty) => {
     setCart((prev) => {
       const next = [...prev];
-      const max = next[idx].stockAtLocation;
-      const q = Math.max(1, Math.min(qty, max));
-      next[idx] = { ...next[idx], quantity: q };
+      next[idx] = { ...next[idx], quantity: Math.max(1, qty) };
       return next;
     });
   };
@@ -518,7 +509,6 @@ export default function Pos() {
                   className={`result-item ${i === highlightIdx ? 'is-highlighted' : ''}`}
                   onClick={() => addToCart(r)}
                   onMouseEnter={() => setHighlightIdx(i)}
-                  disabled={!r.hasVariants && r.stockAtLocation < 1}
                   ref={i === highlightIdx ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
                 >
                   <div className="result-thumb"><ProductImage product={{ images: r.image ? [r.image] : [], category: r.category }} size="normal" /></div>
@@ -560,7 +550,6 @@ export default function Pos() {
                       key={`t-${r.productId}-${i}`}
                       className="tile"
                       onClick={() => addToCart(r)}
-                      disabled={!r.hasVariants && r.stockAtLocation < 1}
                     >
                       <div className="tile-img">
                         <ProductImage product={{ images: r.image ? [r.image] : [], category: r.category }} size="normal" />
@@ -716,8 +705,7 @@ export default function Pos() {
                   <button
                     key={i}
                     className="variant-btn"
-                    onClick={() => pickVariant(i)}
-                    disabled={stock < 1}>
+                    onClick={() => pickVariant(i)}>
                     <span>{Object.values(v.options || {}).join(' / ')}</span>
                     <span style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       <span className={stock < 1 ? 'stock-out' : 'stock-ok'} style={{ fontSize: 12 }}>
