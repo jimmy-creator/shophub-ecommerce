@@ -7,10 +7,13 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { isEnabled, printReport } from '../lib/thermalPrinter';
 
-export default function PosReportReceipt({ report, currency = 'KWD', onClose }) {
+// autoPrint=false shows the slip without firing the printer — used by the admin
+// panel, where a reprint is a deliberate click rather than the end of a shift.
+export default function PosReportReceipt({ report, currency = 'KWD', onClose, autoPrint = true }) {
   const printedRef = useRef(false);
 
   useEffect(() => {
+    if (!autoPrint) return;
     // Print exactly once — see PosReceipt for why a ref guard (not a cleanup
     // flag) is used: StrictMode double-invoked this in dev → an extra copy.
     if (printedRef.current) return;
@@ -167,7 +170,7 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose }) 
         </div>
 
         <div className="actions no-print">
-          <button onClick={() => window.print()}>Print again</button>
+          <button onClick={() => window.print()}>{autoPrint ? 'Print again' : 'Print'}</button>
           <button onClick={onClose}>Close</button>
         </div>
       </div>

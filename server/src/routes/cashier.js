@@ -10,7 +10,8 @@
  *   GET    /api/cashier/me                    current cashier + their open shift
  *   POST   /api/cashier/shift/close           { closingCash, notes } — closes current shift
  *                                              and computes cashVariance.
- *   GET    /api/cashier/shifts                admin sees all; cashier sees own
+ *   GET    /api/cashier/shifts                admin sees all; cashier sees own.
+ *                                              ?from=&to= (YYYY-MM-DD) filter openedAt.
  *   GET    /api/cashier/shifts/:id            admin sees any; cashier sees own
  *
  * JWT payload distinguishes cashier sessions from regular users by
@@ -228,6 +229,12 @@ router.get('/shifts', protect, async (req, res) => {
     if (req.user.role === 'cashier') where.userId = req.user.id;
     if (req.query.locationId) where.locationId = parseInt(req.query.locationId, 10);
     if (req.query.status) where.status = req.query.status;
+    // Optional YYYY-MM-DD range on openedAt, inclusive of the whole `to` day.
+    if (req.query.from || req.query.to) {
+      where.openedAt = {};
+      if (req.query.from) where.openedAt[Op.gte] = new Date(`${req.query.from}T00:00:00`);
+      if (req.query.to) where.openedAt[Op.lte] = new Date(`${req.query.to}T23:59:59.999`);
+    }
     const rows = await CashierSession.findAll({
       where,
       order: [['openedAt', 'DESC']],

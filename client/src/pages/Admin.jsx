@@ -12,6 +12,7 @@ import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
 import FinanceTabs from '../components/admin/FinanceTabs';
 import BarcodeLabels from '../components/admin/BarcodeLabels';
 import StockCounts from '../components/admin/StockCounts';
+import PosReportReceipt from '../components/PosReportReceipt';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, BarChart, Bar, PieChart, Pie, Cell,
@@ -1074,6 +1075,9 @@ export default function Admin() {
   const [cashiers, setCashiers] = useState([]);
   const [cashierForm, setCashierForm] = useState(null);      // { name, email, password, pin, homeLocationId, _editing }
   const [shifts, setShifts] = useState([]);
+  const [shiftFrom, setShiftFrom] = useState('');            // '' = no date filter (latest 50)
+  const [shiftTo, setShiftTo] = useState('');
+  const [zReport, setZReport] = useState(null);              // Z-report reprint overlay
   const [reportType, setReportType] = useState('cashier');   // 'cashier' | 'location'
   const [reportFrom, setReportFrom] = useState(() => new Date().toISOString().slice(0, 10));
   const [reportTo, setReportTo] = useState(() => new Date().toISOString().slice(0, 10));
@@ -1218,7 +1222,10 @@ export default function Admin() {
         // Fallback if /staff doesn't filter by role — fetch all then filter
         api.get('/staff').then((r) => setCashiers((r.data || []).filter((u) => u.role === 'cashier'))).catch(() => {});
       });
-      api.get('/cashier/shifts?limit=50').then((res) => setShifts(res.data)).catch(() => {});
+      const shiftParams = { limit: 50 };
+      if (shiftFrom) shiftParams.from = shiftFrom;
+      if (shiftTo) shiftParams.to = shiftTo;
+      api.get('/cashier/shifts', { params: shiftParams }).then((res) => setShifts(res.data)).catch(() => {});
     } else if (tab === 'pos-reports') {
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
       api.get('/staff?role=cashier').then((res) => setCashiers(res.data)).catch(() => {});
@@ -1303,7 +1310,7 @@ export default function Admin() {
       if (prFilter.locationId) params.locationId = prFilter.locationId;
       api.get('/purchase-returns', { params }).then((res) => setPurchaseReturns(res.data)).catch(() => {});
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter, daybookFilter, pnlFilter, stockValueFilter, activityFilter]);
+  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter, daybookFilter, pnlFilter, stockValueFilter, activityFilter, shiftFrom, shiftTo]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -3495,6 +3502,22 @@ export default function Admin() {
             </div>
 
             <h3 style={{ marginTop: '2rem', fontSize: '1rem', color: 'var(--text-secondary)' }}>Recent shifts</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '0.75rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>From</label>
+                <input type="date" value={shiftFrom} onChange={(e) => setShiftFrom(e.target.value)} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>To</label>
+                <input type="date" value={shiftTo} onChange={(e) => setShiftTo(e.target.value)} />
+              </div>
+              {(shiftFrom || shiftTo) && (
+                <button className="btn btn-secondary" onClick={() => { setShiftFrom(''); setShiftTo(''); }}>Clear</button>
+              )}
+              <span style={{ fontSize: 12, color: 'var(--text-light)' }}>
+                {shiftFrom || shiftTo ? `${shifts.length} shift(s)` : 'Latest 50 shifts'}
+              </span>
+            </div>
             <div className="admin-table">
               <table>
                 <thead>
@@ -3507,10 +3530,11 @@ export default function Admin() {
                     <th>Closing</th>
                     <th>Variance</th>
                     <th>Status</th>
+                    <th>Report</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {shifts.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No shifts yet</td></tr>}
+                  {shifts.length === 0 && <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-light)' }}>No shifts yet</td></tr>}
                   {shifts.map((s) => (
                     <tr key={s.id}>
                       <td>{s.User?.name || `User #${s.userId}`}</td>
@@ -3524,6 +3548,23 @@ export default function Admin() {
                       </td>
                       <td>
                         <StatusBadge value={s.status} />
+                      </td>
+                      <td>
+                        {s.status === 'closed' ? (
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem' }}
+                            onClick={async () => {
+                              try {
+                                const { data } = await api.get(`/reports/z/${s.id}`);
+                                setZReport(data);   // endpoint already sets type:'Z'
+                              } catch (err) {
+                                toast.error(err.response?.data?.message || 'Could not load Z-report');
+                              }
+                            }}>
+                            Z-report
+                          </button>
+                        ) : <span style={{ color: 'var(--text-light)', fontSize: '0.78rem' }}>open</span>}
                       </td>
                     </tr>
                   ))}
@@ -5553,6 +5594,17 @@ export default function Admin() {
         )}
         </main>
       </div>
+
+      {/* Z-report reprint — same slip the POS prints at close. Renders its own
+          body portal; autoPrint off so opening it doesn't fire the printer. */}
+      {zReport && (
+        <PosReportReceipt
+          report={zReport}
+          currency={CURRENCY}
+          autoPrint={false}
+          onClose={() => setZReport(null)}
+        />
+      )}
     </div>
   );
 }
