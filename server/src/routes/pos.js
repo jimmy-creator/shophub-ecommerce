@@ -1175,18 +1175,30 @@ router.get('/shift-summary', protectCashier, async (req, res) => {
 
     const orders = await Order.findAll({
       where: { cashierSessionId: session.id },
-      attributes: ['id', 'orderNumber', 'totalAmount', 'paymentMethod', 'createdAt'],
+      attributes: ['id', 'orderNumber', 'totalAmount', 'paymentMethod', 'paymentBreakdown', 'createdAt'],
       order: [['createdAt', 'DESC']],
     });
 
+    // Same tender bucketing as reports.js rollup(): split orders carry
+    // per-tender amounts in paymentBreakdown, single-tender orders bucket by
+    // paymentMethod. Missing either one drops the sale from every method line
+    // while still counting it in totalSales.
     const summary = orders.reduce((s, o) => {
       const amt = parseFloat(o.totalAmount || 0);
       s.totalSales += amt;
       s.orderCount += 1;
-      if (o.paymentMethod === 'pos_cash') s.cashSales += amt;
+      if (Array.isArray(o.paymentBreakdown) && o.paymentBreakdown.length > 0) {
+        for (const tn of o.paymentBreakdown) {
+          const tAmt = parseFloat(tn.amount || 0);
+          if (tn.method === 'cash') s.cashSales += tAmt;
+          else if (tn.method === 'card') s.cardSales += tAmt;
+          else if (tn.method === 'knet') s.knetSales += tAmt;
+        }
+      } else if (o.paymentMethod === 'pos_cash') s.cashSales += amt;
       else if (o.paymentMethod === 'pos_card') s.cardSales += amt;
+      else if (o.paymentMethod === 'pos_knet') s.knetSales += amt;
       return s;
-    }, { totalSales: 0, cashSales: 0, cardSales: 0, orderCount: 0 });
+    }, { totalSales: 0, cashSales: 0, cardSales: 0, knetSales: 0, orderCount: 0 });
 
     summary.openingCash = parseFloat(session.openingCash) || 0;
     summary.expectedCash = summary.openingCash + summary.cashSales;
