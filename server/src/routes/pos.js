@@ -210,7 +210,7 @@ router.get('/products', protectCashier, async (req, res) => {
 // terminal can add them to the cart with the same flow (incl. variant picker).
 router.get('/quick-products', protectCashier, async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit, 10) || 12, 30);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 30, 30);
     const PROD_ATTRS = ['id', 'name', 'code', 'price', 'images', 'variants', 'category'];
 
     // Featured (admin-flagged) products.
