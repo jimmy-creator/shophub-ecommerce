@@ -5,7 +5,7 @@
  *
  *   - Delete a line: calls /api/returns with that one line at full
  *     remaining qty (refund via original payment rail).
- *   - Add lines: search products → quantities → choose Cash/Card →
+ *   - Add lines: search products → quantities → choose Cash/KNET →
  *     calls /api/pos/sales/:id/append with delta payment.
  *
  * Stock at the cashier's location is decremented on append and
@@ -13,7 +13,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { HiX, HiPlus, HiCash, HiCreditCard, HiSearch } from 'react-icons/hi';
+import { HiX, HiPlus, HiCash, HiSearch } from 'react-icons/hi';
 import api from '../api/axios';
 
 export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, onNeedOverride, onUpdated }) {
@@ -135,9 +135,8 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
     if (line.remaining < 1) return;
     const unit = parseFloat(line.netUnitPrice ?? line.price) || 0;
     if (!confirm(`Remove ${line.remaining} × "${line.name}" from this bill? Stock will be returned and ${fmt(unit * line.remaining)} refunded.`)) return;
-    const refundMethod = order.paymentMethod === 'pos_cash' ? 'cash'
-      : order.paymentMethod === 'pos_card' ? 'card'
-      : 'cash';
+    // Card is retired as a tender, so historical card sales refund in cash.
+    const refundMethod = order.paymentMethod === 'pos_knet' ? 'knet' : 'cash';
 
     const submit = async (managerOverride) => {
       const { data } = await api.post('/returns', {
@@ -321,7 +320,7 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
               <strong style={{ fontSize: 20, color: 'var(--pos-warn)' }}>{fmt(addTotal)}</strong>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: '0.5rem' }}>
               <button onClick={() => setPayMethod('cash')}
                 style={payMethodBtn(payMethod === 'cash')}>
                 <HiCash size={18} /> Cash
@@ -329,10 +328,6 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
               <button onClick={() => setPayMethod('knet')}
                 style={payMethodBtn(payMethod === 'knet')}>
                 KNET
-              </button>
-              <button onClick={() => setPayMethod('card')}
-                style={payMethodBtn(payMethod === 'card')}>
-                <HiCreditCard size={18} /> Card
               </button>
             </div>
 

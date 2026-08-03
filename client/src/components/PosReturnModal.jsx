@@ -5,7 +5,7 @@
  *  1. Cashier types/scans an order number.
  *  2. Order loads with each line's max-returnable quantity (original − already
  *     returned). Cashier picks quantities, chooses "return to stock" or not.
- *  3. Cashier picks refund method (cash / card / store credit), optional reason.
+ *  3. Cashier picks refund method (cash / KNET / store credit), optional reason.
  *  4. Submit -> creates SalesReturn server-side -> parent shows a printable
  *     return receipt.
  *
@@ -245,7 +245,7 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
 
             <label className="modal-label">Refund method</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: '0.75rem' }}>
-              {['cash', 'knet', 'card', 'store_credit'].map((m) => (
+              {['cash', 'knet', 'store_credit'].map((m) => (
                 <button
                   key={m}
                   onClick={() => setRefundMethod(m)}

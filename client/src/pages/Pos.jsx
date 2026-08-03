@@ -17,7 +17,7 @@ import { STAFF_BASE } from '../App';
 import toast from 'react-hot-toast';
 import {
   HiShoppingCart, HiClock, HiReply, HiChartBar,
-  HiLogout, HiOutlineLogout, HiUserCircle, HiCash, HiCreditCard,
+  HiLogout, HiOutlineLogout, HiUserCircle, HiCash,
   HiSearch, HiX, HiPrinter, HiSun, HiMoon, HiTag,
 } from 'react-icons/hi';
 import api from '../api/axios';
@@ -80,7 +80,7 @@ export default function Pos() {
   const [printerOpen, setPrinterOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
   const [editBill, setEditBill] = useState(null);   // orderNumber | null
-  const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'card' | null
+  const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'knet' | null
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState(null);
@@ -676,18 +676,12 @@ export default function Pos() {
               className="pay-btn pay-btn-knet">
               KNET
             </button>
-            <button
-              disabled={cart.length === 0}
-              onClick={() => setPayOpen('card')}
-              className="pay-btn pay-btn-card">
-              <HiCreditCard size={22} /> Card
-            </button>
           </div>
           <button
             disabled={cart.length === 0}
             onClick={() => setSplitOpen(true)}
             className="split-link">
-            or split between cash &amp; card →
+            or split between cash &amp; KNET →
           </button>
         </aside>
       </div>
@@ -726,7 +720,7 @@ export default function Pos() {
       {payOpen && (
         <div className="modal-backdrop" onClick={() => !submitting && setPayOpen(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{payOpen === 'cash' ? 'Cash payment' : payOpen === 'knet' ? 'KNET payment' : 'Card payment'}</h3>
+            <h3>{payOpen === 'cash' ? 'Cash payment' : 'KNET payment'}</h3>
             <div className="pay-total">{fmt(total)}</div>
             {payOpen === 'cash' && (
               <>
@@ -751,9 +745,9 @@ export default function Pos() {
                 </div>
               </>
             )}
-            {(payOpen === 'card' || payOpen === 'knet') && (
+            {payOpen === 'knet' && (
               <p style={{ color: 'var(--pos-text-2)', fontSize: 14 }}>
-                Charge the customer on the {payOpen === 'knet' ? 'KNET' : 'card'} terminal, then confirm below.
+                Charge the customer on the KNET terminal, then confirm below.
               </p>
             )}
             <div className="modal-actions">
@@ -940,7 +934,6 @@ export default function Pos() {
           --pos-accent-2: #ff9d54;     /* gradient partner */
           --pos-accent-soft: rgba(255,122,69,0.14);
           --pos-success: #2dd4a4;
-          --pos-card: #4f7cff;
           --pos-knet: #8b5cf6;
           --pos-warn: #fbbf24;
           --pos-danger: #fb5e6d;
@@ -949,7 +942,7 @@ export default function Pos() {
           --pos-line: #28324a;         /* borders, dividers, inactive chips */
           --pos-line-2: #3a4763;       /* stronger border */
           --pos-label: #c4cee0;        /* form labels / secondary text */
-          --pos-on-accent: #fff;       /* text on accent/card/knet fills */
+          --pos-on-accent: #fff;       /* text on accent/knet fills */
           /* depth + motion */
           --pos-accent-grad: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-2));
           --pos-shadow-1: 0 1px 2px rgba(0,0,0,0.35);
@@ -979,7 +972,6 @@ export default function Pos() {
           --pos-accent-2: #ff9b4d;
           --pos-accent-soft: rgba(242,104,60,0.12);
           --pos-success: #10b981;
-          --pos-card: #3b6cf6;
           --pos-knet: #7c3aed;
           --pos-warn: #b45309;
           --pos-danger: #ef4444;
@@ -1343,8 +1335,7 @@ export default function Pos() {
         .pay-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.08); }
         .pay-btn:active:not(:disabled) { transform: scale(0.97); }
         .pay-btn-cash { background: var(--pos-success); color: #04261d; }
-        .pay-btn-card { background: var(--pos-card); }
-        .pay-btn-knet { background: var(--pos-knet); }    /* violet — distinct from card blue */
+        .pay-btn-knet { background: var(--pos-knet); }
         .split-link {
           display: block; width: 100%; margin-top: 0.6rem;
           padding: 0.5rem;

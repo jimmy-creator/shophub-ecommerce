@@ -80,7 +80,7 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                   <div>
                     <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--pos-text-2)' }}>{s.orderNumber}</div>
                     <div style={{ fontSize: 13 }}>
-                      {(s.items || []).length} items · {new Date(s.createdAt).toLocaleTimeString()} · {s.paymentMethod === 'pos_cash' ? 'Cash' : 'Card'}
+                      {(s.items || []).length} items · {new Date(s.createdAt).toLocaleTimeString()} · {s.paymentMethod === 'pos_cash' ? 'Cash' : s.paymentMethod === 'pos_knet' ? 'KNET' : 'Card'}
                     </div>
                     {s.shippingAddress?.fullName && s.shippingAddress.fullName !== 'Walk-in' && (
                       <div style={{ fontSize: 12, color: 'var(--pos-label)' }}>{s.shippingAddress.fullName}</div>
@@ -128,7 +128,11 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                     {!fullyVoid && (
                       <button
                         onClick={() => {
-                          if (!confirm(`Void sale ${s.orderNumber}? Refund ${fmt(remaining)} ${s.paymentMethod === 'pos_cash' ? 'in cash' : 'to card'}, return all items to stock.`)) return;
+                          // Mirrors the server's rail mapping in pos.js /sales/:id/void.
+                          const rail = s.paymentMethod === 'pos_knet' ? 'to KNET'
+                            : s.paymentMethod === 'pos_card' ? 'to card'
+                            : 'in cash';
+                          if (!confirm(`Void sale ${s.orderNumber}? Refund ${fmt(remaining)} ${rail}, return all items to stock.`)) return;
                           startVoid(s);
                         }}
                         style={{
