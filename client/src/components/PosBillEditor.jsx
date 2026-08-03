@@ -133,7 +133,8 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
   // ─── Delete a line ──────────────────────────────────────────────
   const deleteLine = (line) => {
     if (line.remaining < 1) return;
-    if (!confirm(`Remove ${line.remaining} × "${line.name}" from this bill? Stock will be returned and ${fmt(line.price * line.remaining)} refunded.`)) return;
+    const unit = parseFloat(line.netUnitPrice ?? line.price) || 0;
+    if (!confirm(`Remove ${line.remaining} × "${line.name}" from this bill? Stock will be returned and ${fmt(unit * line.remaining)} refunded.`)) return;
     const refundMethod = order.paymentMethod === 'pos_cash' ? 'cash'
       : order.paymentMethod === 'pos_card' ? 'card'
       : 'cash';

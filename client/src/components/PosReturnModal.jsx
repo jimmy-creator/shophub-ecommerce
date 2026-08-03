@@ -27,7 +27,10 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
   const [submitting, setSubmitting] = useState(false);
 
   const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
-  const refundTotal = lines.reduce((s, l) => s + l.price * (l.returnQty || 0), 0);
+  // netUnitPrice comes from the lookup with line/manual/coupon discounts already
+  // taken off — it's what the server will actually refund per unit.
+  const unitRefund = (l) => parseFloat(l.netUnitPrice ?? l.price) || 0;
+  const refundTotal = lines.reduce((s, l) => s + unitRefund(l) * (l.returnQty || 0), 0);
 
   const inputRef = useRef(null);
   useEffect(() => { inputRef.current?.focus(); }, [step]);
@@ -176,7 +179,10 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
                     <div>
                       <div style={{ fontSize: 14 }}>{l.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--pos-text-2)' }}>
-                        {fmt(l.price)} ea · sold {l.quantity}
+                        {unitRefund(l) < (parseFloat(l.price) || 0) && (
+                          <span style={{ textDecoration: 'line-through', marginRight: 4, opacity: 0.6 }}>{fmt(l.price)}</span>
+                        )}
+                        {fmt(unitRefund(l))} ea · sold {l.quantity}
                         {l.alreadyReturned > 0 && ` · returned ${l.alreadyReturned}`}
                       </div>
                       {!isExhausted && (
@@ -209,7 +215,7 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
                       <span style={{ fontSize: 10, color: 'var(--pos-text-3)', marginLeft: 4 }}>/{l.maxReturnable}</span>
                     </div>
                     <div style={{ minWidth: 70, textAlign: 'right', fontSize: 14, fontWeight: 600 }}>
-                      {l.returnQty > 0 ? fmt(l.price * l.returnQty) : '—'}
+                      {l.returnQty > 0 ? fmt(unitRefund(l) * l.returnQty) : '—'}
                     </div>
                   </div>
                 );

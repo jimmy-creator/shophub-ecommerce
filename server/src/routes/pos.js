@@ -24,6 +24,7 @@ import {
 const REFUND_AMOUNT_THRESHOLD = 50;    // currency units (KWD)
 import { protectCashier } from '../middleware/auth.js';
 import { nextInvoiceNumber } from '../services/invoiceSequence.js';
+import { refundValuer } from '../utils/refund.js';
 
 const router = Router();
 
@@ -384,12 +385,15 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
     const voidItems = [];
     let refundTotal = 0;
     const productIds = new Set();
+    const refundValue = refundValuer(order);
     for (const it of (order.items || [])) {
       const vIdx = it.variantIndex ?? null;
       const k = `${it.productId}:${vIdx ?? 'b'}`;
       const remainingQty = (parseInt(it.quantity, 10) || 0) - (returnedSoFar.get(k) || 0);
       if (remainingQty <= 0) continue;
-      const lineRefund = +((parseFloat(it.price) || 0) * remainingQty).toFixed(3);
+      // Net of every discount — line, manual and coupon — so a full void of
+      // a discounted sale returns exactly what was collected.
+      const lineRefund = refundValue(it, remainingQty);
       refundTotal += lineRefund;
       voidItems.push({
         productId: it.productId,
@@ -397,20 +401,13 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
         name: it.name,
         nameAr: it.nameAr || null,
         sku: it.sku || it.variant?.sku || null,
-        price: parseFloat(it.price) || 0,
+        price: +(lineRefund / remainingQty).toFixed(3),   // net unit price, so qty × price adds up on the receipt
+        listPrice: parseFloat(it.price) || 0,
         quantity: remainingQty,
         refundAmount: lineRefund,
         returnToStock: true,
       });
       productIds.add(it.productId);
-    }
-    // If discount was applied, prorate it down: refund = subtotal share −
-    // discount share. Keeps the void total = order remaining.
-    if (parseFloat(order.discount) > 0 && refundTotal > 0) {
-      const subtotal = (order.items || []).reduce((s, i) => s + (parseFloat(i.price) || 0) * (parseInt(i.quantity, 10) || 0), 0);
-      const discountFactor = subtotal > 0 ? (subtotal - parseFloat(order.discount)) / subtotal : 1;
-      refundTotal = +(refundTotal * discountFactor).toFixed(3);
-      voidItems.forEach((v) => { v.refundAmount = +(v.refundAmount * discountFactor).toFixed(3); });
     }
     refundTotal = +Math.min(refundTotal, remaining).toFixed(3);
     if (refundTotal <= 0) {
