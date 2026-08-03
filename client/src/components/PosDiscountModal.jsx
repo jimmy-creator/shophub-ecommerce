@@ -21,7 +21,7 @@ export default function PosDiscountModal({
   onClose,
 }) {
   const [tab, setTab] = useState(current?.coupon ? 'coupon' : 'manual');
-  const [kind, setKind] = useState(current?.manual?.kind || 'percentage');
+  const [kind, setKind] = useState(current?.manual?.kind || 'fixed');
   const [value, setValue] = useState(current?.manual?.value || '');
   const [reason, setReason] = useState(current?.manual?.reason || '');
   const [code, setCode] = useState(current?.coupon?.code || '');
