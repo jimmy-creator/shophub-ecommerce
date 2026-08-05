@@ -62,7 +62,10 @@ function shapeProduct(product, stockMap) {
   };
 }
 
-// ─── Categories for the browse chips ───────────────────────────────
+// ─── Categories for the browse tiles ───────────────────────────────
+// Each row carries a productCount so the tile can show "N items". Counted
+// in JS off one lean query rather than a COUNT per category, because a
+// product matches on its primary `category` OR anywhere in `categories`.
 router.get('/categories', protectCashier, async (req, res) => {
   try {
     const rows = await Category.findAll({
@@ -70,7 +73,22 @@ router.get('/categories', protectCashier, async (req, res) => {
       attributes: ['id', 'name', 'nameAr', 'image'],
       order: [['sortOrder', 'ASC'], ['name', 'ASC']],
     });
-    res.json(rows);
+    const products = await Product.findAll({
+      where: { active: true },
+      attributes: ['category', 'categories'],
+      raw: true,
+    });
+    const countByName = new Map();
+    for (const p of products) {
+      const names = Array.isArray(p.categories) && p.categories.length
+        ? p.categories
+        : (p.category ? [p.category] : []);
+      for (const n of new Set(names)) countByName.set(n, (countByName.get(n) || 0) + 1);
+    }
+    res.json(rows.map((c) => ({
+      ...c.toJSON(),
+      productCount: countByName.get(c.name) || 0,
+    })));
   } catch (err) {
     console.error('[pos/categories]', err);
     res.status(500).json({ message: err.message });

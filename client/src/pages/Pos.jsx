@@ -41,6 +41,19 @@ import PosLabelPrint from '../components/PosLabelPrint';
 
 const CURRENCY = import.meta.env.VITE_CURRENCY_CODE || 'KWD';
 
+// Identity of a cart line — a product, or one specific variant of it.
+const cartKey = (productId, variantIndex) => `${productId}:${variantIndex ?? 'b'}`;
+
+// Pastel fills for the category tiles. Assigned by a stable hash of the name
+// so a category keeps the same colour across sessions and terminals; cashiers
+// navigate by colour once they know the layout.
+const CAT_COLORS = ['#bfe3d8', '#dcd2f2', '#c9dff0', '#ccd0f0', '#f5c9da', '#e2ddd9', '#f0cfcd', '#c9ece1'];
+const colorForCategory = (name) => {
+  let h = 0;
+  for (let i = 0; i < name.length; i += 1) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return CAT_COLORS[h % CAT_COLORS.length];
+};
+
 // Small live clock for the POS top bar — purely cosmetic.
 function PosClock() {
   const [now, setNow] = useState(() => new Date());
@@ -66,7 +79,10 @@ export default function Pos() {
   const [searching, setSearching] = useState(false);
   const [highlightIdx, setHighlightIdx] = useState(0);
   const [quick, setQuick] = useState({ featured: [], topSellers: [] });
-  const [browseTab, setBrowseTab] = useState('featured');   // 'featured' | 'top'
+  const [categories, setCategories] = useState([]);
+  const [browseTab, setBrowseTab] = useState('featured');   // 'featured' | 'top' | `cat:<name>`
+  const [catProducts, setCatProducts] = useState([]);
+  const [catLoading, setCatLoading] = useState(false);
   const [cart, setCart] = useState([]);            // {productId, variantIndex, name, price, quantity, stockAtLocation, lineDiscount?}
   const [variantPicker, setVariantPicker] = useState(null);  // product-search-result with hasVariants
   const [linkedCustomer, setLinkedCustomer] = useState(null);   // null = walk-in
@@ -107,7 +123,22 @@ export default function Pos() {
         if (!(res.data?.featured?.length) && res.data?.topSellers?.length) setBrowseTab('top');
       })
       .catch(() => {});
+    api.get('/pos/categories')
+      .then((res) => setCategories((res.data || []).filter((c) => c.productCount > 0)))
+      .catch(() => {});
   }, []);
+
+  // Products for the selected category tile. Featured/best-seller tiles come
+  // from /quick-products above, so this only fires for `cat:` selections.
+  useEffect(() => {
+    if (!browseTab.startsWith('cat:')) return;
+    const name = browseTab.slice(4);
+    setCatLoading(true);
+    api.get('/pos/products', { params: { category: name } })
+      .then((res) => setCatProducts(res.data || []))
+      .catch(() => setCatProducts([]))
+      .finally(() => setCatLoading(false));
+  }, [browseTab]);
 
   // Keep the scanner-input focused — bounce focus back if the user clicks elsewhere
   // (unless a modal is open).
@@ -176,8 +207,8 @@ export default function Pos() {
     // Stock is informational only — selling at zero stock is allowed and
     // takes the location quantity negative.
     setCart((prev) => {
-      const key = `${item.productId}:${item.variantIndex ?? 'b'}`;
-      const idx = prev.findIndex((c) => `${c.productId}:${c.variantIndex ?? 'b'}` === key);
+      const key = cartKey(item.productId, item.variantIndex);
+      const idx = prev.findIndex((c) => cartKey(c.productId, c.variantIndex) === key);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = { ...next[idx], quantity: next[idx].quantity + 1 };
@@ -214,6 +245,20 @@ export default function Pos() {
       hasVariants: false,
     });
   };
+
+  // Tiles carry their own −/+ stepper, so they need to read and decrement the
+  // cart by product key rather than by cart index.
+  const qtyInCart = (r) => {
+    const key = cartKey(r.productId, r.variantIndex);
+    return cart.find((c) => cartKey(c.productId, c.variantIndex) === key)?.quantity || 0;
+  };
+  const decFromTile = (r) => setCart((prev) => {
+    const key = cartKey(r.productId, r.variantIndex);
+    const idx = prev.findIndex((c) => cartKey(c.productId, c.variantIndex) === key);
+    if (idx < 0) return prev;
+    if (prev[idx].quantity <= 1) return prev.filter((_, i) => i !== idx);
+    return prev.map((c, i) => (i === idx ? { ...c, quantity: c.quantity - 1 } : c));
+  });
 
   const setQty = (idx, qty) => {
     setCart((prev) => {
@@ -530,42 +575,79 @@ export default function Pos() {
             </div>
           ) : (
             <div className="browse">
-              <div className="chip-bar">
-                <button className={`chip ${browseTab === 'featured' ? 'is-active' : ''}`} onClick={() => setBrowseTab('featured')}>★ Featured</button>
-                <button className={`chip ${browseTab === 'top' ? 'is-active' : ''}`} onClick={() => setBrowseTab('top')}>🔥 Best Sellers</button>
+              <div className="cat-strip">
+                <button
+                  className={`cat-tile ${browseTab === 'featured' ? 'is-active' : ''}`}
+                  style={{ '--cat-fill': CAT_COLORS[0] }}
+                  onClick={() => setBrowseTab('featured')}>
+                  <span className="cat-tile-name">★ Featured</span>
+                  <span className="cat-tile-count">{quick.featured.length} items</span>
+                </button>
+                <button
+                  className={`cat-tile ${browseTab === 'top' ? 'is-active' : ''}`}
+                  style={{ '--cat-fill': CAT_COLORS[4] }}
+                  onClick={() => setBrowseTab('top')}>
+                  <span className="cat-tile-name">🔥 Best Sellers</span>
+                  <span className="cat-tile-count">{quick.topSellers.length} items</span>
+                </button>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`cat-tile ${browseTab === `cat:${c.name}` ? 'is-active' : ''}`}
+                    style={{ '--cat-fill': colorForCategory(c.name) }}
+                    onClick={() => setBrowseTab(`cat:${c.name}`)}>
+                    <span className="cat-tile-name">{c.name}</span>
+                    <span className="cat-tile-count">{c.productCount} items</span>
+                  </button>
+                ))}
               </div>
               <div className="tile-grid">
                 {(() => {
-                  const list = browseTab === 'featured' ? quick.featured : quick.topSellers;
+                  const isCat = browseTab.startsWith('cat:');
+                  const list = isCat ? catProducts
+                    : browseTab === 'featured' ? quick.featured : quick.topSellers;
+                  if (isCat && catLoading) {
+                    return <div className="browse-empty">Loading…</div>;
+                  }
                   if (list.length === 0) {
                     return (
                       <div className="browse-empty">
-                        {browseTab === 'featured' ? 'No featured products — flag some in Admin → Products'
-                          : 'No sales yet'}
+                        {isCat ? 'Nothing in this category'
+                          : browseTab === 'featured' ? 'No featured products — flag some in Admin → Products'
+                            : 'No sales yet'}
                       </div>
                     );
                   }
-                  return list.map((r, i) => (
-                    <button
-                      key={`t-${r.productId}-${i}`}
-                      className="tile"
-                      onClick={() => addToCart(r)}
-                    >
-                      <div className="tile-img">
-                        <ProductImage product={{ images: r.image ? [r.image] : [], category: r.category }} size="normal" />
-                        {!r.hasVariants && r.stockAtLocation < 1 && <span className="tile-oos">Out</span>}
-                      </div>
-                      <div className="tile-body">
-                        <div className="tile-name">{r.name}</div>
+                  return list.map((r, i) => {
+                    const qty = r.hasVariants ? 0 : qtyInCart(r);
+                    return (
+                      <div key={`t-${r.productId}-${i}`} className={`tile${qty > 0 ? ' is-in-cart' : ''}`}>
+                        <button className="tile-hit" onClick={() => addToCart(r)}>
+                          <div className="tile-img">
+                            <ProductImage product={{ images: r.image ? [r.image] : [], category: r.category }} size="normal" />
+                            {!r.hasVariants && (
+                              r.stockAtLocation < 1
+                                ? <span className="tile-oos">Out</span>
+                                : <span className="tile-stock">{r.stockAtLocation}</span>
+                            )}
+                          </div>
+                          <div className="tile-name">{r.name}</div>
+                        </button>
                         <div className="tile-foot">
                           <span className="tile-price">{fmt(r.price)}</span>
                           {r.hasVariants
                             ? <span className="badge">{r.variants.length}</span>
-                            : <span className={`stock-dot-pill ${r.stockAtLocation < 1 ? 'stock-out' : 'stock-ok'}`}>{r.stockAtLocation}</span>}
+                            : (
+                              <div className="tile-step">
+                                <button onClick={() => decFromTile(r)} disabled={qty === 0} aria-label="Remove one">−</button>
+                                <span>{qty}</span>
+                                <button onClick={() => addToCart(r)} aria-label="Add one">+</button>
+                              </div>
+                            )}
                         </div>
                       </div>
-                    </button>
-                  ));
+                    );
+                  });
                 })()}
               </div>
             </div>
@@ -592,7 +674,8 @@ export default function Pos() {
               const lineOff = lineOffFor(c);
               const repriced = c.priceOverride != null;
               return (
-              <div key={`${c.productId}:${c.variantIndex ?? 'b'}`} className="cart-line">
+              <div key={cartKey(c.productId, c.variantIndex)} className="cart-line">
+                <span className="cart-line-no">{i + 1}</span>
                 <div className="cart-thumb"><ProductImage product={{ images: c.image ? [c.image] : [], category: c.category }} size="normal" /></div>
                 <div className="cart-line-info">
                   <div className="cart-line-name">{c.name}</div>
@@ -922,14 +1005,14 @@ export default function Pos() {
       <style>{`
         /* ── Palette (dark = default) ───────────── */
         .pos-app {
-          --pos-bg: #090d16;
-          --pos-surface: #121826;
-          --pos-elevated: #1b2333;
+          --pos-bg: #08080a;
+          --pos-surface: #131316;
+          --pos-elevated: #1d1d21;
           --pos-border: rgba(255,255,255,0.07);
           --pos-border-strong: rgba(255,255,255,0.14);
-          --pos-text: #f4f7fb;
-          --pos-text-2: #98a6bd;
-          --pos-text-3: #5d6a82;
+          --pos-text: #f6f6f8;
+          --pos-text-2: #9d9da8;
+          --pos-text-3: #63636f;
           --pos-accent: #ff7a45;       /* vivid copper-orange */
           --pos-accent-2: #ff9d54;     /* gradient partner */
           --pos-accent-soft: rgba(255,122,69,0.14);
@@ -938,10 +1021,10 @@ export default function Pos() {
           --pos-warn: #fbbf24;
           --pos-danger: #fb5e6d;
           /* modal/component roles (used by the inline-styled Pos* dialogs) */
-          --pos-panel: #141b2a;        /* modal & card surface */
-          --pos-line: #28324a;         /* borders, dividers, inactive chips */
-          --pos-line-2: #3a4763;       /* stronger border */
-          --pos-label: #c4cee0;        /* form labels / secondary text */
+          --pos-panel: #16161a;        /* modal & card surface */
+          --pos-line: #2b2b31;         /* borders, dividers, inactive chips */
+          --pos-line-2: #3f3f48;       /* stronger border */
+          --pos-label: #cbcbd4;        /* form labels / secondary text */
           --pos-on-accent: #fff;       /* text on accent/knet fills */
           /* depth + motion */
           --pos-accent-grad: linear-gradient(135deg, var(--pos-accent), var(--pos-accent-2));
@@ -951,7 +1034,7 @@ export default function Pos() {
 
           min-height: 100vh; background: var(--pos-bg); color: var(--pos-text);
           display: grid;
-          grid-template-columns: 88px 1fr;
+          grid-template-columns: 176px 1fr;
           grid-template-rows: 56px 1fr;
           grid-template-areas: "rail topbar" "rail grid";
           font-family: -apple-system, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
@@ -960,14 +1043,14 @@ export default function Pos() {
 
         /* ── Light theme override ───────────────── */
         .pos-app.pos-light {
-          --pos-bg: #f3f6fb;
+          --pos-bg: #f4f4f6;
           --pos-surface: #ffffff;
-          --pos-elevated: #eef2f8;
-          --pos-border: rgba(15,23,42,0.09);
-          --pos-border-strong: rgba(15,23,42,0.16);
-          --pos-text: #0f172a;
-          --pos-text-2: #475569;
-          --pos-text-3: #94a3b8;
+          --pos-elevated: #f0f0f3;
+          --pos-border: rgba(0,0,0,0.09);
+          --pos-border-strong: rgba(0,0,0,0.16);
+          --pos-text: #16161a;
+          --pos-text-2: #5c5c68;
+          --pos-text-3: #9a9aa6;
           --pos-accent: #f2683c;
           --pos-accent-2: #ff9b4d;
           --pos-accent-soft: rgba(242,104,60,0.12);
@@ -976,9 +1059,9 @@ export default function Pos() {
           --pos-warn: #b45309;
           --pos-danger: #ef4444;
           --pos-panel: #ffffff;
-          --pos-line: #e6ebf2;
-          --pos-line-2: #cdd6e3;
-          --pos-label: #334155;
+          --pos-line: #e7e7ec;
+          --pos-line-2: #d4d4dc;
+          --pos-label: #3d3d47;
           --pos-on-accent: #fff;
           --pos-shadow-1: 0 1px 2px rgba(15,23,42,0.06);
           --pos-shadow-2: 0 12px 32px -12px rgba(15,23,42,0.18);
@@ -992,8 +1075,8 @@ export default function Pos() {
           grid-area: rail;
           background: var(--pos-surface);
           border-right: 1px solid var(--pos-border);
-          display: flex; flex-direction: column; align-items: center;
-          gap: 4px; padding: 12px 6px;
+          display: flex; flex-direction: column;
+          gap: 2px; padding: 12px 10px;
         }
         .rail-brand {
           width: 44px; height: 44px; border-radius: 13px;
@@ -1001,13 +1084,14 @@ export default function Pos() {
           box-shadow: 0 6px 16px -4px var(--pos-accent-soft), var(--pos-shadow-1);
           color: #fff; display: grid; place-items: center;
           font-weight: 700; font-size: 18px; letter-spacing: -0.5px;
-          margin-bottom: 8px;
+          margin: 0 0 14px 4px;
         }
         .rail-btn {
-          width: 68px; padding: 8px 4px; border-radius: 10px;
+          width: 100%; padding: 11px 12px; border-radius: 11px;
           background: transparent; border: none; color: var(--pos-text-2);
-          display: flex; flex-direction: column; align-items: center; gap: 4px;
-          font-family: inherit; font-size: 11px; font-weight: 500;
+          display: flex; flex-direction: row; align-items: center; gap: 11px;
+          text-align: left;
+          font-family: inherit; font-size: 13.5px; font-weight: 500;
           cursor: pointer; transition: background .15s ease, color .15s ease;
         }
         .rail-btn:hover { background: var(--pos-elevated); color: var(--pos-text); }
@@ -1046,9 +1130,15 @@ export default function Pos() {
           display: grid; grid-template-columns: 1fr 440px;
           min-height: 0;
         }
-        @media (max-width: 900px) {
+        /* Narrow screens: collapse the rail back to icons only. */
+        @media (max-width: 1180px) {
           .pos-app { grid-template-columns: 64px 1fr; }
+          .pos-rail { align-items: center; padding: 12px 6px; }
+          .rail-brand { margin: 0 0 10px; }
+          .rail-btn { justify-content: center; padding: 11px 4px; }
           .rail-btn span { display: none; }
+        }
+        @media (max-width: 900px) {
           .pos-grid { grid-template-columns: 1fr; }
         }
 
@@ -1062,6 +1152,10 @@ export default function Pos() {
         /* ── Search ─────────────────────────────── */
         .search-bar {
           position: relative; display: flex; align-items: center;
+          /* index.css sets a global .search-bar flex:1 for the storefront
+             navbar. In this column-flex pane that stretches the box vertically,
+             so pin it back to its content height. */
+          flex: 0 0 auto;
           background: var(--pos-elevated);
           border: 1px solid var(--pos-border-strong);
           border-radius: 14px;
@@ -1120,22 +1214,32 @@ export default function Pos() {
           padding: 3rem 1rem; text-align: center; color: var(--pos-text-2);
           font-size: 0.9rem; display: flex; flex-direction: column; align-items: center;
         }
-        /* ── Browse: category chips + product tiles ─ */
+        /* ── Browse: category tiles + product tiles ─ */
         .browse { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-        .chip-bar {
-          display: flex; gap: 6px; overflow-x: auto; flex-shrink: 0;
-          padding-bottom: 10px; margin-bottom: 4px; scrollbar-width: none;
+        /* Horizontal strip rather than a wrapping grid: the product grid below
+           is the working area and a retail catalogue has far more categories
+           than a restaurant menu has sections. */
+        .cat-strip {
+          display: flex; gap: 10px; overflow-x: auto; flex-shrink: 0;
+          padding: 2px 2px 12px; scrollbar-width: none;
         }
-        .chip-bar::-webkit-scrollbar { display: none; }
-        .chip {
-          white-space: nowrap; flex-shrink: 0;
-          padding: 7px 15px; border-radius: 100px;
-          border: 1px solid var(--pos-border); background: var(--pos-surface);
-          color: var(--pos-text-2); font-family: inherit; font-weight: 600; font-size: 0.82rem;
-          cursor: pointer; transition: background .14s var(--pos-ease), color .14s var(--pos-ease), border-color .14s var(--pos-ease);
+        .cat-strip::-webkit-scrollbar { display: none; }
+        .cat-tile {
+          flex-shrink: 0; width: 148px; min-height: 76px;
+          display: flex; flex-direction: column; justify-content: flex-end; gap: 2px;
+          padding: 12px 14px; border-radius: 16px;
+          background: var(--cat-fill); border: 2px solid transparent;
+          color: #16161a; text-align: left; cursor: pointer; font-family: inherit;
+          transition: transform .14s var(--pos-ease), box-shadow .14s var(--pos-ease);
         }
-        .chip:hover { color: var(--pos-text); border-color: var(--pos-border-strong); }
-        .chip.is-active { background: var(--pos-accent); color: #fff; border-color: var(--pos-accent); box-shadow: 0 4px 12px -4px var(--pos-accent-soft); }
+        .cat-tile:hover { transform: translateY(-2px); box-shadow: var(--pos-shadow-2); }
+        .cat-tile:active { transform: scale(0.97); }
+        .cat-tile.is-active { border-color: var(--pos-text); box-shadow: var(--pos-shadow-2); }
+        .cat-tile-name {
+          font-size: 0.95rem; font-weight: 700; line-height: 1.2;
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .cat-tile-count { font-size: 0.72rem; font-weight: 500; opacity: 0.65; font-variant-numeric: tabular-nums; }
         .tile-grid {
           flex: 1; overflow-y: auto; display: grid; align-content: start;
           grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
@@ -1143,30 +1247,62 @@ export default function Pos() {
         }
         .browse-empty { grid-column: 1 / -1; padding: 3rem 1rem; text-align: center; color: var(--pos-text-2); font-size: 0.9rem; }
         .tile {
-          display: flex; flex-direction: column; text-align: left; padding: 0;
+          display: flex; flex-direction: column;
           background: var(--pos-surface); border: 1px solid var(--pos-border);
-          border-radius: 14px; overflow: hidden; cursor: pointer; font-family: inherit;
+          border-radius: 14px; overflow: hidden;
           color: var(--pos-text); box-shadow: var(--pos-shadow-1);
           transition: transform .14s var(--pos-ease), box-shadow .14s var(--pos-ease), border-color .14s var(--pos-ease);
         }
-        .tile:hover:not(:disabled) { transform: translateY(-3px); box-shadow: var(--pos-shadow-2); border-color: var(--pos-accent); }
-        .tile:active:not(:disabled) { transform: scale(0.97); }
-        .tile:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tile:hover { transform: translateY(-3px); box-shadow: var(--pos-shadow-2); border-color: var(--pos-accent); }
+        .tile.is-in-cart { border-color: var(--pos-accent); background: var(--pos-accent-soft); }
+        /* Image + name are one big press target; the stepper below is separate. */
+        .tile-hit {
+          display: flex; flex-direction: column; text-align: left; padding: 0;
+          background: transparent; border: none; color: inherit; font-family: inherit;
+          cursor: pointer;
+        }
+        .tile-hit:active { transform: scale(0.97); }
         .tile-img { position: relative; aspect-ratio: 1 / 1; background: var(--pos-elevated); overflow: hidden; }
         .tile-oos {
           position: absolute; top: 6px; left: 6px; background: var(--pos-danger); color: #fff;
           font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; letter-spacing: 0.3px;
         }
-        .tile-body { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+        .tile-stock {
+          position: absolute; top: 6px; right: 6px;
+          background: rgba(0,0,0,0.55); color: #fff; backdrop-filter: blur(3px);
+          font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 100px;
+          font-variant-numeric: tabular-nums;
+        }
         .tile-name {
+          padding: 8px 10px 0;
           font-size: 0.82rem; font-weight: 500; line-height: 1.25; min-height: 2.1em;
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
-        .tile-foot { display: flex; justify-content: space-between; align-items: center; }
-        .tile-price { font-weight: 700; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
-        .stock-dot-pill { font-size: 0.68rem; font-weight: 700; padding: 1px 8px; border-radius: 100px; font-variant-numeric: tabular-nums; }
-        .stock-dot-pill.stock-ok { color: var(--pos-success); background: rgba(45,212,164,0.13); }
-        .stock-dot-pill.stock-out { color: var(--pos-danger); background: rgba(251,94,109,0.13); }
+        /* Price on its own line with the stepper right-aligned beneath it —
+           a 132px tile is too narrow to sit them side by side. */
+        .tile-foot {
+          display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+          padding: 4px 10px 10px; margin-top: auto;
+        }
+        .tile-price {
+          align-self: flex-start; white-space: nowrap;
+          font-weight: 700; font-size: 0.9rem; font-variant-numeric: tabular-nums;
+        }
+        .tile-step { display: flex; align-items: center; gap: 2px; }
+        .tile-step button {
+          width: 26px; height: 26px; border-radius: 8px;
+          border: 1px solid var(--pos-border-strong); background: var(--pos-elevated);
+          color: var(--pos-text); font-family: inherit; font-size: 15px; line-height: 1;
+          display: grid; place-items: center; cursor: pointer;
+          transition: background .12s var(--pos-ease), border-color .12s var(--pos-ease);
+        }
+        .tile-step button:hover:not(:disabled) { background: var(--pos-accent-soft); border-color: var(--pos-accent); color: var(--pos-accent); }
+        .tile-step button:active:not(:disabled) { transform: scale(0.92); }
+        .tile-step button:disabled { opacity: 0.3; cursor: not-allowed; }
+        .tile-step span {
+          min-width: 20px; text-align: center;
+          font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums;
+        }
         .result-item {
           display: flex; justify-content: space-between; align-items: center; gap: 12px;
           background: var(--pos-surface);
@@ -1250,11 +1386,17 @@ export default function Pos() {
         .cart-empty { padding: 3rem 0; text-align: center; color: var(--pos-text-2); font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; }
         .cart-line { animation: cart-in .2s var(--pos-ease); }
         .cart-line {
-          display: grid; grid-template-columns: 40px 1fr auto auto; gap: 0.6rem;
+          display: grid; grid-template-columns: 20px 40px 1fr auto auto; gap: 0.6rem;
           align-items: center; padding: 0.7rem 0;
           border-bottom: 1px solid var(--pos-border);
         }
         .cart-line:last-child { border-bottom: none; }
+        .cart-line-no {
+          width: 20px; height: 20px; border-radius: 50%;
+          background: var(--pos-elevated); color: var(--pos-text-2);
+          display: grid; place-items: center;
+          font-size: 0.68rem; font-weight: 700; font-variant-numeric: tabular-nums;
+        }
         .cart-thumb {
           width: 40px; height: 40px; border-radius: 9px;
           overflow: hidden; background: var(--pos-elevated);
@@ -1320,11 +1462,11 @@ export default function Pos() {
 
         /* ── Payment buttons ────────────────────── */
         .pay-buttons {
-          display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem;
+          display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;
           margin-top: 1rem;
         }
         .pay-btn {
-          padding: 1.1rem; border: none; border-radius: 14px;
+          padding: 1.1rem; border: none; border-radius: 100px;
           font-size: 1.05rem; font-weight: 700;
           color: var(--pos-on-accent); cursor: pointer; font-family: inherit;
           display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -1426,11 +1568,11 @@ export default function Pos() {
           border-color: var(--pos-accent);
           box-shadow: 0 0 0 3px var(--pos-accent-soft);
         }
-        .rail-btn, .chip, .tile, .variant-btn, .modal-btn,
+        .rail-btn, .cat-tile, .tile-hit, .variant-btn, .modal-btn,
         .cart-line-controls button, .discount-btn, .pay-btn, .result-item {
           will-change: transform;
         }
-        .rail-btn:active, .chip:active,
+        .rail-btn:active,
         .variant-btn:active:not(:disabled), .modal-btn:active:not(:disabled),
         .cart-line-controls button:active, .discount-btn:active:not(:disabled) {
           transform: scale(0.95);
