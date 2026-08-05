@@ -1135,6 +1135,20 @@ export default function Pos() {
           display: grid; grid-template-columns: minmax(0, 1fr) 440px;
           min-height: 0;
         }
+        /* Terminal-sized screens: pin the shell to the viewport so the product
+           grid and cart list scroll inside their own panes. Without this the
+           page itself grows with the catalogue and the pay buttons fall below
+           the fold. Left off below 900px, where the cart stacks under the
+           product pane and the page is meant to scroll as a whole. */
+        @media (min-width: 901px) {
+          .pos-app {
+            height: 100vh; overflow: hidden;
+            grid-template-rows: 56px minmax(0, 1fr);
+          }
+          .pos-rail { overflow-y: auto; scrollbar-width: none; }
+          .pos-rail::-webkit-scrollbar { display: none; }
+        }
+
         /* Narrow screens: collapse the rail back to icons only. */
         @media (max-width: 1180px) {
           .pos-app { grid-template-columns: 64px 1fr; }
