@@ -54,6 +54,12 @@ const colorForCategory = (name) => {
   return CAT_COLORS[h % CAT_COLORS.length];
 };
 
+// Initials for image-less products. The shared ProductImage placeholder keys
+// off an old store1 taxonomy, so every store4 category falls through to the
+// same grey box and the tiles become indistinguishable at a glance.
+const monogram = (name = '') => (name.match(/[\p{L}\p{N}]+/gu) || [])
+  .slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '#';
+
 // Small live clock for the POS top bar — purely cosmetic.
 function PosClock() {
   const [now, setNow] = useState(() => new Date());
@@ -624,7 +630,13 @@ export default function Pos() {
                       <div key={`t-${r.productId}-${i}`} className={`tile${qty > 0 ? ' is-in-cart' : ''}`}>
                         <button className="tile-hit" onClick={() => addToCart(r)}>
                           <div className="tile-img">
-                            <ProductImage product={{ images: r.image ? [r.image] : [], category: r.category }} size="normal" />
+                            {r.image
+                              ? <ProductImage product={{ images: [r.image], category: r.category }} size="normal" />
+                              : (
+                                <div className="tile-ph" style={{ '--ph': colorForCategory(r.category || '?') }}>
+                                  <span className="tile-ph-mono">{monogram(r.name)}</span>
+                                </div>
+                              )}
                             {!r.hasVariants && (
                               r.stockAtLocation < 1
                                 ? <span className="tile-oos">Out</span>
@@ -1262,6 +1274,12 @@ export default function Pos() {
         .tile-grid {
           flex: 1; overflow-y: auto; display: grid; align-content: start;
           grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+          /* max-content, not auto: this grid has a definite height, and auto
+             rows get compressed to fit it. A tile's min-content height is
+             near-zero (the image is aspect-ratio driven and everything inside
+             can flex-shrink), so auto rows collapsed to ~71px and the tile's
+             overflow:hidden clipped the name, price and stepper. */
+          grid-auto-rows: max-content;
           gap: 10px; padding: 2px 4px 8px 0;
         }
         .browse-empty { grid-column: 1 / -1; padding: 3rem 1rem; text-align: center; color: var(--pos-text-2); font-size: 0.9rem; }
@@ -1281,7 +1299,24 @@ export default function Pos() {
           cursor: pointer;
         }
         .tile-hit:active { transform: scale(0.97); }
-        .tile-img { position: relative; aspect-ratio: 1 / 1; background: var(--pos-elevated); overflow: hidden; }
+        /* flex-shrink:0 so the square never gets squashed by a short tile. */
+        .tile-img { position: relative; flex: 0 0 auto; aspect-ratio: 1 / 1; background: var(--pos-elevated); overflow: hidden; }
+        /* Image-less products: category-tinted block with the product's
+           initials, so a grid of them stays scannable. */
+        .tile-ph {
+          position: absolute; inset: 0; display: grid; place-items: center;
+          background: var(--pos-elevated); overflow: hidden;
+        }
+        .tile-ph::before {
+          content: ''; position: absolute; inset: 0;
+          background: var(--ph); opacity: 0.20;
+        }
+        .tile-ph-mono {
+          position: relative; z-index: 1;
+          font-size: 1.7rem; font-weight: 800; letter-spacing: -1px;
+          color: var(--ph);
+        }
+        .pos-light .tile-ph-mono { color: #3d3d47; }
         .tile-oos {
           position: absolute; top: 6px; left: 6px; background: var(--pos-danger); color: #fff;
           font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; letter-spacing: 0.3px;
