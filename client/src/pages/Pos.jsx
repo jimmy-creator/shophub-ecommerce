@@ -1127,7 +1127,12 @@ export default function Pos() {
         /* ── Main grid ──────────────────────────── */
         .pos-grid {
           grid-area: grid;
-          display: grid; grid-template-columns: 1fr 440px;
+          /* minmax(0,…) not 1fr: a bare 1fr is minmax(auto,1fr), whose auto
+             minimum is the content's min-content width. The category strip is
+             a row of non-shrinking tiles, so that minimum grows with the
+             category count and pushes the cart panel off screen instead of
+             letting the strip scroll. */
+          display: grid; grid-template-columns: minmax(0, 1fr) 440px;
           min-height: 0;
         }
         /* Narrow screens: collapse the rail back to icons only. */
@@ -1139,10 +1144,10 @@ export default function Pos() {
           .rail-btn span { display: none; }
         }
         @media (max-width: 900px) {
-          .pos-grid { grid-template-columns: 1fr; }
+          .pos-grid { grid-template-columns: minmax(0, 1fr); }
         }
 
-        .pos-left, .pos-right { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; min-height: 0; }
+        .pos-left, .pos-right { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
         .pos-right {
           background: var(--pos-surface);
           border-left: 1px solid var(--pos-border);
