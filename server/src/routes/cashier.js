@@ -27,16 +27,23 @@ import sequelize from '../config/database.js';
 
 const router = Router();
 
+// One lifetime for both the cookie and the JWT it carries. JWT_EXPIRE is the
+// storefront session length (7d in .env) and must NOT apply here: the cookie
+// was fixed at 12h, so the browser dropped it while the JWT was still valid.
+// Every POS call then arrived with no cookie at all and protectCashier
+// answered "Not authenticated as cashier" on a shift that looked open.
+const CASHIER_SESSION_MS = 12 * 60 * 60 * 1000;  // 12h — covers a long shift
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'lax',
-  maxAge: 12 * 60 * 60 * 1000,  // 12h — covers a long shift
+  maxAge: CASHIER_SESSION_MS,
 };
 
 function issueToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '12h',
+    expiresIn: Math.floor(CASHIER_SESSION_MS / 1000),
   });
 }
 

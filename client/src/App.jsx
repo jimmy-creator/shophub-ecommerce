@@ -30,6 +30,7 @@ import ShiprocketCheckout from './pages/ShiprocketCheckout';
 import PosLogin from './pages/PosLogin';
 import Pos from './pages/Pos';
 import NotFound from './pages/NotFound';
+import { STAFF_BASE } from './lib/staffBase';
 
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
 const SHIPROCKET_CHECKOUT = import.meta.env.VITE_FEATURE_SHIPROCKET_CHECKOUT === 'true';
@@ -84,10 +85,9 @@ function PageWrapper({ children }) {
 // belong there. On store4 also hide them on /admin so the back-office
 // has its own dedicated chrome.
 const IS_STORE4 = import.meta.env.VITE_LAYOUT === 'store4';
-// Non-obvious staff-only base path. Used in place of the old /pos so the
-// POS surface doesn't show up to customers/bots scanning common routes.
-// The auth gate is still the real protection — this is just hygiene.
-export const STAFF_BASE = '/anfal-staff-x7k2';
+// Defined in lib/staffBase.js so api/axios.js can read it without importing
+// this module. Re-exported here because existing imports point at ../App.
+export { STAFF_BASE };
 function PosAware({ children }) {
   const { pathname } = useLocation();
   if (pathname === STAFF_BASE || pathname === `${STAFF_BASE}/login`) return null;

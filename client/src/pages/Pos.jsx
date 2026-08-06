@@ -121,6 +121,29 @@ export default function Pos() {
       .finally(() => setLoading(false));
   }, [navigate]);
 
+  // A shift that expires mid-session should send the cashier back to the login
+  // screen. The global interceptor in api/axios.js only redirects when
+  // localStorage.user is set, which cashier login never does — so without this
+  // an expired shift just surfaced the raw 401 text ("Not authenticated as
+  // cashier", "Not authenticated") on whatever the cashier clicked next.
+  //
+  // Any 401 while this screen is mounted means the cashier session is gone:
+  // a wrong manager PIN answers 403, so a typo can't log anyone out.
+  // /cashier/me is excluded because the mount effect below already handles it.
+  useEffect(() => {
+    const id = api.interceptors.response.use(
+      (res) => res,
+      (err) => {
+        if (err.response?.status === 401 && err.config?.url !== '/cashier/me') {
+          toast.error('Shift session expired — please sign in again');
+          navigate(`${STAFF_BASE}/login`);
+        }
+        return Promise.reject(err);
+      },
+    );
+    return () => api.interceptors.response.eject(id);
+  }, [navigate]);
+
   // Browse data — featured/best-seller tiles — shown when the search box is empty.
   useEffect(() => {
     api.get('/pos/quick-products')
