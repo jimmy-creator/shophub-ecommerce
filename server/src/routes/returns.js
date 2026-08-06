@@ -324,7 +324,7 @@ router.post('/', authEither, async (req, res) => {
         orderNumber: order.orderNumber,
         refundAmount: refundTotal,
         refundMethod,
-        itemCount: lines.reduce((s, l) => s + l.quantity, 0),
+        itemCount: returnedItems.reduce((s, l) => s + l.quantity, 0),
       },
       managerOverrideBy: managerUser?.id || null,
       reason: managerUser ? (req.body.managerOverride?.reason || reason || `Refund ${refundTotal}`) : null,
