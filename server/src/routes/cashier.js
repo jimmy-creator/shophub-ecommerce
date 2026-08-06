@@ -32,7 +32,8 @@ const router = Router();
 // was fixed at 12h, so the browser dropped it while the JWT was still valid.
 // Every POS call then arrived with no cookie at all and protectCashier
 // answered "Not authenticated as cashier" on a shift that looked open.
-const CASHIER_SESSION_MS = 12 * 60 * 60 * 1000;  // 12h — covers a long shift
+// Keep these two derived from one constant so that can't drift apart again.
+const CASHIER_SESSION_MS = 24 * 60 * 60 * 1000;  // 24h — a till left open overnight
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
