@@ -294,14 +294,29 @@ router.get('/managers', protectCashier, async (req, res) => {
 });
 
 // ─── Recent sales for this shift ─────────────────────────────────
+// Every POS sale at this till's location for the last N days (default 30),
+// not just the open shift — a customer returning a two-week-old purchase is
+// served by whoever is on the till. This matches the SalesReturn route, which
+// already lets any cashier refund any order at their location.
+//
+// cashierSessionId rides along so the client can tell which rows belong to the
+// current shift: void and edit stay same-shift only (both post their reversal
+// against the current drawer), so their buttons are hidden on older rows.
 router.get('/recent-sales', protectCashier, async (req, res) => {
   try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 90);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const rows = await Order.findAll({
-      where: { cashierSessionId: req.cashierSessionId },
+      where: {
+        locationId: req.cashierLocationId,
+        cashierSessionId: { [Op.ne]: null },   // POS sales only, never web orders
+        createdAt: { [Op.gte]: since },
+      },
       attributes: ['id', 'orderNumber', 'totalAmount', 'discount', 'paymentMethod',
-                   'items', 'shippingAddress', 'createdAt', 'refundAmount'],
+                   'items', 'shippingAddress', 'createdAt', 'refundAmount',
+                   'cashierSessionId'],
       order: [['createdAt', 'DESC']],
-      limit: parseInt(req.query.limit, 10) || 25,
+      limit: Math.min(parseInt(req.query.limit, 10) || 200, 500),
     });
     res.json(rows);
   } catch (err) {
@@ -316,8 +331,12 @@ router.get('/sales/:id/receipt', protectCashier, async (req, res) => {
   try {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ message: 'Sale not found' });
-    if (order.cashierSessionId !== req.cashierSessionId && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Sale is not in your current shift' });
+    // Same location, not same shift: recent-sales lists a month of the
+    // location's sales and any of them must be reprintable. Reprinting is
+    // read-only — it moves no stock and no cash — so it is not held to the
+    // same-shift rule that void and edit are.
+    if (order.locationId !== req.cashierLocationId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Sale is not from your location' });
     }
     const location = order.locationId
       ? await Location.findByPk(order.locationId, { attributes: ['id', 'name', 'nameAr', 'code', 'address', 'addressAr', 'phone']})

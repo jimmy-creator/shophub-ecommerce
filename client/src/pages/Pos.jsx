@@ -947,6 +947,7 @@ export default function Pos() {
       {recentOpen && (
         <PosRecentSales
           currency={CURRENCY}
+          sessionId={session.id}
           onClose={() => setRecentOpen(false)}
           onNeedOverride={(req) => setPendingOverride(req)}
           onEdit={(orderNumber) => { setRecentOpen(false); setEditBill(orderNumber); }}

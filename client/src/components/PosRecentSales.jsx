@@ -1,16 +1,37 @@
 /**
- * Recent-sales picker for the current cashier shift.
+ * Recent-sales picker — every POS sale at this location for the last 30 days,
+ * so a customer returning an older purchase can be served by whoever is on
+ * the till.
  *
- * Shows the cashier's recent POS orders with a Void action per row.
- * Voiding requires a manager PIN — the parent (Pos.jsx) handles the
- * override modal via onNeedOverride, same pattern as the return flow.
+ * Void and Edit only appear on sales from the *current* shift: both post
+ * their reversal against the current drawer, so applying them to an older
+ * sale would move cash between shifts. Older rows offer reprint only, and
+ * are refunded through the Return flow instead (which is location-scoped
+ * server-side and books the refund correctly).
  */
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { HiPrinter } from 'react-icons/hi';
 import api from '../api/axios';
 
-export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverride, onEdit, onPrint }) {
+const RECENT_DAYS = 30;
+
+// Time alone is ambiguous once the list spans days.
+const whenLabel = (iso) => {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return time;
+  return `${d.toLocaleDateString([], { day: '2-digit', month: 'short' })} ${time}`;
+};
+
+const methodLabel = (m) => (
+  m === 'pos_cash' ? 'Cash'
+    : m === 'pos_knet' ? 'KNET'
+      : m === 'pos_split' ? 'Split'
+        : 'Card'
+);
+
+export default function PosRecentSales({ currency = 'KWD', sessionId, onClose, onNeedOverride, onEdit, onPrint }) {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,7 +40,7 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/pos/recent-sales');
+      const { data } = await api.get('/pos/recent-sales', { params: { days: RECENT_DAYS } });
       setSales(data);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not load sales');
@@ -56,13 +77,15 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
     <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0 }}>Recent sales — this shift</h3>
+          <h3 style={{ margin: 0 }}>Recent sales — last {RECENT_DAYS} days</h3>
           <button onClick={onClose} className="link-btn">Close</button>
         </div>
 
         {loading && <p style={{ color: 'var(--pos-text-2)', padding: '1rem 0' }}>Loading…</p>}
         {!loading && sales.length === 0 && (
-          <p style={{ color: 'var(--pos-text-2)', padding: '1rem 0' }}>No sales yet in this shift.</p>
+          <p style={{ color: 'var(--pos-text-2)', padding: '1rem 0' }}>
+            No sales at this location in the last {RECENT_DAYS} days.
+          </p>
         )}
 
         {!loading && sales.length > 0 && (
@@ -70,6 +93,9 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
             {sales.map((s) => {
               const fullyVoid = parseFloat(s.refundAmount || 0) >= parseFloat(s.totalAmount);
               const remaining = +(parseFloat(s.totalAmount) - parseFloat(s.refundAmount || 0)).toFixed(3);
+              // Void/edit reverse against the current drawer, so the server
+              // refuses them outside this shift — don't offer the buttons.
+              const thisShift = sessionId != null && s.cashierSessionId === sessionId;
               return (
                 <div key={s.id} style={{
                   display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.75rem',
@@ -80,7 +106,7 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                   <div>
                     <div style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--pos-text-2)' }}>{s.orderNumber}</div>
                     <div style={{ fontSize: 13 }}>
-                      {(s.items || []).length} items · {new Date(s.createdAt).toLocaleTimeString()} · {s.paymentMethod === 'pos_cash' ? 'Cash' : s.paymentMethod === 'pos_knet' ? 'KNET' : 'Card'}
+                      {(s.items || []).length} items · {whenLabel(s.createdAt)} · {methodLabel(s.paymentMethod)}
                     </div>
                     {s.shippingAddress?.fullName && s.shippingAddress.fullName !== 'Walk-in' && (
                       <div style={{ fontSize: 12, color: 'var(--pos-label)' }}>{s.shippingAddress.fullName}</div>
@@ -114,7 +140,7 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                         <HiPrinter size={14} />
                       </button>
                     )}
-                    {!fullyVoid && onEdit && (
+                    {!fullyVoid && thisShift && onEdit && (
                       <button
                         onClick={() => onEdit(s.orderNumber)}
                         style={{
@@ -125,7 +151,7 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
                         Edit
                       </button>
                     )}
-                    {!fullyVoid && (
+                    {!fullyVoid && thisShift && (
                       <button
                         onClick={() => {
                           // Mirrors the server's rail mapping in pos.js /sales/:id/void.
@@ -151,7 +177,8 @@ export default function PosRecentSales({ currency = 'KWD', onClose, onNeedOverri
         )}
 
         <p style={{ fontSize: 11, color: 'var(--pos-text-3)', marginTop: '0.5rem' }}>
-          Voiding requires a manager PIN. To make small corrections, use Return instead.
+          Voiding requires a manager PIN. Void and Edit apply to this shift&rsquo;s sales only —
+          for anything older, reprint here and refund it through Return.
         </p>
       </div>
     </div>
