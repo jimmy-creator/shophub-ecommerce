@@ -106,6 +106,9 @@ export default function Pos() {
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState(null);
+  // Reprints launched from the recent-sales picker come back to it on close,
+  // so the cashier doesn't have to reopen the list for the next row.
+  const [backToRecent, setBackToRecent] = useState(false);
   const [closeForm, setCloseForm] = useState(null);
   const [report, setReport] = useState(null);   // X or Z report payload
   const [returnOpen, setReturnOpen] = useState(false);
@@ -913,7 +916,14 @@ export default function Pos() {
       {/* ─── Receipt overlay ──────────────────── */}
       {/* PosReceipt renders its own overlay via a body portal (print isolation). */}
       {receipt && (
-        <PosReceipt payload={receipt} currency={CURRENCY} onClose={() => setReceipt(null)} />
+        <PosReceipt
+          payload={receipt}
+          currency={CURRENCY}
+          onClose={() => {
+            setReceipt(null);
+            if (backToRecent) { setBackToRecent(false); setRecentOpen(true); }
+          }}
+        />
       )}
 
       {/* ─── X/Z report overlay ───────────────── */}
@@ -951,7 +961,7 @@ export default function Pos() {
           onClose={() => setRecentOpen(false)}
           onNeedOverride={(req) => setPendingOverride(req)}
           onEdit={(orderNumber) => { setRecentOpen(false); setEditBill(orderNumber); }}
-          onPrint={(payload) => { setRecentOpen(false); setReceipt(payload); }}
+          onPrint={(payload) => { setRecentOpen(false); setBackToRecent(true); setReceipt(payload); }}
         />
       )}
 

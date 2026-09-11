@@ -313,8 +313,8 @@ router.get('/recent-sales', protectCashier, async (req, res) => {
         createdAt: { [Op.gte]: since },
       },
       attributes: ['id', 'orderNumber', 'totalAmount', 'discount', 'paymentMethod',
-                   'items', 'shippingAddress', 'createdAt', 'refundAmount',
-                   'cashierSessionId'],
+                   'paymentBreakdown', 'items', 'shippingAddress', 'createdAt',
+                   'refundAmount', 'cashierSessionId'],
       order: [['createdAt', 'DESC']],
       limit: Math.min(parseInt(req.query.limit, 10) || 200, 500),
     });

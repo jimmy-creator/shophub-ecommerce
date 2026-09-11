@@ -14,7 +14,7 @@ export default function PosLineDiscountModal({
   onApply,           // (lineDiscount|null) => void
   onClose,
 }) {
-  const [kind, setKind] = useState(line.lineDiscount?.kind || 'percentage');
+  const [kind, setKind] = useState(line.lineDiscount?.kind || 'fixed');
   const [value, setValue] = useState(line.lineDiscount?.value ?? '');
 
   const fmt = (n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
@@ -47,7 +47,7 @@ export default function PosLineDiscountModal({
 
         <label className="modal-label">Discount type</label>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: '0.75rem' }}>
-          {[['percentage', '%'], ['fixed', currency]].map(([k, label]) => (
+          {[['fixed', currency], ['percentage', '%']].map(([k, label]) => (
             <button
               key={k}
               onClick={() => setKind(k)}
