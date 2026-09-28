@@ -30,6 +30,8 @@
  *   GET    /api/finance/daily-cash?date=&locationId=
  *          per-account opening, sales, refunds, expenses, transfers
  *          in/out, expected closing.
+ *
+ *   GET    /api/finance/balance-sheet             snapshot as of now
  */
 import { Router } from 'express';
 import { Op } from 'sequelize';
@@ -37,6 +39,7 @@ import sequelize from '../config/database.js';
 import {
   CashAccount, CashTransaction, ExpenseCategory, Expense, CashTransfer,
   Location, User, Order, SalesReturn, Product, ProductStock,
+  Supplier, PurchaseOrder, PurchaseReturn, SupplierPayment,
   writeCashTxn, getCashAccountBalance,
 } from '../models/index.js';
 import { protect, admin } from '../middleware/auth.js';
@@ -759,6 +762,99 @@ router.get('/stock-value', protect, async (req, res) => {
     });
   } catch (err) {
     console.error('[finance/stock-value]', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── Balance Sheet ──────────────────────────────────────────────────
+// Snapshot as of now, derived from the simple ledger (no journal):
+//   Assets      = cash account balances + stock at cost + supplier advances
+//   Liabilities = supplier payables
+//   Equity      = Assets − Liabilities (balancing figure)
+// Stock uses current costPrice (same as /stock-value) and supplier
+// balances use the same formula as /api/suppliers/:id, so the figures
+// tie back to those screens. Only "as of now" — stock has no history.
+router.get('/balance-sheet', protect, async (req, res) => {
+  try {
+    if (!hasFinanceAccess(req)) return res.status(403).json({ message: 'Forbidden' });
+    const round = (n) => +n.toFixed(3);
+
+    // Cash & bank — one grouped SUM instead of a query per account.
+    const [accounts, txnSums] = await Promise.all([
+      CashAccount.findAll({ attributes: ['id', 'name', 'type', 'openingBalance', 'active'], order: [['name', 'ASC']] }),
+      CashTransaction.findAll({
+        attributes: ['cashAccountId', [sequelize.fn('SUM', sequelize.col('amount')), 'total']],
+        group: ['cashAccountId'], raw: true,
+      }),
+    ]);
+    const txnByAcct = new Map(txnSums.map((r) => [r.cashAccountId, parseFloat(r.total) || 0]));
+    // Inactive accounts only show if they still hold money.
+    const cash = [];
+    for (const a of accounts) {
+      const balance = round((parseFloat(a.openingBalance) || 0) + (txnByAcct.get(a.id) || 0));
+      if (a.active || balance !== 0) cash.push({ id: a.id, name: a.name, type: a.type, balance });
+    }
+    const cashTotal = cash.reduce((s, a) => s + a.balance, 0);
+
+    // Inventory at cost (variant cost overrides product cost).
+    const stocks = await ProductStock.findAll({
+      attributes: ['quantity', 'variantIndex'],
+      include: [{ model: Product, attributes: ['costPrice', 'variants'] }],
+    });
+    let stockTotal = 0;
+    for (const s of stocks) {
+      const p = s.Product;
+      if (!p) continue;
+      let cost = parseFloat(p.costPrice || 0);
+      const v = s.variantIndex != null && Array.isArray(p.variants) ? p.variants[s.variantIndex] : null;
+      if (v && v.costPrice != null) cost = parseFloat(v.costPrice);
+      stockTotal += cost * (s.quantity || 0);
+    }
+
+    // Supplier balances: positive = we owe them, negative = advance paid.
+    const sumBy = (Model, col, where) => Model.findAll({
+      attributes: ['supplierId', [sequelize.fn('SUM', sequelize.col(col)), 'total']],
+      where, group: ['supplierId'], raw: true,
+    });
+    const [suppliers, poSums, paySums, retSums] = await Promise.all([
+      Supplier.findAll({ attributes: ['id', 'name', 'openingBalance'] }),
+      sumBy(PurchaseOrder, 'totalAmount', { status: { [Op.ne]: 'cancelled' } }),
+      sumBy(SupplierPayment, 'amount', {}),
+      sumBy(PurchaseReturn, 'totalAmount', { status: 'completed' }),
+    ]);
+    const toMap = (rows) => new Map(rows.map((r) => [r.supplierId, parseFloat(r.total) || 0]));
+    const po = toMap(poSums), pay = toMap(paySums), ret = toMap(retSums);
+    const payables = [], advances = [];
+    for (const s of suppliers) {
+      const bal = round((parseFloat(s.openingBalance) || 0)
+        + (po.get(s.id) || 0) - (pay.get(s.id) || 0) - (ret.get(s.id) || 0));
+      if (bal > 0) payables.push({ id: s.id, name: s.name, amount: bal });
+      else if (bal < 0) advances.push({ id: s.id, name: s.name, amount: -bal });
+    }
+    payables.sort((a, b) => b.amount - a.amount);
+    advances.sort((a, b) => b.amount - a.amount);
+    const payablesTotal = payables.reduce((s, r) => s + r.amount, 0);
+    const advancesTotal = advances.reduce((s, r) => s + r.amount, 0);
+
+    const totalAssets = cashTotal + stockTotal + advancesTotal;
+    const totalLiabilities = payablesTotal;
+
+    res.json({
+      asOf: new Date(),
+      assets: {
+        cash: { total: round(cashTotal), accounts: cash },
+        inventory: round(stockTotal),
+        supplierAdvances: { total: round(advancesTotal), suppliers: advances },
+        total: round(totalAssets),
+      },
+      liabilities: {
+        supplierPayables: { total: round(payablesTotal), suppliers: payables },
+        total: round(totalLiabilities),
+      },
+      equity: round(totalAssets - totalLiabilities),
+    });
+  } catch (err) {
+    console.error('[finance/balance-sheet]', err);
     res.status(500).json({ message: err.message });
   }
 });

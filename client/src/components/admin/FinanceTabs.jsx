@@ -7,7 +7,7 @@
  * concerns (e.g. opening a transfer from a cash-account row) can
  * coordinate later without refactoring.
  */
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import toast from 'react-hot-toast';
 import { HiPlus, HiPencil, HiTrash } from 'react-icons/hi';
 import api from '../../api/axios';
@@ -21,6 +21,7 @@ export default function FinanceTabs(props) {
   if (tab === 'daybook') return <DaybookTab {...props} />;
   if (tab === 'pnl') return <PnlTab {...props} />;
   if (tab === 'stock-value') return <StockValueTab {...props} />;
+  if (tab === 'balance-sheet') return <BalanceSheetTab {...props} />;
   return null;
 }
 
@@ -746,6 +747,75 @@ function StockValueTab({ currency, locations, stockValue, stockValueFilter, setS
               </tbody>
             </table>
           </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Balance Sheet ─────────────────────────────────────────────────
+function BalanceSheetTab({ currency, balanceSheet: bs }) {
+  const money = (n) => `${n < 0 ? '−' : ''}${currency}${Math.abs(n).toFixed(3)}`;
+  const line = (label, amount, { bold, indent } = {}) => (
+    <tr>
+      <td style={{ paddingLeft: indent ? '1.75rem' : undefined, fontWeight: bold ? 600 : undefined, color: indent ? 'var(--text-light)' : undefined }}>{label}</td>
+      <td style={{ textAlign: 'right', fontWeight: bold ? 600 : undefined, color: indent ? 'var(--text-light)' : undefined }}>{money(amount)}</td>
+    </tr>
+  );
+  const totalRow = (label, amount) => (
+    <tr style={{ borderTop: '2px solid var(--border, #ddd)' }}>
+      <td style={{ fontWeight: 700 }}>{label}</td>
+      <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(amount)}</td>
+    </tr>
+  );
+
+  return (
+    <div className="admin-section">
+      <div className="admin-section-header">
+        <h2>Balance Sheet</h2>
+        {bs && <span style={{ color: 'var(--text-light)', fontSize: '0.85rem' }}>As of {new Date(bs.asOf).toLocaleString()}</span>}
+      </div>
+
+      {!bs && <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>Loading…</div>}
+      {bs && (
+        <>
+          <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <div className="dash-card"><div className="dash-card-label">Total assets</div><div className="dash-card-value">{money(bs.assets.total)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Total liabilities</div><div className="dash-card-value">{money(bs.liabilities.total)}</div></div>
+            <div className="dash-card"><div className="dash-card-label">Owner's equity</div><div className="dash-card-value" style={{ color: bs.equity < 0 ? 'var(--danger, #c0392b)' : undefined }}>{money(bs.equity)}</div></div>
+          </div>
+
+          <div className="admin-table-wrap" style={{ maxWidth: 640 }}>
+            <table className="admin-table">
+              <thead><tr><th>Assets</th><th style={{ textAlign: 'right' }}>Amount</th></tr></thead>
+              <tbody>
+                {line('Cash & bank', bs.assets.cash.total, { bold: true })}
+                {bs.assets.cash.accounts.map((a) => <Fragment key={a.id}>{line(a.name, a.balance, { indent: true })}</Fragment>)}
+                {line('Inventory (at cost)', bs.assets.inventory, { bold: true })}
+                {bs.assets.supplierAdvances.total > 0 && line('Advances to suppliers', bs.assets.supplierAdvances.total, { bold: true })}
+                {bs.assets.supplierAdvances.suppliers.map((s) => <Fragment key={s.id}>{line(s.name, s.amount, { indent: true })}</Fragment>)}
+                {totalRow('Total assets', bs.assets.total)}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="admin-table-wrap" style={{ maxWidth: 640, marginTop: '1.25rem' }}>
+            <table className="admin-table">
+              <thead><tr><th>Liabilities & equity</th><th style={{ textAlign: 'right' }}>Amount</th></tr></thead>
+              <tbody>
+                {line('Payable to suppliers', bs.liabilities.supplierPayables.total, { bold: true })}
+                {bs.liabilities.supplierPayables.suppliers.map((s) => <Fragment key={s.id}>{line(s.name, s.amount, { indent: true })}</Fragment>)}
+                {totalRow('Total liabilities', bs.liabilities.total)}
+                {line("Owner's equity", bs.equity, { bold: true })}
+                {totalRow('Total liabilities & equity', bs.liabilities.total + bs.equity)}
+              </tbody>
+            </table>
+          </div>
+
+          <p style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-light)', maxWidth: 640 }}>
+            Built from cash account balances, stock quantity × current cost price, and supplier balances.
+            Owner's equity is the difference between assets and liabilities.
+          </p>
         </>
       )}
     </div>

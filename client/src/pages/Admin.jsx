@@ -1128,6 +1128,7 @@ export default function Admin() {
   });
   const [stockValue, setStockValue] = useState(null);
   const [stockValueFilter, setStockValueFilter] = useState({ locationId: '' });
+  const [balanceSheet, setBalanceSheet] = useState(null);
   const [activityLog, setActivityLog] = useState([]);
   const [activityFilter, setActivityFilter] = useState({ from: '', to: '', action: '', managerOnly: false });
   const [activityDetail, setActivityDetail] = useState(null);
@@ -1292,6 +1293,9 @@ export default function Admin() {
       const params = {};
       if (stockValueFilter.locationId) params.locationId = stockValueFilter.locationId;
       api.get('/finance/stock-value', { params }).then((res) => setStockValue(res.data)).catch(() => {});
+    } else if (tab === 'balance-sheet') {
+      setBalanceSheet(null);
+      api.get('/finance/balance-sheet').then((res) => setBalanceSheet(res.data)).catch(() => {});
     } else if (tab === 'activity-log') {
       const params = {};
       if (activityFilter.from) params.from = new Date(activityFilter.from + 'T00:00:00').toISOString();
@@ -1343,6 +1347,7 @@ export default function Admin() {
         { tab: 'daybook',        label: 'Daybook',        show: MULTILOC_ENABLED && hasAccess('analytics') },
         { tab: 'pnl',            label: 'Profit & Loss',  show: MULTILOC_ENABLED && hasAccess('analytics') },
         { tab: 'stock-value',    label: 'Stock Value',    show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'balance-sheet',  label: 'Balance Sheet',  show: MULTILOC_ENABLED && hasAccess('analytics') },
     ]},
     { id: 'sales', label: 'Sales', items: [
         { tab: 'orders',      label: 'Orders',      show: hasAccess('orders') },
@@ -4380,7 +4385,7 @@ export default function Admin() {
           />
         )}
 
-        {(['cash-accounts','expenses','cash-transfers','daily-cash','daybook','pnl','stock-value'].includes(tab)) && (
+        {(['cash-accounts','expenses','cash-transfers','daily-cash','daybook','pnl','stock-value','balance-sheet'].includes(tab)) && (
           <FinanceTabs
             tab={tab} currency={CURRENCY} isAdmin={isAdmin} locations={locations}
             cashAccounts={cashAccounts} setCashAccounts={setCashAccounts}
@@ -4397,6 +4402,7 @@ export default function Admin() {
             daybook={daybook} daybookFilter={daybookFilter} setDaybookFilter={setDaybookFilter}
             pnl={pnl} pnlFilter={pnlFilter} setPnlFilter={setPnlFilter}
             stockValue={stockValue} stockValueFilter={stockValueFilter} setStockValueFilter={setStockValueFilter}
+            balanceSheet={balanceSheet}
           />
         )}
 
