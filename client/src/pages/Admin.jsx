@@ -1021,6 +1021,16 @@ export default function Admin() {
   const [productSearch, setProductSearch] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersMeta, setOrdersMeta] = useState({ total: 0, totalPages: 1 });
+  const ORDERS_PER_PAGE = 50;
+  // Refetches the current page; returns the orders so callers can pick one out.
+  const fetchOrders = async () => {
+    const { data } = await api.get('/orders/all', { params: { page: ordersPage, limit: ORDERS_PER_PAGE } });
+    setOrders(data.orders);
+    setOrdersMeta({ total: data.total, totalPages: data.totalPages || 1 });
+    return data.orders;
+  };
   const [expandedOrder, setExpandedOrder] = useState(null); // order id whose detail row is open
   const [coupons, setCoupons] = useState([]);
   const [couponForm, setCouponForm] = useState(null);
@@ -1179,7 +1189,7 @@ export default function Admin() {
       api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
       if (adminCategories.length === 0) api.get('/categories/all').then((res) => setAdminCategories(res.data));
     } else if (tab === 'orders') {
-      api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+      fetchOrders().catch(() => {});
     } else if (tab === 'coupons') {
       api.get('/coupons').then((res) => setCoupons(res.data));
       if (products.length === 0) api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
@@ -1314,7 +1324,7 @@ export default function Admin() {
       if (prFilter.locationId) params.locationId = prFilter.locationId;
       api.get('/purchase-returns', { params }).then((res) => setPurchaseReturns(res.data)).catch(() => {});
     }
-  }, [tab, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter, daybookFilter, pnlFilter, stockValueFilter, activityFilter, shiftFrom, shiftTo]);
+  }, [tab, ordersPage, chartPeriod, customerSearch, pincodeSearch, abandonedFilter, b2bStatusFilter, transferStatusFilter, returnsFilter, poFilter, prFilter, expenseFilter, dailyCashFilter, daybookFilter, pnlFilter, stockValueFilter, activityFilter, shiftFrom, shiftTo]);
 
   const isAdmin = user?.role === 'admin';
   const isStaff = user?.role === 'staff';
@@ -2381,13 +2391,13 @@ export default function Admin() {
                             onClick={async () => {
                               await api.post(`/orders/${o.id}/refund`, { refundAmount: o.totalAmount });
                               toast.success('Refund processed');
-                              api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+                              fetchOrders();
                             }}>✓</button>
                           <button className="icon-btn danger" style={{ fontSize: '0.7rem', fontWeight: 700 }}
                             onClick={async () => {
                               await api.post(`/orders/${o.id}/refund-reject`);
                               toast.success('Refund rejected');
-                              api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+                              fetchOrders();
                             }}>✕</button>
                         </div>
                       ) : o.refundStatus === 'processed' ? (
@@ -2400,7 +2410,7 @@ export default function Admin() {
                             if (!confirm(`Refund ${CURRENCY}${formatPrice(o.totalAmount)}?`)) return;
                             await api.post(`/orders/${o.id}/refund`, { refundAmount: o.totalAmount });
                             toast.success('Refund processed');
-                            api.get('/orders/all?limit=50').then((res) => setOrders(res.data.orders));
+                            fetchOrders();
                           }}>Refund</button>
                       ) : (
                         <span className="badge neutral plain">—</span>
@@ -2493,6 +2503,19 @@ export default function Admin() {
               </tbody>
             </table>
 
+            {ordersMeta.totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.9rem 0', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                  {(ordersPage - 1) * ORDERS_PER_PAGE + 1}–{Math.min(ordersPage * ORDERS_PER_PAGE, ordersMeta.total)} of {ordersMeta.total} orders
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button className="admin-btn sm secondary" disabled={ordersPage <= 1} onClick={() => setOrdersPage((p) => p - 1)}>‹ Prev</button>
+                  <span style={{ fontSize: '0.85rem' }}>Page {ordersPage} of {ordersMeta.totalPages}</span>
+                  <button className="admin-btn sm secondary" disabled={ordersPage >= ordersMeta.totalPages} onClick={() => setOrdersPage((p) => p + 1)}>Next ›</button>
+                </div>
+              </div>
+            )}
+
             {shipModal && (
               <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShipModal(null); }}>
                 <div className="admin-form" style={{ maxWidth: 600 }}>
@@ -2534,9 +2557,8 @@ export default function Admin() {
                           try {
                             const { data } = await api.post(`/shipping/orders/${shipModal.id}/create`);
                             toast.success(data.message || 'Shipment created');
-                            const fresh = await api.get('/orders/all?limit=50');
-                            setOrders(fresh.data.orders);
-                            setShipModal(fresh.data.orders.find((o) => o.id === shipModal.id) || null);
+                            const fresh = await fetchOrders();
+                            setShipModal(fresh.find((o) => o.id === shipModal.id) || null);
                           } catch (err) {
                             toast.error(err.response?.data?.message || 'Failed');
                           } finally { setShipBusy(false); }
@@ -2583,9 +2605,8 @@ export default function Admin() {
                             try {
                               await api.post(`/shipping/orders/${shipModal.id}/refresh`);
                               toast.success('Tracking refreshed');
-                              const fresh = await api.get('/orders/all?limit=50');
-                              setOrders(fresh.data.orders);
-                              setShipModal(fresh.data.orders.find((o) => o.id === shipModal.id) || null);
+                              const fresh = await fetchOrders();
+                              setShipModal(fresh.find((o) => o.id === shipModal.id) || null);
                             } catch (err) {
                               toast.error(err.response?.data?.message || 'Failed');
                             } finally { setShipBusy(false); }
@@ -2597,8 +2618,7 @@ export default function Admin() {
                             try {
                               await api.post(`/shipping/orders/${shipModal.id}/cancel`);
                               toast.success('Shipment cancelled');
-                              const fresh = await api.get('/orders/all?limit=50');
-                              setOrders(fresh.data.orders);
+                              await fetchOrders();
                               setShipModal(null);
                             } catch (err) {
                               toast.error(err.response?.data?.message || 'Failed');
