@@ -2,6 +2,9 @@ import { Helmet } from 'react-helmet-async';
 import { CURRENCY } from '../utils/currency';
 
 const SITE_NAME = import.meta.env.VITE_STORE_NAME || 'ShopHub';
+// Browser-tab / SEO title base. Distinct from SITE_NAME (the brand used for
+// og:site_name, schema, emails) so the title can differ from the store name.
+const SITE_TITLE = import.meta.env.VITE_SITE_TITLE || SITE_NAME;
 const DEFAULT_DESC = import.meta.env.VITE_STORE_DESC || `Shop the latest products at great prices. Free shipping on orders over ${CURRENCY}500.`;
 const SITE_URL = typeof window !== 'undefined' ? window.location.origin : (import.meta.env.VITE_SITE_URL || '');
 const OG_IMAGE = import.meta.env.VITE_OG_IMAGE || '/images/hero-banner.jpeg';
@@ -22,7 +25,7 @@ export default function SEO({
   product,
   breadcrumbs,
 }) {
-  const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
+  const fullTitle = title ? `${title} | ${SITE_TITLE}` : SITE_TITLE;
   const canonicalUrl = url || cleanCanonical();
   const ogImage = image || `${SITE_URL}${OG_IMAGE}`;
 

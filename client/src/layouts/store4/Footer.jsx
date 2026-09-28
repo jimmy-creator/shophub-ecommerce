@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FaInstagram } from 'react-icons/fa';
 import api from '../../api/axios';
 import { localizedName } from '../../utils/i18nHelpers';
 
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
+const INSTAGRAM_URL = import.meta.env.VITE_INSTAGRAM_URL || 'https://www.instagram.com/anfalsportskuwait';
 
 export default function Footer() {
   const { t } = useTranslation();
@@ -20,6 +22,13 @@ export default function Footer() {
         <div>
           <img src="/images/anfal-logo.png" alt="Anfal Sports" className="s2-footer-logo-img" />
           <p className="s2-footer-brand-tag">{t('home.seoDescription')}</p>
+          {INSTAGRAM_URL && (
+            <div className="s4-social">
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram">
+                <FaInstagram size={18} />
+              </a>
+            </div>
+          )}
         </div>
         <div className="s2-footer-col">
           <h4>{t('footer.shop')}</h4>

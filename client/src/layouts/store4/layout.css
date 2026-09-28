@@ -2376,6 +2376,27 @@
   line-height: 1.6;
   max-width: 320px;
 }
+.s4-social {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.s4-social a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--s2-text-dim);
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.s4-social a:hover {
+  background: var(--s2-lavender, #1d4ed8);
+  color: #fff;
+  transform: translateY(-2px);
+}
 .s2-footer-col h4 {
   font-size: 0.7rem;
   text-transform: uppercase;
