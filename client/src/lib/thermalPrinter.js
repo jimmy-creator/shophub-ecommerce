@@ -101,14 +101,36 @@ function clearFingerprint(kind) {
 }
 
 // ── Device handling ────────────────────────────────────────────────
+// USB classes Chrome refuses to claim over WebUSB (audio, HID, mass
+// storage, smart card, video, A/V, wireless). Composite POS devices often
+// put one of these first, so interface 0 can't be assumed to be the printer.
+const PROTECTED_CLASSES = new Set([0x01, 0x03, 0x08, 0x0b, 0x0e, 0x10, 0xe0]);
+
 async function pickEndpoint(device) {
   if (!device.opened) await device.open();
   if (device.configuration === null) await device.selectConfiguration(1);
-  const iface = device.configuration.interfaces[0];
-  await device.claimInterface(iface.interfaceNumber);
-  const alt = iface.alternate || iface.alternates[0];
-  const out = alt.endpoints.find((e) => e.direction === 'out');
-  if (!out) throw new Error('Printer has no OUT endpoint');
+  // Prefer the printer class (0x07), then any other claimable interface
+  // with an OUT endpoint (vendor-specific 0xFF on most cheap printers).
+  const candidates = [];
+  for (const iface of device.configuration.interfaces) {
+    for (const alt of iface.alternates) {
+      if (PROTECTED_CLASSES.has(alt.interfaceClass)) continue;
+      const out = alt.endpoints.find((e) => e.direction === 'out');
+      if (out) candidates.push({ iface, alt, out });
+    }
+  }
+  candidates.sort((a, b) => (b.alt.interfaceClass === 0x07) - (a.alt.interfaceClass === 0x07));
+  const pick = candidates[0];
+  if (!pick) {
+    const classes = device.configuration.interfaces
+      .map((i) => '0x' + i.alternates[0].interfaceClass.toString(16).padStart(2, '0')).join(', ');
+    throw new Error(`"${device.productName || 'This device'}" has no printer interface the browser can use (classes: ${classes}). Check you picked the printer, not the screen or scanner.`);
+  }
+  const { iface, alt, out } = pick;
+  if (!iface.claimed) await device.claimInterface(iface.interfaceNumber);
+  if (iface.alternate?.alternateSetting !== alt.alternateSetting) {
+    await device.selectAlternateInterface(iface.interfaceNumber, alt.alternateSetting);
+  }
   return { device, endpoint: out.endpointNumber, interface: iface.interfaceNumber };
 }
 
@@ -148,9 +170,12 @@ export async function requestDevice(kind) {
     // Older browsers reject `exclusionFilters` — retry without.
     return navigator.usb.requestDevice({ filters: [] });
   });
+  // Only remember the device once we've actually claimed a printer
+  // interface on it, so a wrong pick doesn't leave a broken pairing.
+  const handle = await pickEndpoint(device);
   setFingerprint(kind, device);
   setEnabled(kind, true);
-  return pickEndpoint(device);
+  return handle;
 }
 
 export async function forget(kind) {
