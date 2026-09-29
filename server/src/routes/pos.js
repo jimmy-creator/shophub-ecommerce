@@ -1201,6 +1201,20 @@ router.post('/sale', protectCashier, async (req, res) => {
   }
 });
 
+// ─── No-sale drawer open ───────────────────────────────────────────
+// The kick itself happens in the browser (WebUSB → receipt printer);
+// this only records who opened the drawer outside a sale.
+router.post('/drawer-open', protectCashier, async (req, res) => {
+  await logActivity({
+    userId: req.user.id,
+    action: 'pos_drawer_open',
+    locationId: req.cashierLocationId,
+    cashierSessionId: req.cashierSessionId,
+    ip: req.ip,
+  });
+  res.json({ ok: true });
+});
+
 // ─── Running totals for the current shift ──────────────────────────
 router.get('/shift-summary', protectCashier, async (req, res) => {
   try {

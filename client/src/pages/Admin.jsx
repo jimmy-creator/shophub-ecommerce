@@ -3695,6 +3695,7 @@ export default function Admin() {
                   <option value="">All</option>
                   <option value="pos_sale">POS sale</option>
                   <option value="sales_return_create">Sales return</option>
+                  <option value="pos_drawer_open">Drawer opened (no sale)</option>
                 </select>
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>

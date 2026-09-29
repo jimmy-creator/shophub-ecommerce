@@ -18,8 +18,9 @@ import toast from 'react-hot-toast';
 import {
   HiShoppingCart, HiClock, HiReply, HiChartBar,
   HiLogout, HiOutlineLogout, HiUserCircle, HiCash,
-  HiSearch, HiX, HiPrinter, HiSun, HiMoon, HiTag,
+  HiSearch, HiX, HiPrinter, HiSun, HiMoon, HiTag, HiInbox,
 } from 'react-icons/hi';
+import { isSupported as usbSupported, isEnabled as printerEnabled, kickDrawer } from '../lib/thermalPrinter';
 import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
 import { usePosTheme } from '../lib/usePosTheme';
@@ -486,6 +487,21 @@ export default function Pos() {
     return next;
   });
 
+  // No-sale drawer open: kick via the receipt printer, then log it.
+  const openDrawer = async () => {
+    if (!usbSupported() || !printerEnabled('receipt')) {
+      toast.error('Receipt printer not set up — pair it under Printer');
+      return;
+    }
+    try {
+      await kickDrawer();
+    } catch (err) {
+      toast.error(`Drawer did not open: ${err.message}`);
+      return;
+    }
+    api.post('/pos/drawer-open').catch(() => {});
+  };
+
   return (
     <div className={`pos-app${theme === 'light' ? ' pos-light' : ''}`}>
       {/* ─── Left action rail ────────────────────── */}
@@ -506,6 +522,9 @@ export default function Pos() {
         <div className="rail-spacer" />
         <button className="rail-btn" onClick={() => setLabelOpen(true)} title="Print barcode label">
           <HiTag size={22} /><span>Labels</span>
+        </button>
+        <button className="rail-btn" onClick={openDrawer} title="Open cash drawer (no sale)">
+          <HiInbox size={22} /><span>Drawer</span>
         </button>
         <button className="rail-btn" onClick={() => setPrinterOpen(true)} title="Printer">
           <HiPrinter size={22} /><span>Printer</span>
