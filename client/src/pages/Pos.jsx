@@ -938,6 +938,7 @@ export default function Pos() {
         <PosReceipt
           payload={receipt}
           currency={CURRENCY}
+          autoPrint={!backToRecent}
           onClose={() => {
             setReceipt(null);
             if (backToRecent) { setBackToRecent(false); setRecentOpen(true); }
@@ -948,7 +949,7 @@ export default function Pos() {
       {/* ─── X/Z report overlay ───────────────── */}
       {/* PosReportReceipt renders its own overlay via a body portal (print isolation). */}
       {report && (
-        <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} />
+        <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} autoPrint={report.type === 'Z'} />
       )}
 
       {/* ─── Printer settings ─────────────────── */}

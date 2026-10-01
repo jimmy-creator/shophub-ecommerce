@@ -14,9 +14,26 @@ import { createPortal } from 'react-dom';
 import { isEnabled, printSale } from '../lib/thermalPrinter';
 import { renderSaleReceiptCanvas } from '../lib/posReceiptCanvas';
 
-export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
+// autoPrint=false shows the receipt without firing the printer — used for
+// reprints from Recent sales, where printing is a deliberate click. Only a
+// fresh sale (autoPrint) opens the cash drawer.
+export default function PosReceipt({ payload, currency = 'KWD', onClose, autoPrint = true }) {
   const printedRef = useRef(false);
   const [imgUrl, setImgUrl] = useState(null);
+
+  const print = async (openDrawer = false) => {
+    if (isEnabled('receipt')) {
+      try {
+        await printSale(payload, currency, openDrawer);
+        onClose?.();
+        return;
+      } catch (err) {
+        console.warn('[thermal] direct print failed, falling back:', err.message);
+      }
+    }
+    // Browser-print fallback — the <img> is in the DOM by now.
+    setTimeout(() => window.print(), 300);
+  };
 
   useEffect(() => {
     // Print exactly once. React 18 StrictMode runs mount effects twice in dev,
@@ -34,19 +51,10 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
         console.warn('[receipt] render failed:', err.message);
       }
 
-      if (isEnabled('receipt')) {
-        try {
-          const openDrawer = payload.order.paymentMethod === 'pos_cash'
-            || payload.order.paymentMethod === 'pos_split';
-          await printSale(payload, currency, openDrawer);
-          onClose?.();
-          return;
-        } catch (err) {
-          console.warn('[thermal] direct print failed, falling back:', err.message);
-        }
-      }
-      // Browser-print fallback — the <img> is in the DOM by now.
-      setTimeout(() => window.print(), 300);
+      if (!autoPrint) return;
+      const openDrawer = payload.order.paymentMethod === 'pos_cash'
+        || payload.order.paymentMethod === 'pos_split';
+      await print(openDrawer);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -96,7 +104,9 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose }) {
             : <div className="preparing">Preparing receipt…</div>}
         </div>
         <div className="actions no-print">
-          <button onClick={() => window.print()}>Print again</button>
+          {autoPrint
+            ? <button onClick={() => window.print()}>Print again</button>
+            : <button onClick={() => print()} disabled={!imgUrl}>Print</button>}
           <button onClick={onClose}>Close</button>
         </div>
       </div>

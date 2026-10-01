@@ -7,10 +7,24 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { isEnabled, printReport } from '../lib/thermalPrinter';
 
-// autoPrint=false shows the slip without firing the printer — used by the admin
-// panel, where a reprint is a deliberate click rather than the end of a shift.
+// autoPrint=false shows the slip without firing the printer — used for the
+// POS Daily report and the admin panel, where printing is a deliberate click
+// rather than the end of a shift.
 export default function PosReportReceipt({ report, currency = 'KWD', onClose, autoPrint = true }) {
   const printedRef = useRef(false);
+
+  const print = async () => {
+    if (isEnabled('receipt')) {
+      try {
+        await printReport(report, currency);
+        onClose?.();
+        return;
+      } catch (err) {
+        console.warn('[thermal] direct report print failed, falling back:', err.message);
+      }
+    }
+    setTimeout(() => window.print(), 200);
+  };
 
   useEffect(() => {
     if (!autoPrint) return;
@@ -18,18 +32,7 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose, au
     // flag) is used: StrictMode double-invoked this in dev → an extra copy.
     if (printedRef.current) return;
     printedRef.current = true;
-    (async () => {
-      if (isEnabled('receipt')) {
-        try {
-          await printReport(report, currency);
-          onClose?.();
-          return;
-        } catch (err) {
-          console.warn('[thermal] direct report print failed, falling back:', err.message);
-        }
-      }
-      setTimeout(() => window.print(), 200);
-    })();
+    print();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -170,7 +173,9 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose, au
         </div>
 
         <div className="actions no-print">
-          <button onClick={() => window.print()}>{autoPrint ? 'Print again' : 'Print'}</button>
+          {autoPrint
+            ? <button onClick={() => window.print()}>Print again</button>
+            : <button onClick={print}>Print</button>}
           <button onClick={onClose}>Close</button>
         </div>
       </div>
