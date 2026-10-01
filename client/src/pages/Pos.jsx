@@ -435,10 +435,12 @@ export default function Pos() {
     navigate(`${STAFF_BASE}/login`);
   };
 
-  const openXReport = async () => {
+  // print=true comes from the Close-shift dialog: print straight away
+  // instead of only previewing.
+  const openXReport = async (print = false) => {
     try {
       const { data } = await api.get('/reports/x');
-      setReport(data);
+      setReport(print ? { ...data, print: true } : data);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not load Daily report');
     }
@@ -516,7 +518,7 @@ export default function Pos() {
         <button className="rail-btn" onClick={() => setReturnOpen(true)} title="Returns">
           <HiReply size={22} /><span>Return</span>
         </button>
-        <button className="rail-btn" onClick={openXReport} title="Daily report">
+        <button className="rail-btn" onClick={() => openXReport()} title="Daily report">
           <HiChartBar size={22} /><span>Daily report</span>
         </button>
         <div className="rail-spacer" />
@@ -926,6 +928,9 @@ export default function Pos() {
             />
             <div className="modal-actions">
               <button type="button" onClick={() => setCloseForm(null)} className="modal-btn modal-btn-secondary">Cancel</button>
+              <button type="button" onClick={() => openXReport(true)} className="modal-btn modal-btn-secondary">
+                <HiPrinter size={16} style={{ verticalAlign: '-3px', marginRight: 4 }} />Print report
+              </button>
               <button type="submit" className="modal-btn modal-btn-primary">Confirm close</button>
             </div>
           </form>
@@ -949,7 +954,7 @@ export default function Pos() {
       {/* ─── X/Z report overlay ───────────────── */}
       {/* PosReportReceipt renders its own overlay via a body portal (print isolation). */}
       {report && (
-        <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} autoPrint={report.type === 'Z'} />
+        <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} autoPrint={report.type === 'Z' || report.print} />
       )}
 
       {/* ─── Printer settings ─────────────────── */}
