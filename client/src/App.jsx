@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { useEffect, Fragment } from 'react';
+import { useEffect, Fragment, lazy, Suspense } from 'react';
 import { useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -10,27 +10,30 @@ import { WishlistProvider } from './context/WishlistContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { RecentlyViewedProvider } from './context/RecentlyViewedContext';
 import { Home, Navbar, Footer, Products, ProductDetail, ContactUs, AboutUs, PrivacyPolicy, RefundPolicy, ReturnPolicy, ShippingPolicy, TermsOfService } from '@layout';
-import Wishlist from './pages/Wishlist';
-import Cart from './pages/Cart';
-import Checkout from './pages/Checkout';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Orders from './pages/Orders';
-import Profile from './pages/Profile';
-import Admin from './pages/Admin';
-import OrderSuccess from './pages/OrderSuccess';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import ShippingInfo from './pages/ShippingInfo';
-import Wholesale from './pages/Wholesale';
-import WholesaleRequest from './pages/WholesaleRequest';
-import WholesaleQuotes from './pages/WholesaleQuotes';
-import WholesaleQuoteDetail from './pages/WholesaleQuoteDetail';
-import ShiprocketCheckout from './pages/ShiprocketCheckout';
-import PosLogin from './pages/PosLogin';
-import Pos from './pages/Pos';
 import NotFound from './pages/NotFound';
 import { STAFF_BASE } from './lib/staffBase';
+
+// Pages load on demand so each screen only downloads its own code — the POS
+// and storefront no longer pull in the admin panel (and recharts) up front.
+const Wishlist = lazy(() => import('./pages/Wishlist'));
+const Cart = lazy(() => import('./pages/Cart'));
+const Checkout = lazy(() => import('./pages/Checkout'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const Orders = lazy(() => import('./pages/Orders'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Admin = lazy(() => import('./pages/Admin'));
+const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const ShippingInfo = lazy(() => import('./pages/ShippingInfo'));
+const Wholesale = lazy(() => import('./pages/Wholesale'));
+const WholesaleRequest = lazy(() => import('./pages/WholesaleRequest'));
+const WholesaleQuotes = lazy(() => import('./pages/WholesaleQuotes'));
+const WholesaleQuoteDetail = lazy(() => import('./pages/WholesaleQuoteDetail'));
+const ShiprocketCheckout = lazy(() => import('./pages/ShiprocketCheckout'));
+const PosLogin = lazy(() => import('./pages/PosLogin'));
+const Pos = lazy(() => import('./pages/Pos'));
 
 const B2B_ENABLED = import.meta.env.VITE_FEATURE_B2B === 'true';
 const SHIPROCKET_CHECKOUT = import.meta.env.VITE_FEATURE_SHIPROCKET_CHECKOUT === 'true';
@@ -125,6 +128,7 @@ export default function App() {
             <PosAware><Navbar /></PosAware>
             <main className="main">
               <PageWrapper>
+              <Suspense fallback={null}>
               <Routes>
                 {/* Storefront + admin routes, mounted twice for path-based
                     locale: bare paths are English (default), /ar/* serves
@@ -174,6 +178,7 @@ export default function App() {
                   );
                 })}
               </Routes>
+              </Suspense>
               </PageWrapper>
             </main>
             <PosAware><Footer /></PosAware>
