@@ -11,7 +11,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { isEnabled, printSale } from '../lib/thermalPrinter';
+import { isEnabled, printSale, kickDrawer } from '../lib/thermalPrinter';
 import { renderSaleReceiptCanvas } from '../lib/posReceiptCanvas';
 
 // autoPrint=false shows the receipt without firing the printer — used for
@@ -54,6 +54,14 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose, autoPri
       if (!autoPrint) return;
       const openDrawer = payload.order.paymentMethod === 'pos_cash'
         || payload.order.paymentMethod === 'pos_split';
+      // Direct USB: don't print until the cashier clicks Print — just open
+      // the drawer for cash sales.
+      if (isEnabled('receipt')) {
+        if (openDrawer) {
+          try { await kickDrawer(); } catch (err) { console.warn('[thermal] drawer kick failed:', err.message); }
+        }
+        return;
+      }
       await print(openDrawer);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -104,7 +112,7 @@ export default function PosReceipt({ payload, currency = 'KWD', onClose, autoPri
             : <div className="preparing">Preparing receipt…</div>}
         </div>
         <div className="actions no-print">
-          {autoPrint
+          {autoPrint && !isEnabled('receipt')
             ? <button onClick={() => window.print()}>Print again</button>
             : <button onClick={() => print()} disabled={!imgUrl}>Print</button>}
           <button onClick={onClose}>Close</button>
