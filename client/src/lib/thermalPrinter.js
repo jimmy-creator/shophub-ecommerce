@@ -241,7 +241,7 @@ function buildReturn(payload, currency = 'KWD') {
   for (const it of (sr.items || [])) {
     const displayName = pickName(it, loc);
     enc.table(
-      [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
+      [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
       [[displayName, `-${fmt(currency, it.refundAmount)}`]]
     );
     if (loc === 'bi' && it.nameAr && it.nameAr !== it.name) {
@@ -252,13 +252,13 @@ function buildReturn(payload, currency = 'KWD') {
   }
   enc.rule();
   enc.bold(true).table(
-    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
+    [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
     [['REFUND TOTAL', `-${fmt(currency, sr.refundAmount)}`]]
   ).bold(false);
   const methodLabel = sr.refundMethod === 'cash' ? 'Cash'
     : sr.refundMethod === 'card' ? 'Card' : 'Store Credit';
   enc.table(
-    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
+    [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
     [['Method', methodLabel]]
   );
   enc.rule();
@@ -301,7 +301,7 @@ function buildReport(report, currency = 'KWD') {
     + (parseFloat(report.cardSales) || 0)).toFixed(3);
   const colW = Math.floor(cols * 0.6);
   const row = (l, r) => enc.table(
-    [{ width: colW, marginRight: 1 }, { width: cols - colW - 1, align: 'right' }],
+    [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
     [[l, r]]
   );
 
