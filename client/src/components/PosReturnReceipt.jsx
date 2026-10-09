@@ -9,23 +9,25 @@ import { isEnabled, printReturn, getReceiptLocale } from '../lib/thermalPrinter'
 export default function PosReturnReceipt({ payload, currency = 'KWD', onClose }) {
   const printedRef = useRef(false);
 
+  const print = async () => {
+    if (isEnabled('receipt')) {
+      try {
+        await printReturn(payload, currency);
+        onClose?.();
+        return;
+      } catch (err) {
+        console.warn('[thermal] direct return print failed, falling back:', err.message);
+      }
+    }
+    setTimeout(() => window.print(), 200);
+  };
+
   useEffect(() => {
     // Print exactly once — see PosReceipt for why a ref guard (not a cleanup
     // flag) is used: StrictMode double-invoked this in dev → an extra copy.
     if (printedRef.current) return;
     printedRef.current = true;
-    (async () => {
-      if (isEnabled('receipt')) {
-        try {
-          await printReturn(payload, currency);
-          onClose?.();
-          return;
-        } catch (err) {
-          console.warn('[thermal] direct return print failed, falling back:', err.message);
-        }
-      }
-      setTimeout(() => window.print(), 200);
-    })();
+    print();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -153,7 +155,7 @@ export default function PosReturnReceipt({ payload, currency = 'KWD', onClose })
         </div>
 
         <div className="actions no-print">
-          <button onClick={() => window.print()}>Print again</button>
+          <button onClick={print}>Print again</button>
           <button onClick={onClose}>Close</button>
         </div>
       </div>

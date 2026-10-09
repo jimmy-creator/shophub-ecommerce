@@ -369,11 +369,66 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   return out;
 }
 
+// Drawing kit for the plain Courier slips (report, return). They print as
+// raster images, not ESC/POS text: text mode used the printer's own font
+// and its codepage turned the Arabic currency/names into "?.?".
+function slipCanvas() {
+  const SS = 2;
+  const scratch = document.createElement('canvas');
+  scratch.width = W * SS;
+  scratch.height = 3000 * SS;
+  const ctx = scratch.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, scratch.width, scratch.height);
+  ctx.scale(SS, SS);
+  ctx.fillStyle = '#000';
+  ctx.textBaseline = 'top';
+
+  const L = PAD;
+  const R = W - PAD;
+  const CW = W - 2 * PAD;
+  let y = PAD;
+
+  // Arabic falls through to the embedded font (Courier New has no Arabic).
+  const setFont = (size) => { ctx.font = `bold ${size}px 'Courier New', Courier, '${AR_FONT}', monospace`; };
+  const line = (str, { align = 'left', size = 26, gap = 10, maxW = CW } = {}) => {
+    setFont(size);
+    ctx.textAlign = align;
+    const x = align === 'center' ? W / 2 : align === 'right' ? R : L;
+    for (const ln of wrapText(ctx, str, maxW)) {
+      ctx.fillText(ln, x, y);
+      y += size + gap;
+    }
+  };
+  // Label wraps in whatever width the right-hand value leaves free.
+  const row = (label, value, size = 26) => {
+    setFont(size);
+    ctx.textAlign = 'right'; ctx.fillText(value, R, y);
+    const maxW = CW - ctx.measureText(value).width - 12;
+    line(label, { size, maxW });
+  };
+  const rule = () => { y += 6; ctx.fillRect(L, y, CW, 2); y += 14; };
+
+  const finish = () => {
+    y += PAD;
+    const finalH = Math.ceil(y / 8) * 8;
+    const out = document.createElement('canvas');
+    out.width = W;
+    out.height = finalH;
+    const octx = out.getContext('2d');
+    octx.fillStyle = '#fff';
+    octx.fillRect(0, 0, W, finalH);
+    octx.imageSmoothingEnabled = true;
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(scratch, 0, 0, W * SS, finalH * SS, 0, 0, W, finalH);
+    return out;
+  };
+  return { line, row, rule, finish };
+}
+
 /**
  * X/Z report as a B/W bitmap in the same layout as the on-screen slip
  * (PosReportReceipt), so the thermal printout matches the browser print.
- * Text mode can't be used: the printer's codepage turned the currency
- * into "?.?" and its font changed the look.
  */
 export async function renderReportCanvas(report, currency = 'KWD') {
   const fmt = (n) => `${currency} ${money(n)}`;
@@ -399,38 +454,7 @@ export async function renderReportCanvas(report, currency = 'KWD') {
     + (parseFloat(report.knetRefunds) || 0) + (parseFloat(report.creditRefunds) || 0)).toFixed(3);
   const registerTotal = +(opening + totalSales - totalRefund).toFixed(3);
 
-  const SS = 2;
-  const scratch = document.createElement('canvas');
-  scratch.width = W * SS;
-  scratch.height = 1600 * SS;
-  const ctx = scratch.getContext('2d');
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, scratch.width, scratch.height);
-  ctx.scale(SS, SS);
-  ctx.fillStyle = '#000';
-  ctx.textBaseline = 'top';
-
-  const L = PAD;
-  const R = W - PAD;
-  const CW = W - 2 * PAD;
-  let y = PAD;
-
-  const setFont = (size) => { ctx.font = `bold ${size}px 'Courier New', Courier, monospace`; };
-  const line = (str, { align = 'left', size = 26, gap = 10 } = {}) => {
-    setFont(size);
-    ctx.textAlign = align;
-    for (const ln of wrapText(ctx, str, CW)) {
-      ctx.fillText(ln, align === 'center' ? W / 2 : L, y);
-      y += size + gap;
-    }
-  };
-  const row = (label, value, size = 26) => {
-    setFont(size);
-    ctx.textAlign = 'left'; ctx.fillText(label, L, y);
-    ctx.textAlign = 'right'; ctx.fillText(value, R, y);
-    y += size + 10;
-  };
-  const rule = () => { y += 6; ctx.fillRect(L, y, CW, 2); y += 14; };
+  const { line, row, rule, finish } = slipCanvas();
 
   line(report.type === 'Z' ? 'Z-REPORT' : 'DAILY REPORT', { align: 'center', size: 34 });
   line(report.location?.name || 'Anfal Sports', { align: 'center', size: 22, gap: 6 });
@@ -460,19 +484,55 @@ export async function renderReportCanvas(report, currency = 'KWD') {
   line(`Total = ${fmt(opening)} (opening) + ${fmt(totalSales)} (Sale) − ${fmt(totalRefund)} (Refund) = ${fmt(registerTotal)}`, { size: 22, gap: 6 });
   rule();
   line(report.type === 'Z' ? '— END OF SHIFT —' : '— MID-SHIFT REPORT —', { align: 'center', size: 22 });
-  y += PAD;
+  return finish();
+}
 
-  const finalH = Math.ceil(y / 8) * 8;
-  const out = document.createElement('canvas');
-  out.width = W;
-  out.height = finalH;
-  const octx = out.getContext('2d');
-  octx.fillStyle = '#fff';
-  octx.fillRect(0, 0, W, finalH);
-  octx.imageSmoothingEnabled = true;
-  octx.imageSmoothingQuality = 'high';
-  octx.drawImage(scratch, 0, 0, W * SS, finalH * SS, 0, 0, W, finalH);
-  return out;
+/**
+ * Return receipt as a B/W bitmap in the on-screen slip's layout
+ * (PosReturnReceipt). `currency` and `loc` come from the caller so the
+ * paper shows the same currency/names as the preview.
+ */
+export async function renderReturnCanvas(payload, currency = 'KWD', loc = 'en') {
+  await ensureFont();
+  const sr = payload.salesReturn;
+  const fmt = (n) => `${currency} ${money(n)}`;
+  const method = sr.refundMethod === 'cash' ? 'Cash'
+    : sr.refundMethod === 'card' ? 'Card'
+    : 'Store Credit';
+
+  const { line, row, rule, finish } = slipCanvas();
+
+  line('RETURN RECEIPT', { align: 'center', size: 34 });
+  if (sr.Location?.name) line(sr.Location.name, { align: 'center', size: 22, gap: 6 });
+  if (sr.Location?.phone) line(`Tel: ${sr.Location.phone}`, { align: 'center', size: 22, gap: 6 });
+  rule();
+
+  line(`Return #: ${sr.returnNumber}`, { size: 22, gap: 6 });
+  line(`Original: ${payload.order?.orderNumber || ''}`, { size: 22, gap: 6 });
+  line(`Date: ${sr.createdAt ? new Date(sr.createdAt).toLocaleString() : ''}`, { size: 22, gap: 6 });
+  line(`Cashier: ${sr.processor?.name || '—'}`, { size: 22, gap: 6 });
+  if (sr.reason) line(`Reason: ${sr.reason}`, { size: 22, gap: 6 });
+  rule();
+
+  for (const it of (sr.items || [])) {
+    const name = (loc === 'ar' && it.nameAr) ? it.nameAr : it.name;
+    row(name, `−${fmt(it.refundAmount)}`);
+    if (loc === 'bi' && it.nameAr && it.nameAr !== it.name) {
+      line(it.nameAr, { align: 'right', size: 22, gap: 6 });
+    }
+    const sku = it.sku || it.variant?.sku || null;
+    line(`${sku ? `${sku} · ` : ''}${it.quantity} × ${fmt(it.price)}`, { size: 22 });
+  }
+  rule();
+
+  row('REFUND TOTAL', `−${fmt(sr.refundAmount)}`, 28);
+  row('Method', method);
+  rule();
+  const note = sr.refundMethod === 'cash' ? 'Cash returned to customer'
+    : sr.refundMethod === 'card' ? 'Refund to original card'
+    : sr.refundMethod === 'store_credit' ? 'Store credit issued' : '';
+  if (note) line(note, { align: 'center', size: 22 });
+  return finish();
 }
 
 // Greedy word-wrap by measured width (RTL words measured the same way).

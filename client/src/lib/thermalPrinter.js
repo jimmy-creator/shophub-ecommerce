@@ -31,7 +31,7 @@
  *  kind ∈ 'receipt' | 'barcode'
  */
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
-import { renderSaleReceiptCanvas, renderReportCanvas } from './posReceiptCanvas.js';
+import { renderSaleReceiptCanvas, renderReportCanvas, renderReturnCanvas } from './posReceiptCanvas.js';
 import { barcodeForProduct } from '../components/BarcodeLabelSheet.jsx';
 
 const KINDS = ['receipt', 'barcode'];
@@ -69,12 +69,6 @@ export function setReceiptLocale(loc) {
   if (['en', 'ar', 'bi'].includes(loc)) localStorage.setItem('pos_receipt_locale', loc);
 }
 
-// Returns the localised name for a line item per the receipt locale
-// setting. Falls back to English when nameAr isn't snapshotted.
-function pickName(item, loc) {
-  if (loc === 'ar') return item.nameAr || item.name;
-  return item.name;
-}
 // "د.ك" for Arabic receipts, the configured KWD/etc. otherwise.
 function pickCurrency(defaultCurrency, loc) {
   if (loc === 'ar' || loc === 'bi') {
@@ -202,8 +196,6 @@ async function send(kind, bytes) {
 }
 
 // ── Receipt templates ──────────────────────────────────────────────
-const fmt = (currency, n) => `${currency} ${(parseFloat(n) || 0).toFixed(3)}`;
-
 // The sale receipt is fully bilingual (EN/AR), which ESC/POS text mode can't
 // shape — so it's drawn to a canvas and sent as a raster image. The same
 // canvas renders the on-screen preview, guaranteeing identical output.
@@ -218,54 +210,15 @@ async function buildSale(payload) {
   return enc.encode();
 }
 
-function buildReturn(payload, currency = 'KWD') {
-  const sr = payload.salesReturn;
+async function buildReturn(payload, currency = 'KWD') {
   const cols = getColumns('receipt');
   const loc = getReceiptLocale();
-  currency = pickCurrency(currency, loc);
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
+  const canvas = await renderReturnCanvas(payload, pickCurrency(currency, loc), loc);
   enc.initialize()
-    .align('center').bold(true).line('RETURN RECEIPT').bold(false);
-  if (sr.Location?.name) enc.line(sr.Location.name);
-  if (sr.Location?.phone) enc.line(`Tel: ${sr.Location.phone}`);
-  enc.rule()
-    .align('left')
-    .line(`Return #: ${sr.returnNumber}`)
-    .line(`Original: ${payload.order?.orderNumber || ''}`)
-    .line(`Date: ${new Date(sr.createdAt || Date.now()).toLocaleString()}`)
-    .line(`Cashier: ${sr.processor?.name || '—'}`);
-  if (sr.reason) enc.line(`Reason: ${sr.reason}`);
-  enc.rule();
-
-  const colW = Math.floor(cols * 0.65);
-  for (const it of (sr.items || [])) {
-    const displayName = pickName(it, loc);
-    enc.table(
-      [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
-      [[displayName, `-${fmt(currency, it.refundAmount)}`]]
-    );
-    if (loc === 'bi' && it.nameAr && it.nameAr !== it.name) {
-      enc.line(`  ${it.nameAr}`);
-    }
-    const sku = it.sku || it.variant?.sku || null;
-    enc.line(`  ${sku ? `${sku} · ` : ''}${it.quantity} x ${fmt(currency, it.price)}`);
-  }
-  enc.rule();
-  enc.bold(true).table(
-    [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
-    [['REFUND TOTAL', `-${fmt(currency, sr.refundAmount)}`]]
-  ).bold(false);
-  const methodLabel = sr.refundMethod === 'cash' ? 'Cash'
-    : sr.refundMethod === 'card' ? 'Card' : 'Store Credit';
-  enc.table(
-    [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
-    [['Method', methodLabel]]
-  );
-  enc.rule();
-  if (sr.refundMethod === 'cash') enc.align('center').line('Cash returned to customer');
-  else if (sr.refundMethod === 'card') enc.align('center').line('Refund to original card');
-  else enc.align('center').line('Store credit issued');
-  enc.newline().newline().cut('partial');
+    .image(canvas, canvas.width, canvas.height, 'threshold', 210)
+    .newline()
+    .cut('partial');
   return enc.encode();
 }
 
@@ -307,7 +260,7 @@ export async function printSale(payload, currency, openDrawer = false) {
 }
 
 export async function printReturn(payload, currency) {
-  await send('receipt', buildReturn(payload, currency));
+  await send('receipt', await buildReturn(payload, currency));
 }
 
 export async function printReport(report, currency) {
