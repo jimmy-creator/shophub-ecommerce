@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import { CurrencySymbol } from '../utils/currency';
@@ -112,6 +113,12 @@ export default function PosLogin() {
 
   return (
     <div className={themeClass}>
+      {/* The server answers the staff path with a 404 shell (hidden from
+          crawlers), so replace its "Page Not Found" tab title. */}
+      <Helmet>
+        <title>{`Staff login | ${import.meta.env.VITE_STORE_NAME || 'Anfal Sports'}`}</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       <ThemeToggle />
       <div className="pos-card">
         <div className="pos-header">

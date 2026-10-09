@@ -13,6 +13,7 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { STAFF_BASE } from '../App';
 import toast from 'react-hot-toast';
 import {
@@ -506,6 +507,12 @@ export default function Pos() {
 
   return (
     <div className={`pos-app${theme === 'light' ? ' pos-light' : ''}`}>
+      {/* The server answers the staff path with a 404 shell (hidden from
+          crawlers), so replace its "Page Not Found" tab title. */}
+      <Helmet>
+        <title>{`POS | ${import.meta.env.VITE_STORE_NAME || 'Anfal Sports'}`}</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       {/* ─── Left action rail ────────────────────── */}
       <aside className="pos-rail">
         <div className="rail-brand">{(session.Location?.name || 'POS').slice(0, 1)}</div>
