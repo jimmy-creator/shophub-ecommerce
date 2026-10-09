@@ -1081,6 +1081,7 @@ export default function Admin() {
   const [invBusy, setInvBusy] = useState(false);
   const [transfers, setTransfers] = useState([]);
   const [transferForm, setTransferForm] = useState(null);    // new-transfer modal state
+  const [transferView, setTransferView] = useState(null);    // read-only transfer detail
   const [transferStatusFilter, setTransferStatusFilter] = useState('');
   const [cashiers, setCashiers] = useState([]);
   const [cashierForm, setCashierForm] = useState(null);      // { name, email, password, pin, homeLocationId, _editing }
@@ -1225,6 +1226,7 @@ export default function Admin() {
       if (products.length === 0) api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
     } else if (tab === 'transfers') {
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
+      if (products.length === 0) api.get('/products/admin/all?limit=10000').then((res) => setProducts(res.data.products));
       const qs = transferStatusFilter ? `?status=${transferStatusFilter}` : '';
       api.get(`/stock-transfers${qs}`).then((res) => setTransfers(res.data)).catch(() => {});
     } else if (tab === 'cashiers') {
@@ -3339,6 +3341,7 @@ export default function Admin() {
                       </td>
                       <td style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>{new Date(t.createdAt).toLocaleDateString()}</td>
                       <td>
+                        <button className="invoice-btn" style={{ fontSize: '0.7rem', marginRight: '0.3rem' }} onClick={() => setTransferView(t)}>View</button>
                         {t.status === 'pending' && (
                           <button className="invoice-btn" style={{ fontSize: '0.7rem' }} onClick={async () => {
                             try {
@@ -3376,6 +3379,54 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
+
+            {transferView && (
+              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setTransferView(null); }}>
+                <div className="admin-form" style={{ maxWidth: 720 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>Transfer {transferView.transferNumber}</h3>
+                      <div style={{ color: 'var(--text-light)', fontSize: '0.88rem', marginTop: 4 }}>
+                        {transferView.fromLocation?.name} → {transferView.toLocation?.name}
+                        {transferView.creator?.name && ` · by ${transferView.creator.name}`}
+                      </div>
+                    </div>
+                    <StatusBadge value={transferView.status} />
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0.75rem 0' }}>
+                    <div>Created: {new Date(transferView.createdAt).toLocaleString()}</div>
+                    {transferView.dispatchedAt && <div>Dispatched: {new Date(transferView.dispatchedAt).toLocaleString()}</div>}
+                    {transferView.completedAt && <div>Completed: {new Date(transferView.completedAt).toLocaleString()}</div>}
+                  </div>
+                  <div className="admin-table-wrap">
+                    <table className="admin-table">
+                      <thead><tr><th>Item</th><th>Variant</th><th style={{ textAlign: 'right' }}>Qty</th></tr></thead>
+                      <tbody>
+                        {(transferView.items || []).map((it, i) => {
+                          const p = products.find((x) => x.id === it.productId);
+                          const v = it.variantIndex != null ? p?.variants?.[it.variantIndex] : null;
+                          return (
+                            <tr key={i}>
+                              <td>{it.name || p?.name || `Product #${it.productId}`}</td>
+                              <td>{v ? Object.values(v.options || {}).join('/') : (it.variantIndex != null ? `#${it.variantIndex + 1}` : '—')}</td>
+                              <td style={{ textAlign: 'right' }}>{it.quantity}</td>
+                            </tr>
+                          );
+                        })}
+                        <tr>
+                          <td colSpan={2} style={{ fontWeight: 600 }}>Total</td>
+                          <td style={{ textAlign: 'right', fontWeight: 600 }}>{(transferView.items || []).reduce((s, it) => s + (it.quantity || 0), 0)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  {transferView.notes && <p style={{ fontSize: '0.85rem', marginTop: '0.75rem' }}><strong>Notes:</strong> {transferView.notes}</p>}
+                  <div className="form-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => setTransferView(null)}>Close</button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {transferForm && (
               <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setTransferForm(null); }}>
