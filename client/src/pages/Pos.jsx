@@ -954,7 +954,7 @@ export default function Pos() {
       {/* ─── X/Z report overlay ───────────────── */}
       {/* PosReportReceipt renders its own overlay via a body portal (print isolation). */}
       {report && (
-        <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} autoPrint={report.type === 'Z' || report.print} />
+        <PosReportReceipt report={report} currency={CURRENCY} onClose={closeReport} autoPrint={report.type === 'Z' || !!report.print} />
       )}
 
       {/* ─── Printer settings ─────────────────── */}

@@ -31,7 +31,7 @@
  *  kind ∈ 'receipt' | 'barcode'
  */
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
-import { renderSaleReceiptCanvas } from './posReceiptCanvas.js';
+import { renderSaleReceiptCanvas, renderReportCanvas } from './posReceiptCanvas.js';
 import { barcodeForProduct } from '../components/BarcodeLabelSheet.jsx';
 
 const KINDS = ['receipt', 'barcode'];
@@ -269,75 +269,16 @@ function buildReturn(payload, currency = 'KWD') {
   return enc.encode();
 }
 
-function buildReport(report, currency = 'KWD') {
+// Same raster approach as the sale receipt: the report is drawn in the
+// on-screen slip's layout, so paper and browser print look the same.
+async function buildReport(report, currency = 'KWD') {
   const cols = getColumns('receipt');
-  const loc = getReceiptLocale();
-  currency = pickCurrency(currency, loc);
   const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
-  const t = report.type === 'Z' ? 'Z-REPORT' : 'DAILY REPORT';
-  const session = report.session || {};
-  // "13th Jul, 2026 09:34 AM"
-  const ord = (d) => { const s = ['th', 'st', 'nd', 'rd'], v = d % 100; return d + (s[(v - 20) % 10] || s[v] || s[0]); };
-  const fmtDT = (dt) => {
-    if (!dt) return '-';
-    const d = new Date(dt);
-    let h = d.getHours();
-    const ap = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    return `${ord(d.getDate())} ${d.toLocaleString('en-US', { month: 'short' })}, ${d.getFullYear()} `
-      + `${String(h).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`;
-  };
-  const rangeStart = fmtDT(session.openedAt);
-  const rangeEnd = fmtDT(report.type === 'Z' ? session.closedAt : report.generatedAt);
-  const opening = parseFloat(report.openingCash) || 0;
-  const totalSales = parseFloat(report.totalSales) || 0;
-  const totalRefund = +((parseFloat(report.cashRefunds) || 0) + (parseFloat(report.cardRefunds) || 0)
-    + (parseFloat(report.knetRefunds) || 0) + (parseFloat(report.creditRefunds) || 0)).toFixed(3);
-  const registerTotal = +(opening + totalSales - totalRefund).toFixed(3);
-  // Card runs through the KNET terminal in store — one combined line. Summed
-  // (not just knetSales) so the breakdown still reconciles with Total Sales
-  // if a sale was rung up as "card".
-  const terminalSales = +((parseFloat(report.knetSales) || 0)
-    + (parseFloat(report.cardSales) || 0)).toFixed(3);
-  const colW = Math.floor(cols * 0.6);
-  const row = (l, r) => enc.table(
-    [{ width: colW, marginRight: 1, align: 'left' }, { width: cols - colW - 1, align: 'right' }],
-    [[l, r]]
-  );
-
-  enc.initialize().align('center').bold(true).line(t).bold(false);
-  if (report.location?.name) enc.line(report.location.name);
-  if (report.location?.phone) enc.line(`Tel: ${report.location.phone}`);
-  enc.bold(true).line('Register Details').bold(false);
-  enc.line(`( ${rangeStart}`).line(`  - ${rangeEnd} )`);
-  enc.rule().align('left')
-    .line(`Cashier: ${report.cashier?.name || '-'}`);
-  enc.rule().bold(true);
-  row('Payment Method', 'Sell');
-  enc.bold(false);
-  row('Cash Payment:', fmt(currency, report.cashSales));
-  row('KNET:', fmt(currency, terminalSales));
-  enc.rule().bold(true);
-  row('Total Sales:', fmt(currency, totalSales));
-  row('Total Refund:', fmt(currency, totalRefund));
-  row('Net Sales:', fmt(currency, report.netSales));
-  enc.bold(false);
-  if (report.type === 'Z') {
-    row('Expected drawer:', fmt(currency, report.expectedCash));
-    row('Counted cash:', fmt(currency, report.closingCash));
-    enc.bold(true);
-    const varianceStr = (report.variance >= 0 ? '+' : '') + fmt(currency, report.variance);
-    row('Variance:', varianceStr);
-    enc.bold(false);
-  }
-  enc.rule().align('left')
-    .line(`Total = ${fmt(currency, opening)} (opening)`)
-    .line(`  + ${fmt(currency, totalSales)} (Sale)`)
-    .line(`  - ${fmt(currency, totalRefund)} (Refund)`)
-    .bold(true).line(`  = ${fmt(currency, registerTotal)}`).bold(false);
-  enc.rule().align('center')
-    .line(report.type === 'Z' ? '-- END OF SHIFT --' : '-- MID-SHIFT REPORT --')
-    .newline().newline().cut('partial');
+  const canvas = await renderReportCanvas(report, currency);
+  enc.initialize()
+    .image(canvas, canvas.width, canvas.height, 'threshold', 210)
+    .newline()
+    .cut('partial');
   return enc.encode();
 }
 
@@ -370,7 +311,7 @@ export async function printReturn(payload, currency) {
 }
 
 export async function printReport(report, currency) {
-  await send('receipt', buildReport(report, currency));
+  await send('receipt', await buildReport(report, currency));
 }
 
 // Cash drawer pulse via the receipt printer.

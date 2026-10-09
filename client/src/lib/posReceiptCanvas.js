@@ -369,6 +369,112 @@ export async function renderSaleReceiptCanvas(payload, { store } = {}) {
   return out;
 }
 
+/**
+ * X/Z report as a B/W bitmap in the same layout as the on-screen slip
+ * (PosReportReceipt), so the thermal printout matches the browser print.
+ * Text mode can't be used: the printer's codepage turned the currency
+ * into "?.?" and its font changed the look.
+ */
+export async function renderReportCanvas(report, currency = 'KWD') {
+  const fmt = (n) => `${currency} ${money(n)}`;
+  const session = report.session || {};
+  // "13th Jul, 2026 09:34 AM"
+  const ord = (d) => { const s = ['th', 'st', 'nd', 'rd'], v = d % 100; return d + (s[(v - 20) % 10] || s[v] || s[0]); };
+  const fmtDT = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    let h = d.getHours();
+    const ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    return `${ord(d.getDate())} ${d.toLocaleString('en-US', { month: 'short' })}, ${d.getFullYear()} `
+      + `${String(h).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ap}`;
+  };
+  const rangeStart = fmtDT(session.openedAt);
+  const rangeEnd = fmtDT(report.type === 'Z' ? session.closedAt : report.generatedAt);
+  const opening = parseFloat(report.openingCash) || 0;
+  const totalSales = parseFloat(report.totalSales) || 0;
+  // Card runs through the KNET terminal in store — one combined line.
+  const terminalSales = (parseFloat(report.knetSales) || 0) + (parseFloat(report.cardSales) || 0);
+  const totalRefund = +((parseFloat(report.cashRefunds) || 0) + (parseFloat(report.cardRefunds) || 0)
+    + (parseFloat(report.knetRefunds) || 0) + (parseFloat(report.creditRefunds) || 0)).toFixed(3);
+  const registerTotal = +(opening + totalSales - totalRefund).toFixed(3);
+
+  const SS = 2;
+  const scratch = document.createElement('canvas');
+  scratch.width = W * SS;
+  scratch.height = 1600 * SS;
+  const ctx = scratch.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, scratch.width, scratch.height);
+  ctx.scale(SS, SS);
+  ctx.fillStyle = '#000';
+  ctx.textBaseline = 'top';
+
+  const L = PAD;
+  const R = W - PAD;
+  const CW = W - 2 * PAD;
+  let y = PAD;
+
+  const setFont = (size) => { ctx.font = `bold ${size}px 'Courier New', Courier, monospace`; };
+  const line = (str, { align = 'left', size = 26, gap = 10 } = {}) => {
+    setFont(size);
+    ctx.textAlign = align;
+    for (const ln of wrapText(ctx, str, CW)) {
+      ctx.fillText(ln, align === 'center' ? W / 2 : L, y);
+      y += size + gap;
+    }
+  };
+  const row = (label, value, size = 26) => {
+    setFont(size);
+    ctx.textAlign = 'left'; ctx.fillText(label, L, y);
+    ctx.textAlign = 'right'; ctx.fillText(value, R, y);
+    y += size + 10;
+  };
+  const rule = () => { y += 6; ctx.fillRect(L, y, CW, 2); y += 14; };
+
+  line(report.type === 'Z' ? 'Z-REPORT' : 'DAILY REPORT', { align: 'center', size: 34 });
+  line(report.location?.name || 'Anfal Sports', { align: 'center', size: 22, gap: 6 });
+  if (report.location?.phone) line(`Tel: ${report.location.phone}`, { align: 'center', size: 22, gap: 6 });
+  rule();
+
+  line('Register Details', { align: 'center' });
+  line(`( ${rangeStart} — ${rangeEnd} )`, { align: 'center', size: 22, gap: 6 });
+  line(`Cashier: ${report.cashier?.name || '—'}`, { size: 22 });
+  rule();
+
+  row('Payment Method', 'Sell');
+  row('Cash Payment:', fmt(report.cashSales));
+  row('KNET:', fmt(terminalSales));
+  rule();
+
+  row('Total Sales:', fmt(totalSales));
+  row('Total Refund:', fmt(totalRefund));
+  row('Net Sales:', fmt(report.netSales));
+  if (report.type === 'Z') {
+    row('Expected drawer:', fmt(report.expectedCash));
+    row('Counted cash:', fmt(report.closingCash));
+    row('Variance:', `${report.variance >= 0 ? '+' : ''}${fmt(report.variance)}`);
+  }
+  rule();
+
+  line(`Total = ${fmt(opening)} (opening) + ${fmt(totalSales)} (Sale) − ${fmt(totalRefund)} (Refund) = ${fmt(registerTotal)}`, { size: 22, gap: 6 });
+  rule();
+  line(report.type === 'Z' ? '— END OF SHIFT —' : '— MID-SHIFT REPORT —', { align: 'center', size: 22 });
+  y += PAD;
+
+  const finalH = Math.ceil(y / 8) * 8;
+  const out = document.createElement('canvas');
+  out.width = W;
+  out.height = finalH;
+  const octx = out.getContext('2d');
+  octx.fillStyle = '#fff';
+  octx.fillRect(0, 0, W, finalH);
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.drawImage(scratch, 0, 0, W * SS, finalH * SS, 0, 0, W, finalH);
+  return out;
+}
+
 // Greedy word-wrap by measured width (RTL words measured the same way).
 function wrapText(ctx, str, maxW) {
   const words = str.split(/\s+/);
