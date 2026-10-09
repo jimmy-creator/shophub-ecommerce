@@ -25,6 +25,15 @@ export default function PoModals({
       {poDetail && (
         <PoDetail po={poDetail} currency={currency}
           onClose={() => setPoDetail(null)}
+          onEdit={() => {
+            setPoForm({
+              ...poDetail,
+              expectedDate: poDetail.expectedDate || '',
+              notes: poDetail.notes || '',
+              _editing: true,
+            });
+            setPoDetail(null);
+          }}
           onReceive={() => setReceiveForm({ poId: poDetail.id, items: (poDetail.items || []).map((it) => ({ ...it, receiveQty: (it.orderedQty || 0) - (it.receivedQty || 0) })) })}
           onPay={() => setPayForm({ poId: poDetail.id, amount: +((parseFloat(poDetail.totalAmount) - parseFloat(poDetail.amountPaid || 0)).toFixed(3)), paymentMethod: 'cash', reference: '', notes: '' })}
           onSend={async () => {
@@ -113,8 +122,11 @@ function PoEditor({ form, setForm, suppliers, locations, products, currency, onS
         notes: form.notes,
         status: statusOverride || form.status || 'draft',
       };
-      if (form._editing) await api.put(`/purchase-orders/${form.id}`, body);
-      else await api.post('/purchase-orders', body);
+      if (form._editing) {
+        await api.put(`/purchase-orders/${form.id}`, body);
+        // PUT doesn't change status — a draft saved with "Save & send" goes through /send.
+        if (statusOverride === 'sent' && form.status === 'draft') await api.post(`/purchase-orders/${form.id}/send`);
+      } else await api.post('/purchase-orders', body);
       toast.success(form._editing ? 'Updated' : 'Created');
       onSaved();
     } catch (err) {
@@ -224,8 +236,14 @@ function PoEditor({ form, setForm, suppliers, locations, products, currency, onS
         </div>
 
         <div className="form-actions">
-          <button type="button" className="btn btn-secondary" onClick={(e) => submit(e, 'draft')}>Save as draft</button>
-          <button type="button" className="btn btn-primary" onClick={(e) => submit(e, 'sent')}>Save & send</button>
+          {form._editing && form.status === 'sent' ? (
+            <button type="button" className="btn btn-primary" onClick={(e) => submit(e)}>Save</button>
+          ) : (
+            <>
+              <button type="button" className="btn btn-secondary" onClick={(e) => submit(e, 'draft')}>Save as draft</button>
+              <button type="button" className="btn btn-primary" onClick={(e) => submit(e, 'sent')}>Save & send</button>
+            </>
+          )}
           <button type="button" className="btn btn-secondary" onClick={() => setForm(null)}>Cancel</button>
         </div>
       </form>
@@ -234,7 +252,7 @@ function PoEditor({ form, setForm, suppliers, locations, products, currency, onS
 }
 
 // ─── PO Detail ─────────────────────────────────────────────────────
-function PoDetail({ po, currency, onClose, onReceive, onPay, onSend, onCancel }) {
+function PoDetail({ po, currency, onClose, onEdit, onReceive, onPay, onSend, onCancel }) {
   const fmt = (n) => `${currency}${(parseFloat(n) || 0).toFixed(3)}`;
   const outstanding = +((parseFloat(po.totalAmount) || 0) - (parseFloat(po.amountPaid) || 0)).toFixed(3);
   const editable = po.status === 'draft' || po.status === 'sent' || po.status === 'partial';
@@ -309,6 +327,8 @@ function PoDetail({ po, currency, onClose, onReceive, onPay, onSend, onCancel })
         )}
 
         <div className="form-actions" style={{ marginTop: '1rem', flexWrap: 'wrap' }}>
+          {/* Server only allows edits before anything is received. */}
+          {(po.status === 'draft' || po.status === 'sent') && <button className="btn btn-secondary" onClick={onEdit}>Edit</button>}
           {po.status === 'draft' && <button className="btn btn-primary" onClick={onSend}>Send</button>}
           {editable && !fullyReceived && <button className="btn btn-primary" onClick={onReceive}>Receive goods</button>}
           {po.status !== 'cancelled' && outstanding > 0 && <button className="btn btn-primary" onClick={onPay}>Record payment</button>}

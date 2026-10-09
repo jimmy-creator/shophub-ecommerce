@@ -222,6 +222,14 @@ router.put('/:id', protect, async (req, res) => {
     if (expectedDate !== undefined) updates.expectedDate = expectedDate || null;
     if (shippingCost !== undefined) updates.shippingCost = parseFloat(shippingCost) || 0;
     if (discount !== undefined) updates.discount = parseFloat(discount) || 0;
+    // Edits can move the total under/over what's already been paid.
+    if (updates.totalAmount !== undefined) {
+      const paid = parseFloat(po.amountPaid) || 0;
+      if (updates.totalAmount < paid) {
+        return res.status(400).json({ message: `Total can't be less than the ${paid.toFixed(3)} already paid` });
+      }
+      updates.paymentStatus = paid >= updates.totalAmount ? 'paid' : (paid > 0 ? 'partial' : 'unpaid');
+    }
     await po.update(updates);
     res.json(po);
   } catch (err) {
