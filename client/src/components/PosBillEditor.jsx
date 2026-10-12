@@ -136,7 +136,10 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
     const unit = parseFloat(line.netUnitPrice ?? line.price) || 0;
     if (!confirm(`Remove ${line.remaining} × "${line.name}" from this bill? Stock will be returned and ${fmt(unit * line.remaining)} refunded.`)) return;
     // Card is retired as a tender, so historical card sales refund in cash.
-    const refundMethod = order.paymentMethod === 'pos_knet' ? 'knet' : 'cash';
+    // An on-account sale is credited back to the customer's account.
+    const refundMethod = order.paymentMethod === 'pos_knet' ? 'knet'
+      : order.paymentMethod === 'pos_credit' ? 'store_credit'
+      : 'cash';
 
     const submit = async (managerOverride) => {
       const { data } = await api.post('/returns', {

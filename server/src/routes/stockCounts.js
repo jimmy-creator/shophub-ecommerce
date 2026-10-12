@@ -20,8 +20,8 @@ import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import {
   StockCount, StockCountLine, Product, ProductStock, Location,
-  User, Expense,
-  recomputeProductStock, writeCashTxn, logActivity, verifyManagerPin,
+  User,
+  recomputeProductStock, logActivity, verifyManagerPin,
 } from '../models/index.js';
 import { protect, admin } from '../middleware/auth.js';
 
@@ -290,7 +290,7 @@ router.delete('/:id/lines/:lineId', protect, admin, async (req, res) => {
   }
 });
 
-// ─── Post — apply variance to inventory + write shrinkage Expense ──
+// ─── Post — apply variance to inventory ───────────────────────────
 router.post('/:id/post', protect, admin, async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -372,38 +372,10 @@ router.post('/:id/post', protect, admin, async (req, res) => {
       touchedProducts.add(l.productId);
     }
 
-    // Optional shrinkage Expense (only if there's a net shrinkage and the
-    // user picked an expense category + cash account in the request body).
-    let shrinkageExpense = null;
-    const shrinkageValue = totalVarianceValue < 0 ? -totalVarianceValue : 0;
-    if (shrinkageValue > 0 && req.body.expenseCategoryId && req.body.cashAccountId) {
-      shrinkageExpense = await Expense.create({
-        expenseNumber: gen('EXP'),
-        expenseCategoryId: parseInt(req.body.expenseCategoryId, 10),
-        locationId: sc.locationId,
-        cashAccountId: parseInt(req.body.cashAccountId, 10),
-        amount: +shrinkageValue.toFixed(3),
-        paymentMethod: 'other',
-        description: `Stock variance ${sc.countNumber}`,
-        reference: sc.countNumber,
-        expenseDate: new Date().toISOString().slice(0, 10),
-        status: 'paid',
-        createdBy: req.user.id,
-      }, { transaction: t });
-      await writeCashTxn({
-        cashAccountId: shrinkageExpense.cashAccountId,
-        amount: -parseFloat(shrinkageExpense.amount),
-        source: 'expense',
-        sourceType: 'Expense',
-        sourceId: shrinkageExpense.id,
-        reference: shrinkageExpense.expenseNumber,
-        description: shrinkageExpense.description,
-        date: new Date(shrinkageExpense.expenseDate),
-        createdBy: req.user.id,
-        transaction: t,
-      });
-    }
-
+    // The variance value is posted to the ledger (Inventory vs Inventory
+    // Adjustments) by the accounting sync. It used to be booked as an
+    // Expense paid out of a cash account, which took money out of a drawer
+    // that never left it.
     await sc.update({
       status: 'posted',
       postedBy: req.user.id,
@@ -411,7 +383,6 @@ router.post('/:id/post', protect, admin, async (req, res) => {
       managerOverrideBy: approver?.id || null,
       totalVarianceQty,
       totalVarianceValue: +totalVarianceValue.toFixed(3),
-      shrinkageExpenseId: shrinkageExpense?.id || null,
     }, { transaction: t });
 
     await logActivity({
@@ -424,7 +395,6 @@ router.post('/:id/post', protect, admin, async (req, res) => {
         lines: counted.length,
         totalVarianceQty,
         totalVarianceValue: +totalVarianceValue.toFixed(3),
-        shrinkageExpenseId: shrinkageExpense?.id || null,
       },
       managerOverrideBy: approver?.id || null,
       locationId: sc.locationId,

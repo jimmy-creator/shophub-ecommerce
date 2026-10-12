@@ -27,6 +27,16 @@ import ActivityLog from './ActivityLog.js';
 import StockCount from './StockCount.js';
 import StockCountLine from './StockCountLine.js';
 import Counter from './Counter.js';
+import Account from './Account.js';
+import JournalEntry from './JournalEntry.js';
+import JournalLine from './JournalLine.js';
+import StockMovement from './StockMovement.js';
+import StockWriteOff from './StockWriteOff.js';
+import FixedAsset from './FixedAsset.js';
+import AssetDepreciation from './AssetDepreciation.js';
+import CustomerAccount from './CustomerAccount.js';
+import CustomerPayment from './CustomerPayment.js';
+import { getStockContext } from '../services/stockContext.js';
 
 // ── Existing associations ────────────────────────────────────────
 User.hasMany(Order, { foreignKey: 'userId' });
@@ -140,6 +150,81 @@ StockCount.belongsTo(Expense, { as: 'shrinkageExpense', foreignKey: 'shrinkageEx
 StockCount.hasMany(StockCountLine, { as: 'lines', foreignKey: 'stockCountId', onDelete: 'CASCADE' });
 StockCountLine.belongsTo(StockCount, { foreignKey: 'stockCountId' });
 StockCountLine.belongsTo(Product, { foreignKey: 'productId' });
+
+// ── Accounting (chart of accounts, journals) ────────────────────
+Account.belongsTo(Account, { as: 'parent', foreignKey: 'parentId' });
+JournalEntry.hasMany(JournalLine, { as: 'lines', foreignKey: 'journalEntryId', onDelete: 'CASCADE' });
+JournalLine.belongsTo(JournalEntry, { foreignKey: 'journalEntryId' });
+JournalLine.belongsTo(Account, { foreignKey: 'accountId' });
+JournalEntry.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+JournalEntry.belongsTo(Location, { foreignKey: 'locationId' });
+
+// ── Stock movements + write-offs ────────────────────────────────
+StockMovement.belongsTo(Product, { foreignKey: 'productId' });
+StockMovement.belongsTo(Location, { foreignKey: 'locationId' });
+StockMovement.belongsTo(User, { foreignKey: 'userId' });
+StockWriteOff.belongsTo(Location, { foreignKey: 'locationId' });
+StockWriteOff.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+StockWriteOff.belongsTo(User, { as: 'approver', foreignKey: 'managerOverrideBy' });
+
+// ── Fixed assets ────────────────────────────────────────────────
+FixedAsset.belongsTo(Account, { as: 'assetAccount', foreignKey: 'assetAccountId' });
+FixedAsset.belongsTo(Location, { foreignKey: 'locationId' });
+FixedAsset.hasMany(AssetDepreciation, { as: 'depreciations', foreignKey: 'fixedAssetId' });
+AssetDepreciation.belongsTo(FixedAsset, { foreignKey: 'fixedAssetId' });
+
+// ── Customer credit ─────────────────────────────────────────────
+User.hasOne(CustomerAccount, { foreignKey: 'userId' });
+CustomerAccount.belongsTo(User, { foreignKey: 'userId' });
+CustomerPayment.belongsTo(User, { as: 'customer', foreignKey: 'userId' });
+CustomerPayment.belongsTo(User, { as: 'creator', foreignKey: 'createdBy' });
+CustomerPayment.belongsTo(CashAccount, { foreignKey: 'cashAccountId' });
+
+// ── Stock movement log ───────────────────────────────────────────
+// Every ProductStock quantity change goes through instance create/update
+// (no bulk updates or increments), so these hooks see all of them. The
+// movement is written in the caller's transaction; a logging failure is
+// reported but never blocks the stock change itself.
+async function logStockMovement(row, quantityChange, options) {
+  if (!quantityChange) return;
+  try {
+    const ctx = getStockContext();
+    const transaction = options?.transaction;
+    const product = await Product.findByPk(row.productId, { attributes: ['costPrice', 'variants'], transaction });
+    const variant = row.variantIndex != null && Array.isArray(product?.variants)
+      ? product.variants[row.variantIndex] : null;
+    const unitCost = parseFloat(variant?.costPrice ?? product?.costPrice ?? 0) || 0;
+    await StockMovement.create({
+      productId: row.productId,
+      variantIndex: row.variantIndex ?? null,
+      locationId: row.locationId,
+      quantityChange,
+      quantityAfter: row.quantity,
+      type: ctx.type,
+      refType: ctx.refType,
+      refId: ctx.refId,
+      reference: ctx.reference,
+      unitCost,
+      userId: ctx.userId,
+      note: ctx.note,
+    }, transaction ? { transaction } : undefined);
+  } catch (err) {
+    console.error('[stockMovement]', err.message);
+  }
+}
+
+ProductStock.addHook('afterCreate', (row, options) =>
+  logStockMovement(row, row.quantity || 0, options));
+ProductStock.addHook('beforeUpdate', (row) => {
+  if (row.changed('quantity')) {
+    row._qtyDelta = (row.quantity || 0) - (row.previous('quantity') || 0);
+  }
+});
+ProductStock.addHook('afterUpdate', (row, options) => {
+  const delta = row._qtyDelta;
+  row._qtyDelta = 0;
+  return logStockMovement(row, delta, options);
+});
 
 // ── Keep Product.stock in sync with SUM(ProductStock.quantity) ───
 // Called explicitly by routes after they mutate ProductStock (and after
@@ -256,6 +341,10 @@ export {
   ActivityLog,
   StockCount, StockCountLine,
   Counter,
+  Account, JournalEntry, JournalLine,
+  StockMovement, StockWriteOff,
+  FixedAsset, AssetDepreciation,
+  CustomerAccount, CustomerPayment,
 };
 
 // ── Activity log + manager-override helpers ─────────────────────

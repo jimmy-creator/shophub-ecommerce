@@ -28,7 +28,8 @@ const methodLabel = (m) => (
   m === 'pos_cash' ? 'Cash'
     : m === 'pos_knet' ? 'KNET'
       : m === 'pos_split' ? 'Split'
-        : 'Card'
+        : m === 'pos_credit' ? 'On account'
+          : 'Card'
 );
 
 // Expanded row: the sale's lines and money breakdown, from the list payload
@@ -226,6 +227,7 @@ export default function PosRecentSales({ currency = 'KWD', sessionId, onClose, o
                             // Mirrors the server's rail mapping in pos.js /sales/:id/void.
                             const rail = s.paymentMethod === 'pos_knet' ? 'to KNET'
                               : s.paymentMethod === 'pos_card' ? 'to card'
+                              : s.paymentMethod === 'pos_credit' ? "to the customer's account"
                               : 'in cash';
                             if (!confirm(`Void sale ${s.orderNumber}? Refund ${fmt(remaining)} ${rail}, return all items to stock.`)) return;
                             startVoid(s);

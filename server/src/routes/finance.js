@@ -50,7 +50,7 @@ const gen = (prefix) =>
   `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
 const hasFinanceAccess = (req) =>
-  req.user.role === 'admin' || (req.user.permissions || []).includes('analytics');
+  req.user.role === 'admin' || ['analytics', 'finance'].some((p) => (req.user.permissions || []).includes(p));
 
 // ─── Seed default cash accounts ────────────────────────────────────
 // Exported so the server can call it on boot. Idempotent: only inserts

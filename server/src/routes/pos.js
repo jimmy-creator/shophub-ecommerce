@@ -25,6 +25,7 @@ const REFUND_AMOUNT_THRESHOLD = 50;    // currency units (KWD)
 import { protectCashier } from '../middleware/auth.js';
 import { nextInvoiceNumber } from '../services/invoiceSequence.js';
 import { refundValuer } from '../utils/refund.js';
+import { checkCreditAllowed, customerBalance } from '../services/customerCredit.js';
 
 const router = Router();
 
@@ -456,6 +457,7 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
     const refundMethod = order.paymentMethod === 'pos_cash' ? 'cash'
       : order.paymentMethod === 'pos_card' ? 'card'
       : order.paymentMethod === 'pos_knet' ? 'knet'
+      : order.paymentMethod === 'pos_credit' ? 'store_credit'   // back onto the customer's account
       : 'cash';
 
     // Decrement stock back to this location.
@@ -496,7 +498,7 @@ router.post('/sales/:id/void', protectCashier, async (req, res) => {
     const acctType = refundMethod === 'cash' ? 'drawer'
       : refundMethod === 'knet' ? 'knet_terminal'
       : 'card_terminal';
-    const acct = await CashAccount.findOne({
+    const acct = refundMethod === 'store_credit' ? null : await CashAccount.findOne({
       where: { locationId: req.cashierLocationId, type: acctType, active: true },
       transaction: t,
     });
@@ -676,7 +678,9 @@ router.post('/sales/:id/append', protectCashier, async (req, res) => {
     } else {
       // Convert legacy single-tender to breakdown so we can stack on it.
       const priorMethod = order.paymentMethod === 'pos_cash' ? 'cash'
-        : order.paymentMethod === 'pos_card' ? 'card' : null;
+        : order.paymentMethod === 'pos_card' ? 'card'
+        : order.paymentMethod === 'pos_knet' ? 'knet'
+        : order.paymentMethod === 'pos_credit' ? 'credit' : null;
       if (priorMethod) {
         mergedBreakdown = [
           { method: priorMethod, amount: parseFloat(order.totalAmount) },
@@ -840,6 +844,15 @@ router.get('/customers', protectCashier, async (req, res) => {
   }
 });
 
+// Account balance + credit terms, shown before an on-account sale.
+router.get('/customers/:id/account', protectCashier, async (req, res) => {
+  try {
+    res.json(await customerBalance(parseInt(req.params.id, 10)));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Create a phone-only POS customer.
 router.post('/customers', protectCashier, async (req, res) => {
   try {
@@ -892,15 +905,15 @@ router.post('/sale', protectCashier, async (req, res) => {
         method: t.method,
         amount: parseFloat(t.amount),
       }));
-    } else if (payment?.method && ['cash', 'card', 'knet'].includes(payment.method)) {
+    } else if (payment?.method && ['cash', 'card', 'knet', 'credit'].includes(payment.method)) {
       tenders = [{ method: payment.method, amount: null }];   // amount filled after total
     } else {
       await t.rollback();
       return res.status(400).json({ message: 'payment.method or payment.tenders required' });
     }
-    if (tenders.some((t) => !['cash', 'card', 'knet'].includes(t.method))) {
+    if (tenders.some((t) => !['cash', 'card', 'knet', 'credit'].includes(t.method))) {
       await t.rollback();
-      return res.status(400).json({ message: 'Each tender must be cash, card or knet' });
+      return res.status(400).json({ message: 'Each tender must be cash, card, knet or credit' });
     }
 
     // Validate shift is still open.
@@ -1080,6 +1093,14 @@ router.post('/sale', protectCashier, async (req, res) => {
     const isSplit = tenders.length > 1;
     const paymentMethod = isSplit ? 'pos_split' : `pos_${tenders[0].method}`;
 
+    // "On account": the whole bill goes on a linked customer's account,
+    // within their credit limit (or covered by store credit they hold).
+    if (tenders.some((tn) => tn.method === 'credit')) {
+      if (isSplit) throw new Error('An on-account sale cannot be split — put the whole bill on account');
+      if (!linkedUser) throw new Error('Link a customer to sell on account');
+      await checkCreditAllowed(linkedUser.id, totalAmount, { transaction: t });
+    }
+
     // Decrement stock at this location — may go negative.
     for (const { stockRow, productId, variantIndex, qty } of stockDecrements.values()) {
       if (stockRow) {
@@ -1155,6 +1176,7 @@ router.post('/sale', protectCashier, async (req, res) => {
     const acctCache = {};   // type -> CashAccount
     for (const tn of tenders) {
       if (!tn.amount || tn.amount <= 0) continue;
+      if (tn.method === 'credit') continue;   // on account — no money taken
       const acctType = methodToAcct[tn.method] || 'card_terminal';
       if (!(acctType in acctCache)) {
         acctCache[acctType] = await CashAccount.findOne({

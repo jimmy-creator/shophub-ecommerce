@@ -12,6 +12,9 @@ import PurchaseReturnModals from '../components/admin/PurchaseReturnModals';
 import FinanceTabs from '../components/admin/FinanceTabs';
 import BarcodeLabels from '../components/admin/BarcodeLabels';
 import StockCounts from '../components/admin/StockCounts';
+import AccountingTabs from '../components/admin/AccountingTabs';
+import FixedAssets from '../components/admin/FixedAssets';
+import StockWriteOffs from '../components/admin/StockWriteOffs';
 import PosReportReceipt from '../components/PosReportReceipt';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend,
@@ -1012,7 +1015,7 @@ export default function Admin() {
   };
   const [tab, setTab] = useState(() => {
     if (user?.role === 'staff' && user?.permissions?.length > 0) {
-      const permToTab = { analytics: 'dashboard', products: 'products', orders: 'orders', categories: 'categories', customers: 'customers', coupons: 'coupons', reviews: 'reviews', settings: 'theme' };
+      const permToTab = { analytics: 'dashboard', products: 'products', orders: 'orders', categories: 'categories', customers: 'customers', coupons: 'coupons', reviews: 'reviews', settings: 'theme', finance: 'journals', inventory: 'write-offs' };
       return permToTab[user.permissions[0]] || 'dashboard';
     }
     return 'dashboard';
@@ -1144,6 +1147,10 @@ export default function Admin() {
   const [activityFilter, setActivityFilter] = useState({ from: '', to: '', action: '', managerOnly: false });
   const [activityDetail, setActivityDetail] = useState(null);
   const [activeStockCountId, setActiveStockCountId] = useState(null);
+  // Accounting tabs can jump to another tab with context (e.g. open the
+  // general ledger for one account).
+  const [tabParams, setTabParams] = useState(null);
+  const openTab = (t, params = null) => { setTabParams(params); setTab(t); };
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('admin_collapsed_sections') || '[]')); }
@@ -1263,8 +1270,8 @@ export default function Admin() {
       api.get('/purchase-orders', { params }).then((res) => setPurchaseOrders(res.data)).catch(() => {});
     } else if (tab === 'stock-counts' || tab === 'stock-count-detail' || tab === 'variance-report') {
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
-      api.get('/finance/cash-accounts?active=true').then((res) => setCashAccounts(res.data)).catch(() => {});
-      api.get('/finance/expense-categories').then((res) => setExpenseCategories(res.data)).catch(() => {});
+    } else if (['write-offs', 'stock-movements', 'fixed-assets', 'gl-pnl'].includes(tab)) {
+      api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
     } else if (tab === 'cash-accounts') {
       api.get('/locations').then((res) => setLocations(res.data)).catch(() => {});
       api.get('/finance/cash-accounts').then((res) => setCashAccounts(res.data)).catch(() => {});
@@ -1333,6 +1340,7 @@ export default function Admin() {
   const userPerms = user?.permissions || [];
 
   const hasAccess = (perm) => isAdmin || userPerms.includes(perm);
+  const canFinance = hasAccess('analytics') || hasAccess('finance');
 
   // ─── Sidebar nav structure ──────────────────────────────────────
   // `show` is computed per render so role/feature gating stays live.
@@ -1344,6 +1352,8 @@ export default function Admin() {
         { tab: 'locations',        label: 'Locations',       show: MULTILOC_ENABLED && hasAccess('products') },
         { tab: 'transfers',        label: 'Stock Transfers', show: MULTILOC_ENABLED && hasAccess('products') },
         { tab: 'stock-counts',     label: 'Stock Counts',    show: MULTILOC_ENABLED && hasAccess('products') },
+        { tab: 'write-offs',       label: 'Stock Write-offs', show: MULTILOC_ENABLED && (hasAccess('inventory') || hasAccess('products')) },
+        { tab: 'stock-movements',  label: 'Stock Movements', show: MULTILOC_ENABLED && (hasAccess('inventory') || hasAccess('products')) },
         { tab: 'barcode-labels',   label: 'Barcode Labels',  show: MULTILOC_ENABLED && hasAccess('products') },
     ]},
     { id: 'purchasing', label: 'Purchasing', items: [
@@ -1352,14 +1362,26 @@ export default function Admin() {
         { tab: 'purchase-returns', label: 'Purchase Returns', show: MULTILOC_ENABLED && hasAccess('products') },
     ]},
     { id: 'finance', label: 'Finance', items: [
-        { tab: 'cash-accounts',  label: 'Cash Accounts',  show: MULTILOC_ENABLED && hasAccess('analytics') },
-        { tab: 'expenses',       label: 'Expenses',       show: MULTILOC_ENABLED && hasAccess('analytics') },
-        { tab: 'cash-transfers', label: 'Cash Transfers', show: MULTILOC_ENABLED && hasAccess('analytics') },
-        { tab: 'daily-cash',     label: 'Daily Cash',     show: MULTILOC_ENABLED && hasAccess('analytics') },
-        { tab: 'daybook',        label: 'Daybook',        show: MULTILOC_ENABLED && hasAccess('analytics') },
-        { tab: 'pnl',            label: 'Profit & Loss',  show: MULTILOC_ENABLED && hasAccess('analytics') },
-        { tab: 'stock-value',    label: 'Stock Value',    show: MULTILOC_ENABLED && hasAccess('analytics') },
-        { tab: 'balance-sheet',  label: 'Balance Sheet',  show: MULTILOC_ENABLED && hasAccess('analytics') },
+        { tab: 'cash-accounts',  label: 'Cash Accounts',  show: MULTILOC_ENABLED && canFinance },
+        { tab: 'expenses',       label: 'Expenses',       show: MULTILOC_ENABLED && canFinance },
+        { tab: 'cash-transfers', label: 'Cash Transfers', show: MULTILOC_ENABLED && canFinance },
+        { tab: 'daily-cash',     label: 'Daily Cash',     show: MULTILOC_ENABLED && canFinance },
+        { tab: 'daybook',        label: 'Daybook',        show: MULTILOC_ENABLED && canFinance },
+        { tab: 'pnl',            label: 'Profit & Loss',  show: MULTILOC_ENABLED && canFinance },
+        { tab: 'stock-value',    label: 'Stock Value',    show: MULTILOC_ENABLED && canFinance },
+        { tab: 'balance-sheet',  label: 'Balance Sheet',  show: MULTILOC_ENABLED && canFinance },
+    ]},
+    { id: 'accounts', label: 'Accounts', items: [
+        { tab: 'coa',               label: 'Chart of Accounts', show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'journals',          label: 'Journals',          show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'general-ledger',    label: 'General Ledger',    show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'trial-balance',     label: 'Trial Balance',     show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'gl-pnl',            label: 'P&L (Ledger)',      show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'gl-balance-sheet',  label: 'Balance Sheet (Ledger)', show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'customer-accounts', label: 'Customer Accounts', show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'fixed-assets',      label: 'Fixed Assets',      show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'vat-report',        label: 'VAT Report',        show: MULTILOC_ENABLED && hasAccess('finance') },
+        { tab: 'acct-setup',        label: 'Accounting Setup',  show: MULTILOC_ENABLED && hasAccess('finance') },
     ]},
     { id: 'sales', label: 'Sales', items: [
         { tab: 'orders',      label: 'Orders',      show: hasAccess('orders') },
@@ -4453,8 +4475,20 @@ export default function Admin() {
             tab={tab} currency={CURRENCY} locations={locations}
             setTab={setTab}
             activeStockCountId={activeStockCountId} setActiveStockCountId={setActiveStockCountId}
-            expenseCategories={expenseCategories} cashAccounts={cashAccounts}
           />
+        )}
+
+        {(['acct-setup','coa','journals','general-ledger','trial-balance','gl-pnl','gl-balance-sheet','customer-accounts','vat-report'].includes(tab)) && (
+          <AccountingTabs
+            tab={tab} currency={CURRENCY} isAdmin={isAdmin} locations={locations}
+            setTab={openTab} tabParams={tabParams}
+          />
+        )}
+
+        {tab === 'fixed-assets' && <FixedAssets currency={CURRENCY} locations={locations} />}
+
+        {(tab === 'write-offs' || tab === 'stock-movements') && (
+          <StockWriteOffs tab={tab} currency={CURRENCY} locations={locations} isAdmin={isAdmin} />
         )}
 
         {(['cash-accounts','expenses','cash-transfers','daily-cash','daybook','pnl','stock-value','balance-sheet'].includes(tab)) && (

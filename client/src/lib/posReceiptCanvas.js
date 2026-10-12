@@ -157,6 +157,7 @@ function fmtDateTime(d) {
 
 const methodLabel = (pm) => pm === 'pos_cash' || pm === 'cash' ? 'Cash'
   : pm === 'pos_knet' || pm === 'knet' ? 'KNET'
+  : pm === 'pos_credit' || pm === 'credit' ? 'On account'
   : 'Card';
 
 /**
@@ -469,6 +470,7 @@ export async function renderReportCanvas(report, currency = 'KWD') {
   row('Payment Method', 'Sell');
   row('Cash Payment:', fmt(report.cashSales));
   row('KNET:', fmt(terminalSales));
+  if (parseFloat(report.creditSales) > 0) row('On account:', fmt(report.creditSales));
   rule();
 
   row('Total Sales:', fmt(totalSales));

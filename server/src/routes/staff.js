@@ -13,6 +13,8 @@ const AVAILABLE_PERMISSIONS = [
   { id: 'reviews', label: 'Reviews', desc: 'Moderate reviews' },
   { id: 'customers', label: 'Customers', desc: 'View customer data' },
   { id: 'analytics', label: 'Analytics', desc: 'View dashboard and reports' },
+  { id: 'finance', label: 'Finance & Accounts', desc: 'Cash, expenses, ledger, fixed assets, customer accounts' },
+  { id: 'inventory', label: 'Inventory', desc: 'Stock write-offs and the stock movement log' },
   { id: 'categories', label: 'Categories', desc: 'Manage categories' },
   { id: 'settings', label: 'Settings', desc: 'Theme and store settings' },
 ];

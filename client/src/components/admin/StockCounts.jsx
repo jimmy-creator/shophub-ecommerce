@@ -161,13 +161,12 @@ function StockCountsList({ currency, locations, setTab, setActiveStockCountId })
 // ─────────────────────────────────────────────────────────────────
 // Detail view
 // ─────────────────────────────────────────────────────────────────
-function StockCountDetail({ currency, setTab, activeStockCountId, expenseCategories, cashAccounts }) {
+function StockCountDetail({ currency, setTab, activeStockCountId }) {
   const [sc, setSc] = useState(null);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
   const [variantPicker, setVariantPicker] = useState(null);
   const [showPost, setShowPost] = useState(false);
-  const [postForm, setPostForm] = useState({ expenseCategoryId: '', cashAccountId: '' });
   const searchRef = useRef(null);
 
   const load = useCallback(() => {
@@ -240,15 +239,9 @@ function StockCountDetail({ currency, setTab, activeStockCountId, expenseCategor
   const post = async (e) => {
     e.preventDefault();
     try {
-      const body = { ...postForm };
-      // Strip empty optional fields so the server doesn't try to write a
-      // zero-amount Expense.
-      if (!body.expenseCategoryId) delete body.expenseCategoryId;
-      if (!body.cashAccountId) delete body.cashAccountId;
-      await api.post(`/stock-counts/${sc.id}/post`, body);
+      await api.post(`/stock-counts/${sc.id}/post`, {});
       toast.success('Posted');
       setShowPost(false);
-      setPostForm({ expenseCategoryId: '', cashAccountId: '' });
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
@@ -449,23 +442,9 @@ function StockCountDetail({ currency, setTab, activeStockCountId, expenseCategor
           <form className="admin-form" onSubmit={post}>
             <h3>Post Count</h3>
             <p style={{ color: 'var(--text-light)', fontSize: 13 }}>
-              Counted quantities will overwrite per-location stock. Optionally
-              capture net shrinkage as an Expense to keep P&L accurate.
+              Counted quantities will overwrite per-location stock. The variance
+              value is posted to Inventory Adjustments in the accounts.
             </p>
-            <label>Shrinkage expense category (optional)
-              <select value={postForm.expenseCategoryId} onChange={(e) => setPostForm({ ...postForm, expenseCategoryId: e.target.value })}>
-                <option value="">— skip expense —</option>
-                {(expenseCategories || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </label>
-            <label>Pay from cash account (optional)
-              <select value={postForm.cashAccountId} onChange={(e) => setPostForm({ ...postForm, cashAccountId: e.target.value })}>
-                <option value="">— skip expense —</option>
-                {(cashAccounts || []).filter((a) => a.active).map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            </label>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setShowPost(false)}>Close</button>
               <button type="submit" className="btn btn-primary">Post Count</button>

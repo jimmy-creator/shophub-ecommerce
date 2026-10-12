@@ -139,6 +139,9 @@ export default function PosReportReceipt({ report, currency = 'KWD', onClose, au
             <tr className="strong"><td>Payment Method</td><td className="right">Sell</td></tr>
             <tr><td>Cash Payment:</td><td className="right">{fmt(report.cashSales)}</td></tr>
             <tr><td>KNET:</td><td className="right">{fmt(terminalSales)}</td></tr>
+            {parseFloat(report.creditSales) > 0 && (
+              <tr><td>On account:</td><td className="right">{fmt(report.creditSales)}</td></tr>
+            )}
           </tbody>
         </table>
         <hr />

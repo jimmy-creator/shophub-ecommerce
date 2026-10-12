@@ -104,7 +104,13 @@ export default function Pos() {
   const [printerOpen, setPrinterOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
   const [editBill, setEditBill] = useState(null);   // orderNumber | null
-  const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'knet' | null
+  const [payOpen, setPayOpen] = useState(null);    // 'cash' | 'knet' | 'credit' | null
+  const [creditInfo, setCreditInfo] = useState(null);   // linked customer's account, for 'credit'
+  useEffect(() => {
+    setCreditInfo(null);
+    if (payOpen !== 'credit' || !linkedCustomer) return;
+    api.get(`/pos/customers/${linkedCustomer.id}/account`).then((r) => setCreditInfo(r.data)).catch(() => {});
+  }, [payOpen, linkedCustomer]);
   const [tendered, setTendered] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState(null);
@@ -832,6 +838,14 @@ export default function Pos() {
             className="split-link">
             or split between cash &amp; KNET →
           </button>
+          {linkedCustomer && (
+            <button
+              disabled={cart.length === 0}
+              onClick={() => setPayOpen('credit')}
+              className="split-link">
+              or put on {linkedCustomer.name}&rsquo;s account →
+            </button>
+          )}
         </aside>
       </div>
 
@@ -869,7 +883,7 @@ export default function Pos() {
       {payOpen && (
         <div className="modal-backdrop" onClick={() => !submitting && setPayOpen(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{payOpen === 'cash' ? 'Cash payment' : 'KNET payment'}</h3>
+            <h3>{payOpen === 'cash' ? 'Cash payment' : payOpen === 'credit' ? 'On account' : 'KNET payment'}</h3>
             <div className="pay-total">{fmt(total)}</div>
             {payOpen === 'cash' && (
               <>
@@ -898,6 +912,26 @@ export default function Pos() {
               <p style={{ color: 'var(--pos-text-2)', fontSize: 14 }}>
                 Charge the customer on the KNET terminal, then confirm below.
               </p>
+            )}
+            {payOpen === 'credit' && (
+              <div style={{ color: 'var(--pos-text-2)', fontSize: 14 }}>
+                <p style={{ margin: '0 0 0.5rem' }}>
+                  No money is taken now — the bill is added to <strong>{linkedCustomer?.name}</strong>&rsquo;s account.
+                </p>
+                {!creditInfo && <p style={{ margin: 0 }}>Checking account…</p>}
+                {creditInfo && (
+                  <p style={{ margin: 0 }}>
+                    Balance now {fmt(creditInfo.balance)}
+                    {creditInfo.creditLimit > 0 ? ` · limit ${fmt(creditInfo.creditLimit)}` : ''}
+                    {' · after this sale '}<strong>{fmt(creditInfo.balance + total)}</strong>
+                    {!creditInfo.allowCredit && creditInfo.balance >= 0 && (
+                      <span style={{ display: 'block', color: 'var(--pos-danger, #dc2626)', marginTop: 4 }}>
+                        This customer isn&rsquo;t set up to buy on account (Admin → Customer Accounts).
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
             )}
             <div className="modal-actions">
               <button onClick={() => setPayOpen(null)} disabled={submitting} className="modal-btn modal-btn-secondary">Cancel</button>

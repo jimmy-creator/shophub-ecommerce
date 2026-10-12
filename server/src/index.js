@@ -45,6 +45,11 @@ import purchaseReturnsRoutes from './routes/purchaseReturns.js';
 import financeRoutes, { seedDefaultAccountsIfEmpty } from './routes/finance.js';
 import activityLogRoutes from './routes/activityLog.js';
 import stockCountsRoutes from './routes/stockCounts.js';
+import accountingRoutes from './routes/accounting.js';
+import fixedAssetsRoutes from './routes/fixedAssets.js';
+import stockWriteOffsRoutes from './routes/stockWriteOffs.js';
+import { stockContextMiddleware } from './services/stockContext.js';
+import { startLedgerJob } from './services/ledger.js';
 import { registerShiprocketHooks } from './services/shiprocketSync.js';
 import { startAbandonedCartJob } from './services/abandonedCartJob.js';
 import { startLowStockJob } from './services/lowStockJob.js';
@@ -114,6 +119,9 @@ app.use(preventInjection);
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Lets the stock-movement log know which request changed stock.
+app.use('/api/', stockContextMiddleware);
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -150,6 +158,9 @@ app.use('/api/purchase-returns', purchaseReturnsRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/activity-log', activityLogRoutes);
 app.use('/api/stock-counts', stockCountsRoutes);
+app.use('/api/accounting', accountingRoutes);
+app.use('/api/fixed-assets', fixedAssetsRoutes);
+app.use('/api/stock-write-offs', stockWriteOffsRoutes);
 app.use('/', sitemapRoutes);
 
 // Per-URL HTML meta injection — replaces nginx's static index.html serve.
@@ -186,6 +197,7 @@ const start = async () => {
       console.log(`Server running on port ${PORT}`);
       startAbandonedCartJob();
       startLowStockJob();
+      startLedgerJob();
       registerShiprocketHooks();
       seedDefaultAccountsIfEmpty().catch((err) =>
         console.error('[finance/seed]', err.message)
