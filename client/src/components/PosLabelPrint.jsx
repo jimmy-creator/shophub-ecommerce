@@ -3,16 +3,16 @@
  *
  * Search a product, choose how many labels, then browser-print using the
  * SAME shared label sheet as Admin → Barcode Labels, so the output is
- * identical. Labels carry the store name, product name, barcode (CODE128 of
- * the product code or the P<id> fallback), the readable code, and the price.
+ * identical. Labels carry the store name, English and Arabic names, the
+ * barcode (CODE128 of product id + 8012000) with its digits, and the price.
  */
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { HiSearch, HiX, HiPrinter } from 'react-icons/hi';
 import api from '../api/axios';
 import { LABEL_SIZES, BarcodeLabelSheet, BarcodeLabelStyles } from './BarcodeLabelSheet';
 
-const LABEL_SHOW = { brand: true, name: true, barcode: true, sku: true, price: true };
-const SIZE = LABEL_SIZES.find((s) => s.id === 'medium');   // 50×25mm roll — matches admin default
+const LABEL_SHOW = { store: true, name: true, nameAr: true, barcode: true, compare: true, price: true, sku: false };
+const SIZE = LABEL_SIZES.find((s) => s.id === 'l6040');   // 60×40mm roll — matches admin default
 const LAYOUT = 'roll';
 
 export default function PosLabelPrint({ currency = 'KWD', onClose }) {
@@ -49,8 +49,8 @@ export default function PosLabelPrint({ currency = 'KWD', onClose }) {
   const flatLabels = useMemo(() => {
     if (!selected) return [];
     return Array.from({ length: qty }, () => ({
-      productId: selected.productId, name: selected.name,
-      code: selected.code, price: selected.price,
+      productId: selected.productId, name: selected.name, nameAr: selected.nameAr,
+      code: selected.code, price: selected.price, comparePrice: selected.comparePrice,
     }));
   }, [selected, qty]);
 

@@ -25,14 +25,13 @@
  *   printSale(payload, ccy, kick)  -> receipt
  *   printReturn(payload, ccy)      -> receipt
  *   printReport(report, ccy)       -> receipt
- *   printLabels(labels, opts)      -> barcode
+ *   printLabelImages(canvases)     -> barcode
  *   kickDrawer()                   -> receipt
  *
  *  kind ∈ 'receipt' | 'barcode'
  */
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
 import { renderSaleReceiptCanvas, renderReportCanvas, renderReturnCanvas } from './posReceiptCanvas.js';
-import { barcodeForProduct } from '../components/BarcodeLabelSheet.jsx';
 
 const KINDS = ['receipt', 'barcode'];
 const DEFAULTS = { receipt: 48, barcode: 32 };
@@ -275,35 +274,16 @@ export async function kickDrawer() {
   await send('receipt', bytes);
 }
 
-// Barcode-label printer entrypoint.
-export async function printLabels(labels, { currency = 'KWD' } = {}) {
-  const cols = getColumns('barcode');
-  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: cols });
+// Barcode-label printer entrypoint. Each label arrives already drawn on a
+// canvas at the printer's resolution (see BarcodeLabelSheet.drawLabelCanvas),
+// so the layout matches the label size and Arabic is shaped by the browser
+// instead of depending on the printer's code page.
+export async function printLabelImages(canvases) {
+  const enc = new ReceiptPrinterEncoder({ language: 'esc-pos', columns: getColumns('barcode') });
   enc.initialize();
-  const storeName = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
-  for (const label of labels) {
-    const show = label.show || { brand: true, name: true, barcode: true, sku: true, price: true };
-    // Numeric barcode = product id + 8012000 (matches BarcodeLabelSheet).
-    const value = barcodeForProduct(label);
-    enc.initialize();
-    if (show.brand && storeName) {
-      enc.align('center').bold(true).line(storeName.toUpperCase()).bold(false);
-    }
-    if (show.name && label.name) {
-      enc.align('center').line(label.name);
-    }
-    if (show.barcode && (label.code || label.productId)) {
-      enc.align('center').barcode(value, 'code128', { height: 60, text: false });
-    }
-    if (show.sku) {
-      enc.align('center').size('small').line(value).size('normal');
-    }
-    if (show.price && label.price != null) {
-      enc.align('center').bold(true)
-        .line(`${currency} ${(parseFloat(label.price) || 0).toFixed(3)}`)
-        .bold(false);
-    }
-    enc.newline().cut('partial');
+  for (const canvas of canvases) {
+    enc.align('center').image(canvas, canvas.width, canvas.height, 'threshold', 160);
+    enc.cut('partial');
   }
   await send('barcode', enc.encode());
 }

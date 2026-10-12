@@ -152,7 +152,7 @@ router.get('/products', protectCashier, async (req, res) => {
     if (exact.length === 0) {
       const candidates = await Product.findAll({
         where: { active: true, variants: { [Op.ne]: null } },
-        attributes: ['id', 'name', 'code', 'price', 'images', 'variants'],
+        attributes: ['id', 'name', 'nameAr', 'code', 'price', 'comparePrice', 'images', 'variants'],
         limit: 500,
       });
       for (const p of candidates) {
@@ -207,8 +207,10 @@ router.get('/products', protectCashier, async (req, res) => {
       return {
         productId: obj.id,
         name: obj.name + (v ? ` (${Object.values(v.options || {}).join('/')})` : ''),
+        nameAr: obj.nameAr || null,
         code: v?.sku || obj.code || null,
         price: parseFloat(v?.price ?? obj.price) || 0,
+        comparePrice: v ? null : obj.comparePrice,   // a variant's own price has no compare price
         variantIndex,
         variantOptions: v?.options || null,
         image: obj.images?.[0] || null,

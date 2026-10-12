@@ -6,20 +6,32 @@
  * modal so the printed output is identical. The print target is portaled to
  * <body>; in print, #root is hidden so only the labels lay out (no blank
  * trailing pages). Call window.print() to print.
+ *
+ * Direct USB printing draws each label onto a canvas at the printer's
+ * resolution (drawLabelCanvas) and sends it as an image: the label prints at
+ * its real size, and Arabic comes out shaped correctly — sent as ESC/POS text
+ * it depends on the printer's code page and usually prints as garbage.
  */
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import JsBarcode from 'jsbarcode';
 
+// Every label is an exact size (never grows) with equal margins on all
+// sides: store name, then English | Arabic names side by side (2 lines
+// each), then the barcode filling whatever height is left, then the price
+// footer. padX/padY/gap/storeGap/colGap in mm, the rest in pt.
 export const LABEL_SIZES = [
-  { id: 'small', label: '40 × 25 mm', width: 40, height: 25, barcodeH: 26, fontPt: 8 },
-  { id: 'medium', label: '50 × 25 mm', width: 50, height: 25, barcodeH: 26, fontPt: 9 },
-  { id: 'large', label: '80 × 50 mm', width: 80, height: 50, barcodeH: 44, fontPt: 11 },
+  { id: 'small', label: '40 × 25 mm', width: 40, height: 25, padX: 2, padY: 1.5, gap: 0.7, storeGap: 0.6, colGap: 1.5, storePt: 5, namePt: 5.5, digitsPt: 5, pricePt: 8.5, wasPt: 5.5 },
+  { id: 'medium', label: '50 × 30 mm', width: 50, height: 30, padX: 2.5, padY: 1.8, gap: 0.9, storeGap: 0.9, colGap: 2, storePt: 5.5, namePt: 6.5, digitsPt: 6, pricePt: 10, wasPt: 6.5 },
+  { id: 'l6040', label: '60 × 40 mm', width: 60, height: 40, padX: 2.5, padY: 2, gap: 1.1, storeGap: 1.2, colGap: 2.5, storePt: 6.5, namePt: 8, digitsPt: 7, pricePt: 12, wasPt: 7.5 },
+  { id: 'large', label: '80 × 50 mm', width: 80, height: 50, padX: 3, padY: 2.5, gap: 1.4, storeGap: 1.5, colGap: 3, storePt: 7.5, namePt: 10, digitsPt: 8, pricePt: 14, wasPt: 9 },
 ];
 
 export const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
 
-export function BarcodeSvg({ value, height = 30 }) {
+// Bars stretch to fill their box (preserveAspectRatio none) — scaling is
+// uniform across the width, so the code still scans.
+export function BarcodeSvg({ value }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!ref.current || !value) return;
@@ -27,25 +39,17 @@ export function BarcodeSvg({ value, height = 30 }) {
       JsBarcode(ref.current, String(value), {
         format: 'CODE128',
         displayValue: false,
-        height,
+        height: 60,
         margin: 0,
         background: '#ffffff',
         lineColor: '#000000',
       });
-      // Fill the label width at a FIXED height. Without this, width:100% +
-      // height:auto scales a short barcode up proportionally on wide labels,
-      // making it tall enough to collide with a 2-line product name above.
-      const w = ref.current.getAttribute('width');
-      const h = ref.current.getAttribute('height');
-      if (w && h) {
-        ref.current.setAttribute('viewBox', `0 0 ${w} ${h}`);
-        ref.current.setAttribute('preserveAspectRatio', 'none');
-      }
+      ref.current.setAttribute('preserveAspectRatio', 'none');
     } catch {
       /* invalid value — render empty */
     }
-  }, [value, height]);
-  return <svg ref={ref} style={{ width: '100%', height: `${height}px`, display: 'block' }} />;
+  }, [value]);
+  return <svg ref={ref} style={{ width: '100%', height: '100%', display: 'block' }} />;
 }
 
 // Barcodes start at 8012001: the numeric value is the product ID plus this
@@ -55,40 +59,208 @@ export const BARCODE_ID_BASE = 8012000;
 export const barcodeForProduct = (product) =>
   product.productId ? String(product.productId + BARCODE_ID_BASE) : '';
 
+// The price printed on the sticker: the admin screen's editable sellPrice,
+// otherwise the product's current price (POS).
+const stickerPrice = (product) => parseFloat(product.sellPrice ?? product.price) || 0;
+// Compare price only makes sense struck through above the selling price.
+const comparePriceOf = (product) => {
+  const compare = parseFloat(product.comparePrice);
+  return compare > stickerPrice(product) ? compare : null;
+};
+
+// ── Label as an image, for direct USB printing ──────────────────────
+// 203dpi thermal heads: 8 dots per mm. ESC/POS wants both sides in
+// multiples of 8, and most heads are at most 576 dots (72mm) wide.
+const DOTS_PER_MM = 8;
+const MAX_DOTS = 576;
+const ptToDots = (pt) => Math.round((pt * 203) / 72);
+const FONT = "Arial, 'Segoe UI', 'Noto Sans Arabic', 'Geeza Pro', sans-serif";
+
+// Lines of `text` that fit `maxWidth`, at most `maxLines` (last one ellipsised).
+function wrap(ctx, text, maxWidth, maxLines) {
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(next).width <= maxWidth || !cur) cur = next;
+    else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) {
+    lines.length = maxLines;
+    let last = lines[maxLines - 1];
+    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
+    lines[maxLines - 1] = `${last}…`;
+  }
+  return lines;
+}
+
+// Same layout as <Label>, drawn at the printer's resolution.
+export function drawLabelCanvas(product, size, show, currency) {
+  const scale = Math.min(1, MAX_DOTS / (size.width * DOTS_PER_MM));
+  const W = Math.floor((size.width * DOTS_PER_MM * scale) / 8) * 8;
+  const H = Math.floor((size.height * DOTS_PER_MM * scale) / 8) * 8;
+  const mm = (v) => Math.round(v * DOTS_PER_MM * scale);
+  const padX = mm(size.padX);
+  const padY = mm(size.padY);
+  const gap = mm(size.gap);
+  const inner = W - padX * 2;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#000';
+  ctx.textBaseline = 'top';
+  const px = (pt) => Math.max(10, Math.round(ptToDots(pt) * scale));
+  const font = (pt, bold) => `${bold ? 'bold ' : ''}${px(pt)}px ${FONT}`;
+  const spaced = (em, pt) => { ctx.letterSpacing = `${Math.round(px(pt) * em)}px`; };
+
+  // Top block, drawn downwards.
+  let y = padY;
+  if (show.store) {
+    ctx.font = font(size.storePt, true);
+    ctx.textAlign = 'center';
+    spaced(0.12, size.storePt);
+    ctx.fillText(STORE_NAME.toUpperCase(), W / 2, y);
+    spaced(0, size.storePt);
+    y += px(size.storePt) + mm(size.storeGap) + gap;
+  }
+  // English | Arabic side by side, two lines each; the block is always two
+  // lines tall so the barcode is the same height on every label.
+  const en = show.name && product.name ? product.name : '';
+  const ar = show.nameAr && product.nameAr ? product.nameAr : '';
+  if (en || ar) {
+    ctx.font = font(size.namePt, true);
+    const lh = Math.round(px(size.namePt) * 1.2);
+    const colW = en && ar ? (inner - mm(size.colGap)) / 2 : inner;
+    if (en) {
+      ctx.textAlign = 'left';
+      wrap(ctx, en, colW, 2).forEach((l, i) => ctx.fillText(l, padX, y + i * lh));
+    }
+    if (ar) {
+      ctx.direction = 'rtl';
+      ctx.textAlign = 'right';
+      wrap(ctx, ar, colW, 2).forEach((l, i) => ctx.fillText(l, W - padX, y + i * lh));
+      ctx.direction = 'ltr';
+    }
+    y += lh * 2 + gap;
+  }
+
+  // Bottom block, drawn upwards from the bottom margin.
+  let bottom = H - padY;
+  const compare = comparePriceOf(product);
+  if (show.price || (show.compare && compare)) {
+    const baseline = bottom - Math.round(px(size.pricePt) * 0.2);
+    ctx.textBaseline = 'alphabetic';
+    if (show.price) {
+      ctx.textAlign = 'right';
+      ctx.font = font(size.pricePt, true);
+      const amount = stickerPrice(product).toFixed(3);
+      ctx.fillText(amount, W - padX, baseline);
+      const aw = ctx.measureText(amount).width;
+      ctx.font = font(size.pricePt * 0.62, true);
+      ctx.fillText(currency, W - padX - aw - mm(0.6), baseline);
+    }
+    if (show.compare && compare) {
+      ctx.textAlign = 'left';
+      ctx.font = font(size.wasPt, false);
+      const txt = `${currency} ${compare.toFixed(3)}`;
+      ctx.fillText(txt, padX, baseline);
+      ctx.fillRect(padX, baseline - Math.round(px(size.wasPt) * 0.3), ctx.measureText(txt).width, Math.max(2, Math.round(scale * 2)));
+    }
+    ctx.textBaseline = 'top';
+    bottom -= px(size.pricePt) + mm(0.8);
+    // Hairline over the price.
+    const rule = Math.max(2, mm(0.25));
+    bottom -= rule;
+    ctx.fillRect(padX, bottom, inner, rule);
+    bottom -= gap;
+  }
+  ctx.textAlign = 'center';
+  if (show.sku && product.code) {
+    ctx.font = font(size.digitsPt, false);
+    bottom -= px(size.digitsPt);
+    ctx.fillText(product.code, W / 2, bottom);
+    bottom -= gap;
+  }
+
+  // Barcode fills whatever is left in the middle, with its digits under it.
+  const value = barcodeForProduct(product);
+  if (show.barcode && value) {
+    ctx.font = font(size.digitsPt, false);
+    spaced(0.14, size.digitsPt);
+    bottom -= px(size.digitsPt);
+    ctx.fillText(value, W / 2, bottom);
+    spaced(0, size.digitsPt);
+    bottom -= mm(0.6);
+    const barH = bottom - y;
+    if (barH > 16) {
+      const bc = document.createElement('canvas');
+      try {
+        // Whole dots per module keeps every bar the same width; 88% of the
+        // inner width leaves a quiet zone either side for the scanner.
+        JsBarcode(bc, value, { format: 'CODE128', displayValue: false, height: barH, width: 1, margin: 0 });
+        const module = Math.max(1, Math.floor((inner * 0.88) / bc.width));
+        JsBarcode(bc, value, { format: 'CODE128', displayValue: false, height: barH, width: module, margin: 0 });
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(bc, Math.round((W - bc.width) / 2), y);
+      } catch {
+        // Not encodable as Code128 — the digits still print.
+      }
+    }
+  }
+  return canvas;
+}
+
 export function Label({ product, size, show, currency }) {
   const codeForBarcode = barcodeForProduct(product);
+  const compare = comparePriceOf(product);
+  const en = show.name && product.name;
+  const ar = show.nameAr && product.nameAr;
   return (
     <div className="bc-label" style={{
       width: `${size.width}mm`,
       height: `${size.height}mm`,
-      padding: '1mm 1.2mm',
-      alignItems: 'center',
-      justifyContent: 'center',
-      textAlign: 'center',
+      padding: `${size.padY}mm ${size.padX}mm`,
+      gap: `${size.gap}mm`,
     }}>
-      {show.brand && (
-        <div className="bc-brand" style={{ fontSize: `${Math.max(6, size.fontPt - 1)}pt`, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase', lineHeight: 1.05 }}>
+      {show.store && (
+        <div className="bc-store" style={{ fontSize: `${size.storePt}pt`, marginBottom: `${size.storeGap}mm` }}>
           {STORE_NAME}
         </div>
       )}
-      {show.name && (
-        <div className="bc-name" style={{ fontSize: `${size.fontPt}pt`, lineHeight: 1.1, fontWeight: 600, marginTop: show.brand ? '0.3mm' : 0, WebkitLineClamp: size.id === 'small' ? 1 : 2 }}>
-          {product.name}
+      {(en || ar) && (
+        <div className="bc-names" style={{ gridTemplateColumns: en && ar ? '1fr 1fr' : '1fr', columnGap: `${size.colGap}mm` }}>
+          {en && <div className="bc-name" style={{ fontSize: `${size.namePt}pt` }}>{product.name}</div>}
+          {ar && <div className="bc-name-ar" dir="rtl" style={{ fontSize: `${size.namePt}pt` }}>{product.nameAr}</div>}
         </div>
       )}
-      {show.barcode && (
-        <div style={{ width: '100%', marginTop: '0.6mm' }}>
-          <BarcodeSvg value={codeForBarcode} height={size.barcodeH} />
+      {show.barcode && codeForBarcode ? (
+        <div className="bc-bars">
+          <div className="bc-bars-svg"><BarcodeSvg value={codeForBarcode} /></div>
+          <div className="bc-digits" style={{ fontSize: `${size.digitsPt}pt` }}>{codeForBarcode}</div>
+        </div>
+      ) : <div style={{ flex: 1 }} />}
+      {show.sku && product.code && (
+        <div className="bc-sku" style={{ fontSize: `${size.digitsPt}pt` }}>
+          {product.code}
         </div>
       )}
-      {show.sku && (
-        <div className="bc-sku" style={{ fontSize: `${size.fontPt - 1}pt`, letterSpacing: '1.5px', fontFamily: 'ui-monospace, monospace', marginTop: '0.2mm' }}>
-          {codeForBarcode}
-        </div>
-      )}
-      {show.price && (
-        <div className="bc-price" style={{ fontSize: `${size.fontPt + 2}pt`, fontWeight: 800, marginTop: '0.4mm' }}>
-          {currency} {(parseFloat(product.price) || 0).toFixed(3)}
+      {(show.price || (show.compare && compare)) && (
+        <div className="bc-foot">
+          {show.compare && compare && (
+            <span className="bc-compare" style={{ fontSize: `${size.wasPt}pt` }}>
+              {currency} {compare.toFixed(3)}
+            </span>
+          )}
+          {show.price && (
+            <span className="bc-price" style={{ fontSize: `${size.pricePt}pt` }}>
+              <small>{currency}</small>{stickerPrice(product).toFixed(3)}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -107,18 +279,34 @@ export function BarcodeLabelStyles({ size, layout }) {
         background: white; color: black;
         border: 1px solid #cbd5e1;
         display: flex; flex-direction: column;
-        font-family: 'Inter', -apple-system, sans-serif;
+        font-family: Arial, 'Segoe UI', 'Noto Sans Arabic', 'Geeza Pro', sans-serif;
         overflow: hidden; box-sizing: border-box;
         page-break-inside: avoid;
       }
-      /* Never let a child shrink below its content — otherwise a long name's
-         box collapses and its text overlaps the barcode. Excess clips at the
-         bottom (overflow:hidden) instead. */
-      .bc-label > * { flex-shrink: 0; }
-      .bc-name {
-        overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+      .bc-store {
+        font-weight: 700; text-align: center; text-transform: uppercase;
+        letter-spacing: 0.12em; line-height: 1;
+      }
+      /* English | Arabic side by side, top-aligned, always two lines tall */
+      .bc-names { display: grid; align-items: start; }
+      .bc-name, .bc-name-ar {
+        font-weight: 700; line-height: 1.2; height: 2.4em;
+        overflow: hidden; overflow-wrap: anywhere; display: -webkit-box;
         -webkit-line-clamp: 2; -webkit-box-orient: vertical;
       }
+      .bc-name { text-align: left; }
+      .bc-name-ar { text-align: right; direction: rtl; }
+      .bc-bars { flex: 1 1 0; min-height: 0; display: grid; grid-template-rows: 1fr auto; justify-items: center; }
+      .bc-bars-svg { width: 88%; min-height: 0; }
+      .bc-digits { text-align: center; letter-spacing: 0.14em; line-height: 1; margin-top: 0.6mm; font-variant-numeric: tabular-nums; }
+      .bc-sku { text-align: center; letter-spacing: 0.5px; line-height: 1; }
+      .bc-foot {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 2mm;
+        border-top: 0.25mm solid #000; padding-top: 0.8mm; line-height: 1;
+      }
+      .bc-compare { text-decoration: line-through; white-space: nowrap; }
+      .bc-price { font-weight: 700; white-space: nowrap; margin-left: auto; font-variant-numeric: tabular-nums; }
+      .bc-price small { font-size: 0.62em; font-weight: 700; margin-right: 0.6mm; letter-spacing: 0.04em; }
 
       @media print {
         /* Collapse the entire app; only the portaled labels remain in flow,
