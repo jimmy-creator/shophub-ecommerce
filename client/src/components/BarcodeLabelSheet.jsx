@@ -22,10 +22,53 @@ import JsBarcode from 'jsbarcode';
 // footer. padX/padY/gap/storeGap/colGap in mm, the rest in pt.
 export const LABEL_SIZES = [
   { id: 'small', label: '40 × 25 mm', width: 40, height: 25, padX: 2, padY: 1.5, gap: 0.7, storeGap: 0.6, colGap: 1.5, storePt: 5, namePt: 5.5, digitsPt: 5, pricePt: 8.5, wasPt: 5.5 },
+  { id: 'm5025', label: '50 × 25 mm', width: 50, height: 25, padX: 2, padY: 1.3, gap: 0.6, storeGap: 0.4, colGap: 1.5, storePt: 5, namePt: 5.5, digitsPt: 5, pricePt: 8.5, wasPt: 5.5 },
   { id: 'medium', label: '50 × 30 mm', width: 50, height: 30, padX: 2.5, padY: 1.8, gap: 0.9, storeGap: 0.9, colGap: 2, storePt: 5.5, namePt: 6.5, digitsPt: 6, pricePt: 10, wasPt: 6.5 },
   { id: 'l6040', label: '60 × 40 mm', width: 60, height: 40, padX: 2.5, padY: 2, gap: 1.1, storeGap: 1.2, colGap: 2.5, storePt: 6.5, namePt: 8, digitsPt: 7, pricePt: 12, wasPt: 7.5 },
   { id: 'large', label: '80 × 50 mm', width: 80, height: 50, padX: 3, padY: 2.5, gap: 1.4, storeGap: 1.5, colGap: 3, storePt: 7.5, namePt: 10, digitsPt: 8, pricePt: 14, wasPt: 9 },
 ];
+// The shop's rolls are 50 × 25 mm.
+const DEFAULT_SIZE_ID = 'm5025';
+
+export const CUSTOM_LIMITS = { minW: 20, maxW: 100, minH: 15, maxH: 80 };
+
+// Any width × height: the 60 × 40 layout scaled by whichever side is
+// tighter, so the text always fits.
+export function customLabelSize(width, height) {
+  const clamp = (v, lo, hi, d) => Math.min(hi, Math.max(lo, Math.round(parseFloat(v)) || d));
+  const w = clamp(width, CUSTOM_LIMITS.minW, CUSTOM_LIMITS.maxW, 50);
+  const h = clamp(height, CUSTOM_LIMITS.minH, CUSTOM_LIMITS.maxH, 25);
+  const k = Math.min(w / 60, h / 40);
+  const pt = (v) => Math.max(4.5, Math.round(v * k * 10) / 10);
+  const mm = (v, min = 0) => Math.max(min, Math.round(v * k * 100) / 100);
+  return {
+    id: 'custom', label: `${w} × ${h} mm`, width: w, height: h,
+    padX: mm(2.5, 1.5), padY: mm(2, 1), gap: mm(1.1), storeGap: mm(1.2), colGap: mm(2.5),
+    storePt: pt(6.5), namePt: pt(8), digitsPt: pt(7), pricePt: pt(12), wasPt: pt(7.5),
+  };
+}
+
+// The chosen size is remembered in this browser, so the POS "Print label"
+// prints at the size last picked in Admin → Barcode Labels.
+const SIZE_KEY = 'bc_label_size';
+export function loadLabelSize() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SIZE_KEY));
+    if (saved?.id === 'custom') return customLabelSize(saved.width, saved.height);
+    const preset = LABEL_SIZES.find((s) => s.id === saved?.id);
+    if (preset) return preset;
+  } catch {
+    /* storage blocked or bad value — use the default */
+  }
+  return LABEL_SIZES.find((s) => s.id === DEFAULT_SIZE_ID);
+}
+export function saveLabelSize(size) {
+  try {
+    localStorage.setItem(SIZE_KEY, JSON.stringify({ id: size.id, width: size.width, height: size.height }));
+  } catch {
+    /* storage blocked — the choice just isn't remembered */
+  }
+}
 
 export const STORE_NAME = import.meta.env.VITE_STORE_NAME || 'Anfal Sports';
 

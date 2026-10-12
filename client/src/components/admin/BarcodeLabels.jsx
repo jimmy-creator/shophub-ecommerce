@@ -3,8 +3,8 @@
  * preview a print-ready sheet, print via the browser dialog.
  *
  * Renders Code128 barcodes via jsbarcode (SVG for the browser dialog).
- * Label sizes: small thermal roll (40×25mm), medium roll (50×30mm), the
- * shop's 60×40mm, large/jewellery (80×50mm).
+ * Label sizes: 40×25, the shop's 50×25 rolls, 50×30, 60×40, 80×50, or any
+ * custom width × height.
  *
  * Print CSS hides the rest of the page and lays out labels in a
  * continuous flex-wrap grid so the same template works for both
@@ -22,6 +22,7 @@ import {
 } from '../../lib/thermalPrinter';
 import {
   LABEL_SIZES, Label, BarcodeLabelStyles, BarcodeLabelSheet, drawLabelCanvas, BARCODE_ID_BASE,
+  CUSTOM_LIMITS, customLabelSize, loadLabelSize, saveLabelSize,
 } from '../BarcodeLabelSheet';
 
 const round3 = (n) => Math.round(parseFloat(n) * 1000) / 1000;
@@ -30,7 +31,10 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
   const [allProducts, setAllProducts] = useState([]);
   const [search, setSearch] = useState('');
   const [queue, setQueue] = useState([]);                // [{ productId, name, code, price, qty }]
-  const [sizeId, setSizeId] = useState('l6040');
+  const [size, setSizeState] = useState(loadLabelSize);
+  const setSize = (s) => { setSizeState(s); saveLabelSize(s); };
+  // Custom width/height as typed; applied once a value is within limits.
+  const [customDraft, setCustomDraft] = useState({ width: String(size.width), height: String(size.height) });
   const [layout, setLayout] = useState('roll');   // 'roll' (one per row, label-printer) | 'sheet' (multi-col, A4)
   const [show, setShow] = useState({ store: true, name: true, nameAr: true, barcode: true, compare: true, price: true, sku: false });
   const searchRef = useRef(null);
@@ -140,7 +144,20 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
     return true;
   };
 
-  const size = LABEL_SIZES.find((s) => s.id === sizeId);
+  const pickCustom = () => {
+    setCustomDraft({ width: String(size.width), height: String(size.height) });
+    setSize(customLabelSize(size.width, size.height));
+  };
+  const editCustom = (key, value) => {
+    const draft = { ...customDraft, [key]: value };
+    setCustomDraft(draft);
+    const w = parseFloat(draft.width);
+    const h = parseFloat(draft.height);
+    if (w >= CUSTOM_LIMITS.minW && w <= CUSTOM_LIMITS.maxW && h >= CUSTOM_LIMITS.minH && h <= CUSTOM_LIMITS.maxH) {
+      setSize(customLabelSize(w, h));
+    }
+  };
+
   const totalLabels = queue.reduce((s, q) => s + q.qty, 0);
 
   // Flatten queue into one entry per label for the preview.
@@ -217,19 +234,33 @@ export default function BarcodeLabels({ currency = 'KWD' }) {
       <div className="bc-options no-print">
         <div>
           <label style={lblStyle}>Label size</label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {LABEL_SIZES.map((s) => (
-              <button key={s.id} onClick={() => setSizeId(s.id)}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {[...LABEL_SIZES, { id: 'custom', label: 'Custom' }].map((s) => (
+              <button key={s.id} onClick={() => (s.id === 'custom' ? pickCustom() : setSize(s))}
                 style={{
                   padding: '0.5rem 0.85rem', fontSize: '0.85rem',
-                  background: sizeId === s.id ? 'var(--bg-dark)' : 'var(--bg-card)',
-                  color: sizeId === s.id ? 'var(--text-inverse)' : 'var(--text)',
+                  background: size.id === s.id ? 'var(--bg-dark)' : 'var(--bg-card)',
+                  color: size.id === s.id ? 'var(--text-inverse)' : 'var(--text)',
                   border: '1px solid var(--border-light)', borderRadius: 8,
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}>
                 {s.label}
               </button>
             ))}
+            {size.id === 'custom' && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem' }}>
+                <input type="number" min={CUSTOM_LIMITS.minW} max={CUSTOM_LIMITS.maxW} value={customDraft.width}
+                  onChange={(e) => editCustom('width', e.target.value)}
+                  onBlur={() => setCustomDraft({ width: String(size.width), height: String(size.height) })}
+                  style={{ width: 64 }} aria-label="Label width (mm)" />
+                ×
+                <input type="number" min={CUSTOM_LIMITS.minH} max={CUSTOM_LIMITS.maxH} value={customDraft.height}
+                  onChange={(e) => editCustom('height', e.target.value)}
+                  onBlur={() => setCustomDraft({ width: String(size.width), height: String(size.height) })}
+                  style={{ width: 64 }} aria-label="Label height (mm)" />
+                mm
+              </span>
+            )}
           </div>
         </div>
 

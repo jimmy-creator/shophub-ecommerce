@@ -9,10 +9,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { HiSearch, HiX, HiPrinter } from 'react-icons/hi';
 import api from '../api/axios';
-import { LABEL_SIZES, BarcodeLabelSheet, BarcodeLabelStyles } from './BarcodeLabelSheet';
+import { loadLabelSize, BarcodeLabelSheet, BarcodeLabelStyles } from './BarcodeLabelSheet';
 
 const LABEL_SHOW = { store: true, name: true, nameAr: true, barcode: true, compare: true, price: true, sku: false };
-const SIZE = LABEL_SIZES.find((s) => s.id === 'l6040');   // 60×40mm roll — matches admin default
 const LAYOUT = 'roll';
 
 export default function PosLabelPrint({ currency = 'KWD', onClose }) {
@@ -21,6 +20,7 @@ export default function PosLabelPrint({ currency = 'KWD', onClose }) {
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState(null);
   const [qty, setQty] = useState(1);
+  const [size] = useState(loadLabelSize);   // the size last picked in Admin → Barcode Labels
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
@@ -138,8 +138,8 @@ export default function PosLabelPrint({ currency = 'KWD', onClose }) {
       </div>
 
       {/* Shared print sheet (hidden on screen; window.print() prints only this) */}
-      <BarcodeLabelStyles size={SIZE} layout={LAYOUT} />
-      <BarcodeLabelSheet labels={flatLabels} size={SIZE} show={LABEL_SHOW} currency={currency} layout={LAYOUT} />
+      <BarcodeLabelStyles size={size} layout={LAYOUT} />
+      <BarcodeLabelSheet labels={flatLabels} size={size} show={LABEL_SHOW} currency={currency} layout={LAYOUT} />
     </div>
   );
 }
