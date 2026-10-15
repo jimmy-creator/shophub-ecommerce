@@ -125,7 +125,7 @@ export default function PosReturnModal({ currency = 'KWD', onClose, onComplete, 
   };
 
   return (
-    <div className="modal-backdrop" onClick={() => !submitting && onClose()}>
+    <div className="modal-backdrop">
       <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0 }}>Return — Step {step === 'lookup' ? 1 : step === 'pick' ? 2 : 3} of 3</h3>

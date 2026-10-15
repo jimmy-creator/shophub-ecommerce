@@ -851,7 +851,7 @@ export default function Pos() {
 
       {/* ─── Variant picker ─────────────────── */}
       {variantPicker && (
-        <div className="modal-backdrop" onClick={() => setVariantPicker(null)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>{variantPicker.name}</h3>
             <p style={{ color: 'var(--pos-text-2)', fontSize: 13, margin: '0 0 1rem' }}>Choose a variant</p>
@@ -881,7 +881,7 @@ export default function Pos() {
 
       {/* ─── Payment modal ──────────────────── */}
       {payOpen && (
-        <div className="modal-backdrop" onClick={() => !submitting && setPayOpen(null)}>
+        <div className="modal-backdrop">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>{payOpen === 'cash' ? 'Cash payment' : payOpen === 'credit' ? 'On account' : 'KNET payment'}</h3>
             <div className="pay-total">{fmt(total)}</div>
@@ -948,7 +948,7 @@ export default function Pos() {
 
       {/* ─── Close-shift modal ──────────────── */}
       {closeForm && (
-        <div className="modal-backdrop" onClick={() => setCloseForm(null)}>
+        <div className="modal-backdrop">
           <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submitClose}>
             <h3>Close shift</h3>
             <label className="modal-label">Closing cash count (<CurrencySymbol />)</label>

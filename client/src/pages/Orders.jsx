@@ -194,7 +194,7 @@ export default function Orders() {
 
         {/* Cancel Modal */}
         {cancelModal && (
-          <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCancelModal(null); }}>
+          <div className="admin-form-overlay">
             <div className="admin-form" style={{ maxWidth: '450px' }}>
               <h3>Cancel Order</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>

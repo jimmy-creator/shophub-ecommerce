@@ -61,7 +61,7 @@ export default function PosLabelPrint({ currency = 'KWD', onClose }) {
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-backdrop">
       <div className="modal" style={{ maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
         <h3 style={{ margin: '0 0 0.75rem' }}>Print barcode label</h3>
 

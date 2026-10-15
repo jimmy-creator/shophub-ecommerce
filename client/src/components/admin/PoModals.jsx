@@ -135,7 +135,7 @@ function PoEditor({ form, setForm, suppliers, locations, products, currency, onS
   };
 
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+    <div className="admin-form-overlay">
       <form className="admin-form" onSubmit={submit} style={{ maxWidth: 880 }}>
         <h3>{form._editing ? `Edit PO ${form.poNumber || ''}` : 'New Purchase Order'}</h3>
 
@@ -259,7 +259,7 @@ function PoDetail({ po, currency, onClose, onEdit, onReceive, onPay, onSend, onC
   const fullyReceived = (po.items || []).every((i) => (i.receivedQty || 0) >= (i.orderedQty || 0));
 
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="admin-form-overlay">
       <div className="admin-form" style={{ maxWidth: 860 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
@@ -370,7 +370,7 @@ function ReceiveModal({ form, setForm, currency, onDone }) {
   };
 
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+    <div className="admin-form-overlay">
       <div className="admin-form" style={{ maxWidth: 720 }}>
         <h3>Receive Goods</h3>
         <div className="admin-table-wrap">
@@ -435,7 +435,7 @@ function PayModal({ form, setForm, currency, onDone }) {
     }
   };
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+    <div className="admin-form-overlay">
       <div className="admin-form" style={{ maxWidth: 480 }}>
         <h3>Record Payment</h3>
         <div className="form-group"><label>Amount ({currency})</label>

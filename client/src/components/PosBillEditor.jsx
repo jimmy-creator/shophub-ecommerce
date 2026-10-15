@@ -208,14 +208,14 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
 
   if (loading || !order) {
     return (
-      <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-backdrop">
         <div className="modal" style={{ maxWidth: 480 }}>Loading…</div>
       </div>
     );
   }
 
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-backdrop">
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 700 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
           <h3 style={{ margin: 0 }}>Edit bill — {order.orderNumber}</h3>
@@ -351,7 +351,7 @@ export default function PosBillEditor({ orderNumber, currency = 'KWD', onClose, 
       </div>
 
       {variantPicker && (
-        <div className="modal-backdrop" onClick={() => setVariantPicker(null)} style={{ zIndex: 110 }}>
+        <div className="modal-backdrop" style={{ zIndex: 110 }}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 420 }}>
             <h3 style={{ margin: 0 }}>{variantPicker.name}</h3>
             <p style={{ color: 'var(--pos-text-2)', fontSize: 13, margin: '4px 0 0.75rem' }}>Pick a variant</p>

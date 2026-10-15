@@ -15,6 +15,7 @@ import StockCounts from '../components/admin/StockCounts';
 import AccountingTabs from '../components/admin/AccountingTabs';
 import FixedAssets from '../components/admin/FixedAssets';
 import StockWriteOffs from '../components/admin/StockWriteOffs';
+import ProductSelect from '../components/admin/ProductSelect';
 import PosReportReceipt from '../components/PosReportReceipt';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, Legend,
@@ -2089,7 +2090,7 @@ export default function Admin() {
             )}
 
             {showForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={handleProductSubmit}>
                   <h3>{editing ? 'Edit Product' : 'New Product'}</h3>
 
@@ -2541,7 +2542,7 @@ export default function Admin() {
             )}
 
             {shipModal && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShipModal(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: 600 }}>
                   <h3>Shipping — {shipModal.orderNumber}</h3>
 
@@ -2754,7 +2755,7 @@ export default function Admin() {
             </div>
 
             {b2bQuoteForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setB2bQuoteForm(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: 760 }}>
                   <h3 style={{ marginBottom: '0.5rem' }}>Quote {b2bQuoteForm.requestNumber}</h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
@@ -3069,7 +3070,7 @@ export default function Admin() {
             </div>
 
             {locationForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setLocationForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -3236,7 +3237,7 @@ export default function Admin() {
               }
               const closeModal = () => { setInvProductId(null); setInvDetail(null); setInvDraft({}); };
               return (
-                <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}>
+                <div className="admin-form-overlay">
                   <div className="admin-form" style={{ maxWidth: 720 }}>
                     <h3>Stock — {invDetail.product.name}</h3>
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
@@ -3403,7 +3404,7 @@ export default function Admin() {
             </div>
 
             {transferView && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setTransferView(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: 720 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
@@ -3451,7 +3452,7 @@ export default function Admin() {
             )}
 
             {transferForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setTransferForm(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: 720 }}>
                   <h3>New Stock Transfer</h3>
                   <div className="form-row">
@@ -3476,19 +3477,18 @@ export default function Admin() {
                     {transferForm.items.length === 0 && <p style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>No items yet — add below.</p>}
                     {transferForm.items.map((it, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem', alignItems: 'center' }}>
-                        <select
+                        <ProductSelect
+                          products={products}
                           value={it.productId || ''}
-                          onChange={(e) => {
-                            const p = products.find((x) => x.id === parseInt(e.target.value, 10));
+                          onChange={(pid) => {
+                            const p = products.find((x) => x.id === pid);
                             const items = [...transferForm.items];
-                            items[idx] = { ...items[idx], productId: parseInt(e.target.value, 10), name: p?.name, variantIndex: null };
+                            items[idx] = { ...items[idx], productId: pid, name: p?.name, variantIndex: null };
                             setTransferForm({ ...transferForm, items });
                           }}
-                          style={{ flex: 1, padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: 4 }}
-                        >
-                          <option value="">Pick product…</option>
-                          {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+                          placeholder="Pick product…"
+                          style={{ flex: 1 }}
+                        />
                         {(() => {
                           const p = products.find((x) => x.id === it.productId);
                           if (!p || !Array.isArray(p.variants) || p.variants.length === 0) return null;
@@ -3671,7 +3671,7 @@ export default function Admin() {
             </div>
 
             {cashierForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCashierForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -3806,7 +3806,7 @@ export default function Admin() {
             </div>
 
             {activityDetail && (
-              <div className="admin-form-overlay" onClick={(ev) => { if (ev.target === ev.currentTarget) setActivityDetail(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: 560 }}>
                   <h3>Activity #{activityDetail.id}</h3>
                   <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
@@ -4133,7 +4133,7 @@ export default function Admin() {
             </div>
 
             {returnDetail && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setReturnDetail(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: 640 }}>
                   <h3>Return {returnDetail.returnNumber}</h3>
                   <div style={{ marginBottom: '1rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
@@ -4238,7 +4238,7 @@ export default function Admin() {
             </div>
 
             {supplierForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSupplierForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -4298,7 +4298,7 @@ export default function Admin() {
             )}
 
             {supplierDetail && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSupplierDetail(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: 760 }}>
                   <h3>{supplierDetail.supplier.name} — Statement</h3>
                   <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', fontSize: '0.88rem' }}>
@@ -4523,7 +4523,7 @@ export default function Admin() {
             </button>
 
             {catForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCatForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -4696,7 +4696,7 @@ export default function Admin() {
 
             {/* Order History Modal */}
             {customerOrders && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCustomerOrders(null); }}>
+              <div className="admin-form-overlay">
                 <div className="admin-form" style={{ maxWidth: '700px' }}>
                   <h3>{customerOrders.name}'s Orders</h3>
                   {customerOrders.orders.length === 0 ? (
@@ -4840,7 +4840,7 @@ export default function Admin() {
             </button>
 
             {couponForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCouponForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -4969,21 +4969,12 @@ export default function Admin() {
                   {couponForm.applicableProducts !== null && Array.isArray(couponForm.applicableProducts) && (
                     <div className="form-group">
                       <label>Select Products</label>
-                      <select
-                        onChange={(e) => {
-                          const pid = parseInt(e.target.value);
-                          if (pid && !couponForm.applicableProducts.includes(pid)) {
-                            setCouponForm({ ...couponForm, applicableProducts: [...couponForm.applicableProducts, pid] });
-                          }
-                          e.target.value = '';
-                        }}
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Search and select a product...</option>
-                        {products.filter((p) => !couponForm.applicableProducts.includes(p.id)).map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
+                      <ProductSelect
+                        products={products.filter((p) => !couponForm.applicableProducts.includes(p.id))}
+                        value=""
+                        onChange={(pid) => setCouponForm({ ...couponForm, applicableProducts: [...couponForm.applicableProducts, pid] })}
+                        placeholder="Search and select a product..."
+                      />
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
                         {couponForm.applicableProducts.map((pid) => {
                           const p = products.find((x) => x.id === pid);
@@ -5131,7 +5122,7 @@ export default function Admin() {
             </button>
 
             {reviewForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setReviewForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -5146,13 +5137,13 @@ export default function Admin() {
                   <h3>Add Review</h3>
                   <div className="form-group">
                     <label>Product</label>
-                    <select value={reviewForm.productId} onChange={(e) => setReviewForm({ ...reviewForm, productId: e.target.value })} required>
-                      <option value="">Select product</option>
-                      {products.length === 0 && <option disabled>Loading products...</option>}
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
+                    <ProductSelect
+                      products={products}
+                      value={reviewForm.productId}
+                      onChange={(pid) => setReviewForm({ ...reviewForm, productId: String(pid) })}
+                      placeholder="Select product"
+                      required
+                    />
                   </div>
                   <div className="form-row">
                     <div className="form-group">
@@ -5401,7 +5392,7 @@ export default function Admin() {
 
             {/* Single Add/Edit Form */}
             {pincodeForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPincodeForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" style={{ maxWidth: '500px' }} onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -5578,7 +5569,7 @@ export default function Admin() {
             </button>
 
             {staffForm && (
-              <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setStaffForm(null); }}>
+              <div className="admin-form-overlay">
                 <form className="admin-form" onSubmit={async (e) => {
                   e.preventDefault();
                   try {

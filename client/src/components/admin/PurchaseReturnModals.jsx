@@ -120,7 +120,7 @@ function PrEditor({ form, setForm, suppliers, locations, products, currency, onS
   };
 
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+    <div className="admin-form-overlay">
       <form className="admin-form" onSubmit={submit} style={{ maxWidth: 820 }}>
         <h3>New Purchase Return</h3>
 
@@ -226,7 +226,7 @@ function PrEditor({ form, setForm, suppliers, locations, products, currency, onS
 function PrDetail({ row, currency, isAdmin, onClose, onCancel }) {
   const fmt = (n) => `${currency}${(parseFloat(n) || 0).toFixed(3)}`;
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="admin-form-overlay">
       <div className="admin-form" style={{ maxWidth: 640 }}>
         <h3>Purchase Return {row.returnNumber}</h3>
         <div style={{ marginBottom: '1rem', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>

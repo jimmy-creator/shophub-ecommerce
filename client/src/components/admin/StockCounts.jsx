@@ -129,7 +129,7 @@ function StockCountsList({ currency, locations, setTab, setActiveStockCountId })
       </div>
 
       {showNew && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowNew(false); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" onSubmit={create}>
             <h3>New Stock Count</h3>
             <label>Location *
@@ -332,7 +332,7 @@ function StockCountDetail({ currency, setTab, activeStockCountId }) {
       )}
 
       {variantPicker && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setVariantPicker(null); }}>
+        <div className="admin-form-overlay">
           <div className="admin-form" style={{ maxWidth: 480 }}>
             <h3>Pick variant — {variantPicker.name}</h3>
             <div style={{ display: 'grid', gap: 6, maxHeight: 360, overflow: 'auto' }}>
@@ -438,7 +438,7 @@ function StockCountDetail({ currency, setTab, activeStockCountId }) {
       {sc.notes && <p style={{ marginTop: '1rem', color: 'var(--text-light)' }}>Notes: {sc.notes}</p>}
 
       {showPost && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowPost(false); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" onSubmit={post}>
             <h3>Post Count</h3>
             <p style={{ color: 'var(--text-light)', fontSize: 13 }}>

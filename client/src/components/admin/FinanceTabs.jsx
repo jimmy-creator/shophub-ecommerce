@@ -90,7 +90,7 @@ function CashAccountsTab({ currency, locations, cashAccounts, setCashAccounts, c
       </div>
 
       {cashAccountForm && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCashAccountForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 520 }} onSubmit={async (e) => {
             e.preventDefault();
             try {
@@ -266,7 +266,7 @@ function ExpensesTab({
       </div>
 
       {expenseForm && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setExpenseForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 560 }} onSubmit={async (e) => {
             e.preventDefault();
             try {
@@ -335,7 +335,7 @@ function ExpensesTab({
       )}
 
       {expenseCatForm && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setExpenseCatForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 420 }} onSubmit={async (e) => {
             e.preventDefault();
             try {
@@ -411,7 +411,7 @@ function CashTransfersTab({ currency, isAdmin, cashAccounts, cashTransfers, setC
       </div>
 
       {cashTransferForm && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setCashTransferForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 480 }} onSubmit={async (e) => {
             e.preventDefault();
             try {

@@ -287,7 +287,7 @@ function ChartTab({ currency, setTab }) {
       </p>
 
       {form && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 520 }} onSubmit={save}>
             <h3>{form.id ? 'Edit account' : 'New account'}</h3>
             <div className="form-row">
@@ -479,7 +479,7 @@ function JournalForm({ form, setForm, currency, onSaved }) {
   };
 
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+    <div className="admin-form-overlay">
       <form className="admin-form" style={{ maxWidth: 940 }} onSubmit={save}>
         <h3>New journal</h3>
         <div className="form-row">
@@ -864,7 +864,7 @@ function CustomerAccountsTab({ currency }) {
       </div>
 
       {termsForm && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setTermsForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 480 }} onSubmit={async (e) => {
             e.preventDefault();
             if (!termsForm.userId) { toast.error('Pick a customer'); return; }
@@ -917,7 +917,7 @@ function CustomerAccountsTab({ currency }) {
       )}
 
       {payForm && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setPayForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 480 }} onSubmit={async (e) => {
             e.preventDefault();
             try {
@@ -957,7 +957,7 @@ function CustomerAccountsTab({ currency }) {
       )}
 
       {statement && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setStatement(null); }}>
+        <div className="admin-form-overlay">
           <div className="admin-form" style={{ maxWidth: 1000, width: '95vw' }}>
             <h3>Statement — {statement.customer.name}</h3>
             <p style={{ ...muted, marginTop: 0 }}>{[statement.customer.phone, statement.customer.email].filter(Boolean).join(' · ')}</p>

@@ -137,7 +137,7 @@ export default function FixedAssets({ currency, locations = [] }) {
       )}
 
       {form && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 620 }} onSubmit={saveAsset}>
             <h3>{form.id ? `Edit ${form.name}` : 'Add fixed asset'}</h3>
             <div className="form-row">
@@ -208,7 +208,7 @@ export default function FixedAssets({ currency, locations = [] }) {
       )}
 
       {run && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setRun(null); }}>
+        <div className="admin-form-overlay">
           <div className="admin-form" style={{ maxWidth: 560 }}>
             <h3>Run depreciation</h3>
             <div className="form-group"><label>Up to and including</label>
@@ -237,7 +237,7 @@ export default function FixedAssets({ currency, locations = [] }) {
       )}
 
       {dispose && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setDispose(null); }}>
+        <div className="admin-form-overlay">
           <form className="admin-form" style={{ maxWidth: 480 }} onSubmit={async (e) => {
             e.preventDefault();
             try {
@@ -271,7 +271,7 @@ export default function FixedAssets({ currency, locations = [] }) {
       )}
 
       {detail && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}>
+        <div className="admin-form-overlay">
           <div className="admin-form" style={{ maxWidth: 680 }}>
             <h3>{detail.name} <span style={{ fontSize: '0.8rem', ...muted }}>{detail.assetNumber}</span></h3>
             <div className="dash-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.5rem', marginBottom: '1rem' }}>

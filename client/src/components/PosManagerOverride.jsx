@@ -47,7 +47,7 @@ export default function PosManagerOverride({ reasonText, onApprove, onCancel }) 
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}>
+    <div className="modal-backdrop">
       <form className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h3 style={{ margin: '0 0 0.5rem' }}>Manager override</h3>
         <p style={{ color: 'var(--pos-text-2)', fontSize: 13, margin: '0 0 1rem' }}>

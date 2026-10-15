@@ -88,7 +88,7 @@ export default function PosDiscountModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-backdrop">
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0 }}>Discount</h3>

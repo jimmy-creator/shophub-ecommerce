@@ -104,7 +104,7 @@ function WriteOffsTab({ currency, locations = [], isAdmin }) {
       {form && <WriteOffForm form={form} setForm={setForm} locations={locations} currency={currency} onSaved={() => { setForm(null); load(); }} />}
 
       {detail && (
-        <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setDetail(null); }}>
+        <div className="admin-form-overlay">
           <div className="admin-form" style={{ maxWidth: 640 }}>
             <h3>Write-off {detail.writeOffNumber}</h3>
             <p style={{ ...muted, marginTop: 0 }}>{detail.writeOffDate} · {detail.Location?.name} · {REASON_LABEL[detail.reason]} · by {detail.creator?.name}{detail.approver ? ` (approved by ${detail.approver.name})` : ''}</p>
@@ -196,7 +196,7 @@ function WriteOffForm({ form, setForm, locations, currency, onSaved }) {
   };
 
   return (
-    <div className="admin-form-overlay" onClick={(e) => { if (e.target === e.currentTarget) setForm(null); }}>
+    <div className="admin-form-overlay">
       <form className="admin-form" style={{ maxWidth: 760 }} onSubmit={submit}>
         <h3>Write off stock</h3>
         <div className="form-row">

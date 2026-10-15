@@ -134,7 +134,7 @@ export default function PosRecentSales({ currency = 'KWD', sessionId, onClose, o
   };
 
   return (
-    <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="modal-backdrop">
       <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0 }}>Recent sales — last {RECENT_DAYS} days</h3>
